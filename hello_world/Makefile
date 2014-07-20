@@ -38,4 +38,4 @@ clean:
 	@printf "  CLEAN   $(PROGRAM).elf\n"
 	$(Q)rm -f *.elf
 	@printf "  CLEAN   $(PROGRAM).hex\n"
-	$(Q)rm -f *.hex
+	$(Q)rm -f $(PROGRAM).hex
