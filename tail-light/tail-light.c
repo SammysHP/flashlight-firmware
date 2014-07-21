@@ -65,7 +65,7 @@
  * Settings to modify per driver
  */
 
-//#define VOLTAGE_MON			// Comment out to disable
+#define VOLTAGE_MON			// Comment out to disable
 
 #define MODE_MOON			8	// Can comment out to remove mode, but should be set through soldering stars
 #define MODE_LOW			14  // Can comment out to remove mode
@@ -336,12 +336,9 @@ int main(void)
 				// Wait until we hit the critical level before flashing 10
 				// times and turning off
 				while (!low_voltage(ADC_CRIT));
-				i = 0;
-				while (i++<10) {
-					PWM_LVL = 0;
+				for(i=0; i<20; i++) {
+					PWM_LVL = (i&1) ? 0 : modes[0];
 					_delay_ms(250);
-					PWM_LVL = modes[0];
-					_delay_ms(500);
 				}
 				// Turn off the light
 				PWM_LVL = 0;
@@ -353,19 +350,15 @@ int main(void)
 			} else {
 				// Flash 3 times before lowering
 				hold_pwm = PWM_LVL;
-				i = 0;
-				while (i++<3) {
-					PWM_LVL = 0;
+				for(i=0; i<6; i++) {
+					PWM_LVL = (i&1) ? 0 : hold_pwm;
 					_delay_ms(250);
-					PWM_LVL = hold_pwm;
-					_delay_ms(500);
 				}
 				// Lower the mode by half, but don't go below lowest level
-				if ((PWM_LVL >> 1) < modes[0]) {
+				PWM_LVL = (PWM_LVL >> 1);
+				if (PWM_LVL < modes[0]) {
 					PWM_LVL = modes[0];
 					mode_idx = 0;
-				} else {
-					PWM_LVL = (PWM_LVL >> 1);
 				}
 				// See if we should change the current mode level if we've gone
 				// under the current mode.
@@ -378,8 +371,5 @@ int main(void)
 			_delay_ms(3000);
 		}
 	#endif
-		sleep_mode();
 	}
-
-	return 0; // Standard Return Code
 }
