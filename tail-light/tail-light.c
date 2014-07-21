@@ -311,22 +311,22 @@ int main(void)
 		if(mode_idx < SOLID_MODES) {
 			sleep_mode();
 		} else if (mode_idx < DUAL_BEACON_MODES) {
-			for(i=0; i<3; i++) {
+			for(i=0; i<4; i++) {
 				PWM_LVL = modes[mode_idx+1];
-				_delay_ms(10);
+				_delay_ms(5);
 				PWM_LVL = modes[mode_idx];
-				_delay_ms(70);
+				_delay_ms(50);
 			}
-			_delay_ms(760);
+			_delay_ms(530);
 		} else if (mode_idx < SINGLE_BEACON_MODES) {
 			PWM_LVL = modes[SOLID_MODES-1];
 			_delay_ms(1);
 			PWM_LVL = 0;
-			_delay_ms(148);
+			_delay_ms(149);
 			PWM_LVL = modes[SOLID_MODES-1];
 			_delay_ms(1);
 			PWM_LVL = 0;
-			_delay_ms(748);
+			_delay_ms(599);
 		}
 	#ifdef VOLTAGE_MON
 		if (low_voltage(ADC_LOW)) {

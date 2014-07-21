@@ -26,7 +26,7 @@ $(PROGRAM).hex: $(PROGRAM).elf
 
 flash: $(PROGRAM).hex
 	@printf "  FLASH   $(PROGRAM).hex\n"
-	$(Q)avrdude -c usbasp -p t13 -u -Uflash:w:$(PROGRAM).hex -Ulfuse:w:0x75:m -Uhfuse:w:0xFF:m
+	$(Q)avrdude -c usbasp -p t13 -V -u -Uflash:w:$(PROGRAM).hex -Ulfuse:w:0x75:m -Uhfuse:w:0xFF:m
 
 flash-example: precompiled.hex
 	@printf "  FLASH   precompiled.hex\n"
