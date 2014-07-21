@@ -30,7 +30,7 @@ flash: $(PROGRAM).hex
 
 flash-example: precompiled.hex
 	@printf "  FLASH   precompiled.hex\n"
-	$(Q)avrdude -c usbasp -p t13 -u -Uflash:w:precompiled.hex -Ulfuse:w:0x75:m -Uhfuse:w:0xFF:m
+	$(Q)avrdude -c usbasp -p t13 -V -u -Uflash:w:precompiled.hex -Ulfuse:w:0x75:m -Uhfuse:w:0xFF:m
 
 clean:
 	@printf "  CLEAN   $(subst $(shell pwd)/,,$(OBJS))\n"
