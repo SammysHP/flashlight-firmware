@@ -67,13 +67,18 @@
 
 #define VOLTAGE_MON			// Comment out to disable
 
-#define MODE_MOON			8	// Can comment out to remove mode, but should be set through soldering stars
+//#define MODE_MOON			8	// Can comment out to remove mode, but should be set through soldering stars
+//#define MODE_LOW			14  // Can comment out to remove mode
+//#define MODE_MED			39	// Can comment out to remove mode
+//#define MODE_HIGH			120	// Can comment out to remove mode
+#define MODE_MOON			9	// Can comment out to remove mode, but should be set through soldering stars
 #define MODE_LOW			14  // Can comment out to remove mode
 #define MODE_MED			39	// Can comment out to remove mode
 #define MODE_HIGH			120	// Can comment out to remove mode
-#define SOLID_MODES			4	// How many non-blinky modes will we have?
-#define DUAL_BEACON_MODES	4+3	// How many beacon modes will we have (with background light on)?
-#define SINGLE_BEACON_MODES	4+3+1	// How many beacon modes will we have (without background light on)?
+#define MODE_HIGHER			255	// Can comment out to remove mode
+#define SOLID_MODES			5	// How many non-blinky modes will we have?
+#define DUAL_BEACON_MODES	5+4	// How many beacon modes will we have (with background light on)?
+#define SINGLE_BEACON_MODES	5+4+1	// How many beacon modes will we have (without background light on)?
 
 #define WDT_TIMEOUT			2	// Number of WTD ticks before mode is saved (.5 sec each)
 
@@ -112,11 +117,15 @@ uint8_t eep[32];
 //uint8_t memory = 0;
 
 // Modes (gets set when the light starts up)
-static uint8_t modes[10];  // Don't need 10, but keeping it high enough to handle all
+static uint8_t modes[10] = { // high enough to handle all
+	MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, MODE_HIGHER, // regular solid modes
+	MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, // dual beacon modes
+	MODE_HIGHER, // single beacon modes
+};
 volatile uint8_t mode_idx = 0;
 // int     mode_dir = 0; // 1 or -1. Determined when checking stars. Do we increase or decrease the idx when moving up to a higher mode.
 #define mode_dir 1
-uint8_t mode_cnt = 0;
+uint8_t mode_cnt = 10;
 
 uint8_t lowbatt_cnt = 0;
 
@@ -258,6 +267,7 @@ int main(void)
 	#endif
 	ACSR   |=  (1<<7); //AC off
 
+	/*
 	// Load up the modes
 	// Always load up the modes array in order of lowest to highest mode
 	// Moon
@@ -265,17 +275,20 @@ int main(void)
 	modes[mode_cnt++] = MODE_LOW;
 	modes[mode_cnt++] = MODE_MED;
 	modes[mode_cnt++] = MODE_HIGH;
+	modes[mode_cnt++] = MODE_HIGHER;
 
 	// Now define the base levels for dual beacon modes
 	modes[mode_cnt++] = MODE_MOON;
 	modes[mode_cnt++] = MODE_LOW;
 	modes[mode_cnt++] = MODE_MED;
-
-	// Now define the base levels for single beacon modes
 	modes[mode_cnt++] = MODE_HIGH;
 
+	// Now define the base levels for single beacon modes
+	modes[mode_cnt++] = MODE_HIGHER;
+	*/
+
 	// Make sure there is one extra mode defined so we can "blink" to it (just in case)
-	modes[mode_cnt+1] = MODE_MOON;
+	//modes[mode_cnt+1] = MODE_MOON;
 
 	// memory is always enabled
 	//memory = 1;
@@ -319,11 +332,11 @@ int main(void)
 			}
 			_delay_ms(530);
 		} else if (mode_idx < SINGLE_BEACON_MODES) {
-			PWM_LVL = modes[SOLID_MODES-1];
+			PWM_LVL = modes[SINGLE_BEACON_MODES-1];
 			_delay_ms(1);
 			PWM_LVL = 0;
 			_delay_ms(149);
-			PWM_LVL = modes[SOLID_MODES-1];
+			PWM_LVL = modes[SINGLE_BEACON_MODES-1];
 			_delay_ms(1);
 			PWM_LVL = 0;
 			_delay_ms(599);
