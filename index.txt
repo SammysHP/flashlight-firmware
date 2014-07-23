@@ -1,0 +1,79 @@
+This is a quick explanation of the contents of this repository and the 
+purpose of each entry or each directory.
+
+Most of the firmware here is for ATTINY13A chips.  Other architectures 
+will be noted when appropriate.
+
+  JonnyC/
+
+    Files contributed by JonnyC from BLF.
+
+  JonnyC/STAR/
+
+    The "STAR" family of firmware.  At least, the base versions.  Makes 
+    a good base for new firmwares, since STAR has most of the ground 
+    work figured out already.
+
+    STAR is designed for NANJG 105C drivers with an ATTINY13A MCU.
+
+  JonnyC/STAR/Dual_switch/
+
+    STAR for lights which have both a hard clicky switch and a momentary 
+    electronic switch.
+
+  JonnyC/STAR/SRK_no_ramp-Werners_UI/
+
+    STAR for the Skyray King, modified with Werner's user interface.
+    Should also work on other lights with an electronic switch.
+
+  JonnyC/STAR/SRK_with_ramp/
+
+    Not actually implemented yet.
+
+  JonnyC/STAR/STAR_off-time_memory/
+
+    STAR for lights with only a hard clicky switch, with an extra 
+    capacitor added to the driver to help determine how much time passed 
+    while the light was off.
+
+  JonnyC/STAR/STAR_on-time_memory/
+
+    STAR for lights with only a hard clicky switch.
+
+  README
+
+    General project info and quick start guide.
+
+  ToyKeeper/
+
+    Files contributed by ToyKeeper from BLF.
+
+  ToyKeeper/s7/
+
+    ToyKeeper's custom firmware for a Convoy S-series light modded with 
+    Nichia 219B and 5x7135 380mA chips for 1900mA maximum power.
+
+  ToyKeeper/tail-light/
+
+    Firmware designed for use as a bike tail light, ideally with a red 
+    emitter driven by a 2x7135 nanjg 105c driver.  The AK-47A driver is 
+    a good starting point.
+
+  bin/
+
+    Miscellaneous scripts which might be useful.
+
+  hello_world/
+
+    A quick mod of STAR_on-time designed simply to test if the build and 
+    flash tool chains are working.
+
+  tterev3/
+
+    Files contributed by tterev3 from BLF.
+
+  tterev3/pic10f322-examples/
+
+    Fairly simple example firmwares for PIC10F322 chips, and a good base 
+    for derivative projects since a lot of the plumbing is already 
+    written.
