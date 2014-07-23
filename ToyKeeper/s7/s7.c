@@ -70,17 +70,19 @@
 
 // Lumen measurements used a Nichia 219B at 1900mA in a Convoy S7 host
 #define MODE_MOON           6       // 6: 0.14 lm (6 through 9 may be useful levels)
+//#define MODE_MOON           9       // 9: lowest visible on a crappy old XM-L
 #define MODE_LOW            14      // 14: 7.3 lm
 #define MODE_MED            39      // 39: 42 lm
 #define MODE_HIGH           120     // 120: 155 lm
 #define MODE_HIGHER         255     // 255: 342 lm
 // If you change these, you'll probably want to change the "modes" array below
 #define SOLID_MODES         5       // How many non-blinky modes will we have?
-#define DUAL_BEACON_MODES   5+4     // How many beacon modes will we have (with background light on)?
-#define SINGLE_BEACON_MODES 5+4+1   // How many beacon modes will we have (without background light on)?
-#define STROBE_MODES        5+4+1+3 // How many strobe modes?
+#define DUAL_BEACON_MODES   5+3     // How many beacon modes will we have (with background light on)?
+#define SINGLE_BEACON_MODES 5+3+1   // How many beacon modes will we have (without background light on)?
+#define FIXED_STROBE_MODES  5+3+1+3 // How many constant-speed strobe modes?
+#define VARIABLE_STROBE_MODES 5+3+1+3+2 // How many variable-speed strobe modes?
 // Note: don't use more than 32 modes, or it will interfere with the mechanism used for mode memory
-#define TOTAL_MODES         STROBE_MODES
+#define TOTAL_MODES         VARIABLE_STROBE_MODES
 
 #define WDT_TIMEOUT         2       // Number of WTD ticks before mode is saved (.5 sec each)
 
@@ -91,7 +93,26 @@
  * =========================================================================
  */
 
+#define OWN_DELAY
+#ifdef OWN_DELAY
+#include <util/delay_basic.h>
+// Having own _delay_ms() saves some bytes AND adds possibility to use variables as input
+static void _delay_ms(uint16_t n)
+{
+    // TODO: make this take tenths of a ms instead of ms,
+    // for more precise timing?
+    // (would probably be better than the if/else here for a special-case
+    // sub-millisecond delay)
+    if (n==0) { _delay_loop_2(300); }
+    else {
+        while(n-- > 0)
+            _delay_loop_2(890);
+    }
+}
+#else
 #include <util/delay.h>
+#endif
+
 #include <avr/interrupt.h>
 #include <avr/wdt.h>
 #include <avr/eeprom.h>
@@ -122,9 +143,10 @@ uint8_t eep[32];
 // Modes (hardcoded to save space)
 static uint8_t modes[TOTAL_MODES] = { // high enough to handle all
     MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, MODE_HIGHER, // regular solid modes
-    MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, // dual beacon modes
+    0, 1, 2, // dual beacon modes (grab brightness from modes[modes[mode_idx]]
     MODE_HIGHER, // single beacon modes
-    MODE_HIGHER, MODE_HIGHER, // strobe modes
+    99, 41, 15, // constant-speed strobe modes (10 Hz, 24 Hz, 60 Hz)
+    MODE_HIGHER, MODE_HIGHER, // variable-speed strobe modes
 };
 volatile uint8_t mode_idx = 0;
 // 1 or -1. Do we increase or decrease the idx when moving up to a higher mode?
@@ -277,43 +299,47 @@ int main(void)
             sleep_mode();
         } else if (mode_idx < DUAL_BEACON_MODES) { // two-level fast strobe pulse at about 1 Hz
             for(i=0; i<4; i++) {
-                PWM_LVL = modes[mode_idx+1];
+                PWM_LVL = modes[modes[mode_idx]+2];
                 _delay_ms(5);
-                PWM_LVL = modes[mode_idx];
-                _delay_ms(50);
+                PWM_LVL = modes[modes[mode_idx]];
+                _delay_ms(65);
             }
-            _delay_ms(530);
+            _delay_ms(720);
         } else if (mode_idx < SINGLE_BEACON_MODES) { // heartbeat flasher
             PWM_LVL = modes[SINGLE_BEACON_MODES-1];
             _delay_ms(1);
             PWM_LVL = 0;
-            _delay_ms(149);
+            _delay_ms(249);
             PWM_LVL = modes[SINGLE_BEACON_MODES-1];
             _delay_ms(1);
             PWM_LVL = 0;
-            _delay_ms(599);
-        } else if (mode_idx == SINGLE_BEACON_MODES) { // strobe mode, ~10 Hz
-            // 24 Hz:  1.0 / 10 * 1000 * 3/4 == 75 "ms" cycle
+            _delay_ms(749);
+        } else if (mode_idx < FIXED_STROBE_MODES) { // strobe mode, fixed-speed
+            strobe_len = 1;
+            if (modes[mode_idx] < 50) { strobe_len = 0; }
             PWM_LVL = modes[SOLID_MODES-1];
-            _delay_ms(1);
+            _delay_ms(strobe_len);
             PWM_LVL = 0;
-            _delay_ms(74);
-        } else if (mode_idx == SINGLE_BEACON_MODES+1) { // strobe mode, ~24 Hz (like a movie)
-            // 24 Hz:  1.0 / 24 * 1000 * 3/4 == 31.25 "ms" cycle
-            PWM_LVL = modes[SOLID_MODES-1];
-            _delay_ms(1);
-            PWM_LVL = 0;
-            _delay_ms(30);
-        } else { // strobe mode, smoothly oscillating frequency ~7 Hz to ~18 Hz
-            for(j=0; j<50; j++) {
+            _delay_ms(modes[mode_idx]);
+        } else if (mode_idx == FIXED_STROBE_MODES) {
+            // strobe mode, smoothly oscillating frequency ~7 Hz to ~18 Hz
+            for(j=0; j<66; j++) {
                 PWM_LVL = modes[SOLID_MODES-1];
                 _delay_ms(1);
                 PWM_LVL = 0;
-                if (j<25) { strobe_len = j; }
-                else { strobe_len = 50-j; }
-                for(i=5; i<strobe_len+25; i++) {
-                    _delay_ms(2);
-                }
+                if (j<33) { strobe_len = j; }
+                else { strobe_len = 66-j; }
+                _delay_ms(2*(strobe_len+33-6));
+            }
+        } else if (mode_idx == FIXED_STROBE_MODES+1) {
+            // strobe mode, smoothly oscillating frequency ~16 Hz to ~100 Hz
+            for(j=0; j<100; j++) {
+                PWM_LVL = modes[SOLID_MODES-1];
+                _delay_ms(0); // less than a millisecond
+                PWM_LVL = 0;
+                if (j<50) { strobe_len = j; }
+                else { strobe_len = 100-j; }
+                _delay_ms(strobe_len+9);
             }
         }
     #ifdef VOLTAGE_MON
@@ -358,7 +384,7 @@ int main(void)
 #endif
             }
             // Wait 3 seconds before lowering the level again
-            _delay_ms(2250);
+            _delay_ms(3000);
         }
     #endif
     }
