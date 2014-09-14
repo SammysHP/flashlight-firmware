@@ -29,19 +29,33 @@
 							// 90  = 5625
 							// 120 = 7500
 							
+#define ADC_42			192	// the ADC value we expect for 4.20 volts
 #define ADC_LOW			130	// When do we start ramping
 #define ADC_CRIT		120 // When do we shut the light off
 #define ADC_DELAY		188	// Delay in ticks between low-bat rampdowns (188 ~= 3s)
+#define OWN_DELAY
+#define BLINK_ON_POWER
 
 /*
  * =========================================================================
  */
 
+#ifdef OWN_DELAY
+#include <util/delay_basic.h>
+// Having own _delay_ms() saves some bytes AND adds possibility to use variables as input
+static void _delay_ms(uint16_t n)
+{
+	while(n-- > 0)
+		_delay_loop_2(750);
+}
+#else
+#include <util/delay.h>
+#endif
+
 #include <avr/pgmspace.h>
 #include <avr/io.h>
-#include <util/delay.h>
 #include <avr/interrupt.h>
-#include <avr/wdt.h>	
+#include <avr/wdt.h>
 #include <avr/eeprom.h>
 #include <avr/sleep.h>
 //#include <avr/power.h>
@@ -62,7 +76,7 @@
 							  // each bit of 1 from the right equals 16ms, so 0x0f = 64ms
 
 // Switch handling
-#define LONG_PRESS_DUR   40 // How many WDT ticks until we consider a press a long press
+#define LONG_PRESS_DUR   33 // How many WDT ticks until we consider a press a long press
                             // 32 is roughly .5 s	
 
 /*
@@ -81,6 +95,7 @@ const uint8_t mode_pwm[] = { MODE_PWM };
 volatile uint8_t mode_idx = 0;
 volatile uint8_t press_duration = 0;
 volatile uint8_t low_to_high = 0;
+volatile uint8_t voltage_readout = 0;
 
 // Debounced switch press value
 int is_pressed()
@@ -183,7 +198,18 @@ ISR(WDT_vect) {
 	//static uint8_t  press_duration = 0;  // Pressed or not pressed
 	static uint16_t turbo_ticks = 0;
 	static uint8_t  adc_ticks = ADC_DELAY;
+	static uint8_t  ontime_ticks = 0;
 	static uint8_t  lowbatt_cnt = 0;
+	uint8_t         voltage = 0;
+	uint8_t         i = 0;
+
+	if (mode_idx == 0) {
+		ontime_ticks = 0;
+	} else {
+		if (ontime_ticks < 255) {
+			ontime_ticks ++;
+		}
+	}
 
 	if (is_pressed()) {
 		if (press_duration < 255) {
@@ -214,7 +240,17 @@ ISR(WDT_vect) {
 				next_mode();
 			} else {
 				prev_mode();
-			}	
+			}
+			// If the user keeps short-tapping the button from off, reset the
+			// on-time timer...  otherwise, if we've been on for a while, ignore
+			if (ontime_ticks < (LONG_PRESS_DUR*2)) {
+				ontime_ticks = 1;
+				// If the user short-tapped all the way through the modes and went
+				// to "off" again, start the voltage readout mode
+				if (mode_idx == 0) {
+					voltage_readout = 1;
+				}
+			}
 		} else {
 			// Only do turbo check when switch isn't pressed
 		#ifdef TURBO
@@ -235,10 +271,31 @@ ISR(WDT_vect) {
 				// See if conversion is done
 				if (ADCSRA & (1 << ADIF)) {
 					// See if voltage is lower than what we were looking for
-					if (ADCH < ((mode_idx == 1) ? ADC_CRIT : ADC_LOW)) {
+					voltage = ADCH;
+					if (voltage < ((mode_idx == 1) ? ADC_CRIT : ADC_LOW)) {
 						++lowbatt_cnt;
 					} else {
 						lowbatt_cnt = 0;
+					}
+					if (voltage_readout) {
+						//_delay_ms(250);
+						voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
+						// blink up to four times to show voltage
+						// (~0%, ~25%, ~50%, ~75%, ~100%)
+						// If my numbers are correct, it should be:
+						// 4 blinks: 3.98V or higher
+						// 3 blinks: 3.70V to 3.97V
+						// 2 blinks: 3.41V to 3.69V
+						// 1 blink : 3.13V to 3.40V
+						// 0 blinks: under 3.13V
+						// ... but I haven't been able to verify this experimentally
+						for(i=0; i<voltage; i++) {
+							PWM_LVL = 20;
+							_delay_ms(100);
+							PWM_LVL = 0;
+							_delay_ms(400);
+						}
+						voltage_readout = 0;
 					}
 				}
 				
@@ -261,24 +318,24 @@ ISR(WDT_vect) {
 }
 
 int main(void)
-{	
+{
 	// Set all ports to input, and turn pull-up resistors on for the inputs we are using
 	DDRB = 0x00;
 	PORTB = (1 << SWITCH_PIN) | (1 << STAR3_PIN);
 
 	// Set the switch as an interrupt for when we turn pin change interrupts on
 	PCMSK = (1 << SWITCH_PIN);
-	
-    // Set PWM pin to output
+
+	// Set PWM pin to output
 	#ifdef ALT_MODES
-    DDRB = (1 << PWM_PIN) | (1 << ALT_PWM_PIN);
+	DDRB = (1 << PWM_PIN) | (1 << ALT_PWM_PIN);
 	#else
 	DDRB = (1 << PWM_PIN);
 	#endif
 
-    // Set timer to do PWM for correct output pin and set prescaler timing
-    //TCCR0A = 0x23; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
-    TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
+	// Set timer to do PWM for correct output pin and set prescaler timing
+	//TCCR0A = 0x23; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
+	TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
 	
 	// Turn features on or off as needed
 	#ifdef VOLTAGE_MON
@@ -296,10 +353,18 @@ int main(void)
 		low_to_high = 0;
 	}
 
-	// blink once to let the user know we have power (doesn't work for some reason)
-	//PWM_LVL = 255;
-	//_delay_ms(2);
-	//PWM_LVL = 0;
+	#ifdef BLINK_ON_POWER
+	// blink once to let the user know we have power
+	#ifdef ALT_MODES
+	TCCR0A = FAST | 0b10100000;  // Use both outputs
+	#else
+	TCCR0A = FAST | 0b00100000;  // Only use the normal output
+	#endif
+	PWM_LVL = 255;
+	_delay_ms(2);
+	PWM_LVL = 0;
+	_delay_ms(1);
+	#endif
 
 	// Enable sleep mode set to Power Down that will be triggered by the sleep_mode() command.
 	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
@@ -332,9 +397,13 @@ int main(void)
 			#ifdef ALT_MODES
 			if (modes[mode_idx] == 0 && alt_modes[mode_idx] == 0) {
 			#else
-			if (modes[mode_idx] == 0) {
+			if (mode_idx == 0) {
 			#endif
-				_delay_ms(1); // Need this here, maybe instructions for PWM output not getting executed before shutdown?
+				// Finish executing instructions for PWM level change
+				// and/or voltage readout mode before shutdown.
+				do {
+					_delay_ms(1);
+				} while (voltage_readout);
 				// Go to sleep
 				sleep_until_switch_press();
 			}
