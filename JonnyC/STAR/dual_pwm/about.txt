@@ -1,0 +1,3 @@
+This branch of STAR adds the ability to change the PWM speed per output 
+level (makes moon mode more configurable and more efficient), and also 
+allows dual PWM (two pins).
