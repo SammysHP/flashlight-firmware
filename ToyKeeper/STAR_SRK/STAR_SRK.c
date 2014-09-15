@@ -288,6 +288,7 @@ ISR(WDT_vect) {
 						// blink up to four times to show voltage
 						// (~0%, ~25%, ~50%, ~75%, ~100%)
 						// If my numbers are correct, it should be:
+						// 5 blinks: 4.26V or higher (for 4.35V cells)
 						// 4 blinks: 3.98V or higher
 						// 3 blinks: 3.70V to 3.97V
 						// 2 blinks: 3.41V to 3.69V
