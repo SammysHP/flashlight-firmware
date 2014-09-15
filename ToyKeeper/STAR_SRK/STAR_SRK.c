@@ -23,6 +23,7 @@
 #define MODES			0,1,3,12,40,125,255		// Must be low to high, and must start with 0
 //#define ALT_MODES		0,1,3,12,40,125,255		// Must be low to high, and must start with 0, the defines the level for the secondary output. Comment out if no secondary output
 #define MODE_PWM		0,PHASE,PHASE,FAST,FAST,FAST,FAST		// Define one per mode above, 0 for phase-correct, 1 for fast-PWM
+#define VOLTAGE_IN_PROGRESS_LVL 1  // what level to use while reading voltage before battery check readout
 #define TURBO				// Comment out to disable - full output with a step down after n number of seconds
 							// If turbo is enabled, it will be where 255 is listed in the modes above
 #define TURBO_TIMEOUT	5625 // How many WTD ticks before before dropping down (.016 sec each)
@@ -264,10 +265,14 @@ ISR(WDT_vect) {
 		#endif
 			// Only do voltage monitoring when the switch isn't pressed
 		#ifdef VOLTAGE_MON
+			if (voltage_readout) {
+				PWM_LVL ^= VOLTAGE_IN_PROGRESS_LVL; // strobe while reading
+				//PWM_LVL = VOLTAGE_IN_PROGRESS_LVL; // steady on while reading
+			}
 			if (adc_ticks > 0) {
 				--adc_ticks;
-			}
-			if (adc_ticks == 0) {
+			} else {
+			//if (adc_ticks == 0) {
 				// See if conversion is done
 				if (ADCSRA & (1 << ADIF)) {
 					// See if voltage is lower than what we were looking for
