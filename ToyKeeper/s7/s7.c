@@ -78,11 +78,11 @@
 // If you change these, you'll probably want to change the "modes" array below
 #define SOLID_MODES         5       // How many non-blinky modes will we have?
 #define DUAL_BEACON_MODES   5+3     // How many beacon modes will we have (with background light on)?
-#define SINGLE_BEACON_MODES 5+3+1   // How many beacon modes will we have (without background light on)?
-#define FIXED_STROBE_MODES  5+3+1+3 // How many constant-speed strobe modes?
-#define VARIABLE_STROBE_MODES 5+3+1+3+2 // How many variable-speed strobe modes?
+#define FIXED_STROBE_MODES  5+3+3 // How many constant-speed strobe modes?
+#define VARIABLE_STROBE_MODES 5+3+3+2 // How many variable-speed strobe modes?
+#define SINGLE_BEACON_MODES 5+3+3+2+1   // How many beacon modes will we have (without background light on)?
 // Note: don't use more than 32 modes, or it will interfere with the mechanism used for mode memory
-#define TOTAL_MODES         VARIABLE_STROBE_MODES
+#define TOTAL_MODES         SINGLE_BEACON_MODES
 
 #define WDT_TIMEOUT         2       // Number of WTD ticks before mode is saved (.5 sec each)
 
@@ -144,9 +144,9 @@ uint8_t eep[32];
 static uint8_t modes[TOTAL_MODES] = { // high enough to handle all
     MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, MODE_HIGHER, // regular solid modes
     0, 1, 2, // dual beacon modes (grab brightness from modes[modes[mode_idx]]
-    MODE_HIGHER, // single beacon modes
     99, 41, 15, // constant-speed strobe modes (10 Hz, 24 Hz, 60 Hz)
     MODE_HIGHER, MODE_HIGHER, // variable-speed strobe modes
+    MODE_HIGHER, // single beacon modes
 };
 volatile uint8_t mode_idx = 0;
 // 1 or -1. Do we increase or decrease the idx when moving up to a higher mode?
@@ -305,15 +305,6 @@ int main(void)
                 _delay_ms(65);
             }
             _delay_ms(720);
-        } else if (mode_idx < SINGLE_BEACON_MODES) { // heartbeat flasher
-            PWM_LVL = modes[SINGLE_BEACON_MODES-1];
-            _delay_ms(1);
-            PWM_LVL = 0;
-            _delay_ms(249);
-            PWM_LVL = modes[SINGLE_BEACON_MODES-1];
-            _delay_ms(1);
-            PWM_LVL = 0;
-            _delay_ms(749);
         } else if (mode_idx < FIXED_STROBE_MODES) { // strobe mode, fixed-speed
             strobe_len = 1;
             if (modes[mode_idx] < 50) { strobe_len = 0; }
@@ -321,7 +312,7 @@ int main(void)
             _delay_ms(strobe_len);
             PWM_LVL = 0;
             _delay_ms(modes[mode_idx]);
-        } else if (mode_idx == FIXED_STROBE_MODES) {
+        } else if (mode_idx == VARIABLE_STROBE_MODES-2) {
             // strobe mode, smoothly oscillating frequency ~7 Hz to ~18 Hz
             for(j=0; j<66; j++) {
                 PWM_LVL = modes[SOLID_MODES-1];
@@ -331,7 +322,7 @@ int main(void)
                 else { strobe_len = 66-j; }
                 _delay_ms(2*(strobe_len+33-6));
             }
-        } else if (mode_idx == FIXED_STROBE_MODES+1) {
+        } else if (mode_idx == VARIABLE_STROBE_MODES-1) {
             // strobe mode, smoothly oscillating frequency ~16 Hz to ~100 Hz
             for(j=0; j<100; j++) {
                 PWM_LVL = modes[SOLID_MODES-1];
@@ -341,6 +332,15 @@ int main(void)
                 else { strobe_len = 100-j; }
                 _delay_ms(strobe_len+9);
             }
+        } else if (mode_idx < SINGLE_BEACON_MODES) { // heartbeat flasher
+            PWM_LVL = modes[SOLID_MODES-1];
+            _delay_ms(1);
+            PWM_LVL = 0;
+            _delay_ms(249);
+            PWM_LVL = modes[SOLID_MODES-1];
+            _delay_ms(1);
+            PWM_LVL = 0;
+            _delay_ms(749);
         }
     #ifdef VOLTAGE_MON
         if (low_voltage(ADC_LOW)) {
