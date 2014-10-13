@@ -104,8 +104,8 @@ const uint8_t alt_modes[] = { ALT_MODES };
 #endif
 const uint8_t mode_pwm[]  = { MODE_PWM };
 volatile uint8_t mode_idx = 0;
-volatile uint8_t press_duration  = 0;
-volatile uint8_t voltage_readout = 0;
+uint8_t press_duration  = 0;
+uint8_t voltage_readout = 0;
 uint8_t voltages[] = { VOLTAGE_FULL, VOLTAGE_FULL, VOLTAGE_FULL, VOLTAGE_FULL };
 
 // Debounced switch press value
