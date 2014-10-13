@@ -1,11 +1,11 @@
 /*
  * NANJG 105C Diagram
- *           ---
- *         -|   |- VCC
- *  Star 4 -|   |- Voltage ADC
- *  Star 3 -|   |- PWM
- *     GND -|   |- Star 2
- *           ---
+ *            ---
+ *          -|   |- VCC
+ *   Star 4 -|   |- Voltage ADC
+ *  Red LED -|   |- PWM
+ *      GND -|   |- Green LED
+ *            ---
  */
 
 #define F_CPU 4800000UL
@@ -19,7 +19,7 @@
  * Settings to modify per driver
  */
 
-#define LOW_TO_HIGH     0
+#define LOW_TO_HIGH     1  // order in fast-tap mode (long-press will go the opposite direction)
 #define VOLTAGE_MON     // Comment out to disable - ramp down and eventual shutoff when battery is low
 #define MODES           0,1,3,12,40,125,255     // Must be low to high, and must start with 0
 //#define ALT_MODES     0,1,3,12,40,125,255     // Must be low to high, and must start with 0, the defines the level for the secondary output. Comment out if no secondary output
@@ -31,6 +31,9 @@
 #define TURBO_TIMEOUT   5625 // How many WTD ticks before before dropping down (.016 sec each)
                         // 90  = 5625
                         // 120 = 7500
+#define BATTCHECK_ON_LONG  // long-press, short-press -> battery check mode
+//#define BATTCHECK_ON_SHORT  // short-press, long-press -> battery check mode
+//                            // (also short-press quickly from off back to off)
 
 #define ADC_42          185 // the ADC value we expect for 4.20 volts
 #define VOLTAGE_FULL    169 // 3.9 V, 4 blinks
@@ -85,7 +88,7 @@ static void _delay_ms(uint16_t n)
 
 // Switch handling
 #define LONG_PRESS_DUR   21 // How many WDT ticks until we consider a press a long press
-                            // 32 is roughly .5 s   
+                            // 32 is roughly .5 s, 21 is roughly 1/3rd second
 
 /*
  * The actual program
@@ -188,6 +191,10 @@ void sleep_until_switch_press()
         _delay_ms(16);
     }
     PCINT_on();
+    // turn red+green LEDs off
+    DDRB = (1 << PWM_PIN); // note the lack of red/green pins here
+    // with this commented out, the LEDs dim instead of turning off entirely
+    //PORTB &= 0xff ^ ((1 << RED_PIN) | (1 << GREEN_PIN));  // red+green off
     // Enable sleep mode set to Power Down that will be triggered by the sleep_mode() command.
     //set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     // Now go to sleep
@@ -224,12 +231,20 @@ ISR(WDT_vect) {
             press_duration++;
         }
 
-        if ((press_duration%LONG_PRESS_DUR) == (LONG_PRESS_DUR-1)) {
+        if (((press_duration%LONG_PRESS_DUR) == (LONG_PRESS_DUR-1))
+                && (! voltage_readout)) {
             // Long press
 #if LOW_TO_HIGH
             prev_mode();
 #else
             next_mode();
+#endif
+#ifdef BATTCHECK_ON_LONG
+            // User short-tapped on and immediately long-pressed off
+            // (this triggers the voltage check mode)
+            if ((ontime_ticks < (LONG_PRESS_DUR*2)) && (mode_idx == 0)) {
+                voltage_readout = 1;
+            }
 #endif
         }
         // let the user keep holding the button to keep cycling through modes
@@ -249,6 +264,7 @@ ISR(WDT_vect) {
 #else
             prev_mode();
 #endif
+#ifdef BATTCHECK_ON_SHORT
             // If the user keeps short-tapping the button from off, reset the
             // on-time timer...  otherwise, if we've been on for a while, ignore
             if (ontime_ticks < (LONG_PRESS_DUR*2)) {
@@ -261,6 +277,7 @@ ISR(WDT_vect) {
                     voltage_readout = 1;
                 }
             }
+#endif
         } else {
             // Only do turbo check when switch isn't pressed
 #ifdef TURBO
@@ -296,7 +313,8 @@ ISR(WDT_vect) {
                 }
                 else if (voltage > VOLTAGE_YELLOW) {
                     // turn on red+green LED (yellow)
-                    DDRB = (1 << PWM_PIN) | (1 << GREEN_PIN) | (1 << RED_PIN);
+                    DDRB = (1 << PWM_PIN) | (1 << GREEN_PIN) | (1 << RED_PIN); // bright green + bright red
+                    //DDRB = (1 << PWM_PIN) | (1 << GREEN_PIN); // bright green + dim red
                     PORTB |= (1 << GREEN_PIN) | (1 << RED_PIN);
                 }
                 else {
