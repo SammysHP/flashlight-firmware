@@ -115,12 +115,18 @@ void ramp() {
     mode_idx += ramp_dir;
     if (mode_idx <= 0) {
         mode_idx = 1;
-        ramp_dir = 1;
+        //ramp_dir = 1;
     }
     if (mode_idx > sizeof(modes)-1) {
         mode_idx = sizeof(modes) - 1;
-        ramp_dir = -1;
+        //ramp_dir = -1;
     }
+}
+
+void reverse() {
+    ramp_dir = -ramp_dir;
+    if (mode_idx <= 1) { ramp_dir = 1; }
+    if (mode_idx >= sizeof(modes)-1) { ramp_dir = -1; }
 }
 
 inline void prev_mode() {
@@ -254,12 +260,11 @@ ISR(WDT_vect) {
                 saved_mode_idx = mode_idx;
                 mode_idx = 0;
             }
-            //ramp_dir = -ramp_dir;
         } else if ( press_duration > 0 ) { // long press was just released
-            ramp_dir = -ramp_dir; // reverse for the first couple seconds
+            reverse(); // reverse for the first couple seconds
         } else {
             if (ontime_ticks == RAMP_TIMEOUT) {
-                ramp_dir = -ramp_dir; // un-reverse after a couple seconds
+                reverse(); // un-reverse after a couple seconds
             }
 #ifdef TURBO
             // Only do turbo check when switch isn't pressed
