@@ -41,10 +41,10 @@
 #define OWN_DELAY       // replace default _delay_ms() with ours
 #define BLINK_ON_POWER  // blink once when power is received
 // Switch handling
-#define RAMP_TIMEOUT    120 // un-reverse ramp dir about 2s after button release
 //#define LONG_PRESS_DUR   21 // How many WDT ticks until we consider a press a long press
 #define LONG_PRESS_DUR   4 // How many WDT ticks until we consider a press a long press
                             // 32 is roughly .5 s, 21 is roughly 1/3rd second
+#define RAMP_TIMEOUT    64 // un-reverse ramp dir about 1s after button release
 
 
 /*
@@ -217,7 +217,7 @@ ISR(WDT_vect) {
 #endif
     static uint8_t  ontime_ticks = 0;
     static uint8_t  lowbatt_cnt = 0;
-    static int8_t   saved_mode_idx = 0;
+    static int8_t   saved_mode_idx = 1; // start at first mode, not "off"
     uint16_t        voltage = 0;
     uint8_t         i = 0;
 
@@ -226,6 +226,8 @@ ISR(WDT_vect) {
     }
 
     if (is_pressed()) {
+        ontime_ticks = 0;
+
         if (press_duration < 255) {
             press_duration++;
         }
@@ -253,9 +255,10 @@ ISR(WDT_vect) {
         // Not pressed
         if (press_duration > 0 && press_duration < (LONG_PRESS_DUR*7)) {
             // Short press
-            //prev_mode();
             if ( mode_idx == 0 ) {
                 mode_idx = saved_mode_idx;
+                ontime_ticks = 255;  // avoid the double-reverse on power-on
+                reverse();
             } else {
                 saved_mode_idx = mode_idx;
                 mode_idx = 0;
