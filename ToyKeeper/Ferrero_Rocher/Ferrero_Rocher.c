@@ -251,8 +251,10 @@ ISR(WDT_vect) {
         if (press_duration == LONG_PRESS_DUR*2) {
             press_duration = LONG_PRESS_DUR;
         }
+#ifdef TURBO
         // Just always reset turbo timer whenever the button is pressed
         turbo_ticks = 0;
+#endif
         // Same with the ramp down delay
         lowbatt_cnt = 0;
     } else {
