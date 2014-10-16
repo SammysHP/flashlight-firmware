@@ -20,10 +20,10 @@
  */
 
 #define VOLTAGE_MON     // Comment out to disable - ramp down and eventual shutoff when battery is low
-// Must be low to high
+// Must be low to high (the lowest values are highly device-dependent)
 #define MODES           0,1,1,1,1,1,1,1,1,2,2,2,2,2,3,3,3,4,4,5,5,6,6,7,7,8,9,10,11,12,13,14,16,17,19,21,23,25,27,30,33,36,39,43,47,52,56,62,68,74,81,89,97,106,116,127,139,153,167,183,200,219,239,255
-// counter at which the PWM will loop (variable frequency PWM)
-#define CEILINGS        255,255,228,203,177,147,116,81,52,248,225,199,171,140,237,212,185,241,217,253,229,253,230,247,222,234,242,246,247,247,244,240,251,244,249,252,252,251,247,251,253,252,249,251,251,254,250,253,254,252,253,254,253,252,252,253,253,254,254,254,254,254,254,255
+// counter at which the PWM will loop (variable frequency PWM) (HIGHLY DEVICE-DEPENDENT *AND* VOLTAGE-DEPENDENT!)
+#define CEILINGS        255,255,208,187,169,154,139,125,111,230,200,181,164,149,215,193,176,223,200,243,212,246,215,234,212,222,230,235,237,237,235,232,245,237,243,247,247,246,243,247,249,248,246,248,248,252,248,251,252,251,251,252,251,251,251,252,252,254,253,253,253,254,253,255
 //#define TURBO           // Comment out to disable - full output with a step down after n number of seconds
                         // If turbo is enabled, it will be where 255 is listed in the modes above
 #define TURBO_TIMEOUT   5625 // How many WTD ticks before before dropping down (.016 sec each)
@@ -41,10 +41,10 @@
 #define OWN_DELAY       // replace default _delay_ms() with ours
 #define BLINK_ON_POWER  // blink once when power is received
 // Switch handling
-//#define LONG_PRESS_DUR   21 // How many WDT ticks until we consider a press a long press
-#define LONG_PRESS_DUR   4 // How many WDT ticks until we consider a press a long press
+#define LONG_PRESS_DUR   21 // How many WDT ticks until we consider a press a long press
                             // 32 is roughly .5 s, 21 is roughly 1/3rd second
-#define RAMP_TIMEOUT    64 // un-reverse ramp dir about 1s after button release
+#define TICKS_PER_RAMP    2 // How many WDT ticks per step in the ramp (lower == faster ramp)
+#define RAMP_TIMEOUT     64 // un-reverse ramp dir about 1s after button release
 
 
 /*
@@ -232,13 +232,13 @@ ISR(WDT_vect) {
             press_duration++;
         }
 
-        if (press_duration == ((LONG_PRESS_DUR*8)-1)) {
+        if (press_duration == (LONG_PRESS_DUR+TICKS_PER_RAMP-1)) {
             // Long press
             ramp();
         }
         // let the user keep holding the button to keep cycling through modes
-        if (press_duration == LONG_PRESS_DUR*8) {
-            press_duration = LONG_PRESS_DUR*7;
+        if (press_duration == LONG_PRESS_DUR+TICKS_PER_RAMP) {
+            press_duration = LONG_PRESS_DUR;
         }
 #ifdef TURBO
         // Just always reset turbo timer whenever the button is pressed
@@ -253,7 +253,7 @@ ISR(WDT_vect) {
             }
         }
         // Not pressed
-        if (press_duration > 0 && press_duration < (LONG_PRESS_DUR*7)) {
+        if (press_duration > 0 && press_duration < LONG_PRESS_DUR) {
             // Short press
             if ( mode_idx == 0 ) {
                 mode_idx = saved_mode_idx;
