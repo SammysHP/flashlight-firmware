@@ -37,6 +37,9 @@
 #define VOLTAGE_RED     124 // 3.0 V, 1 blink
 #define ADC_LOW         123 // When do we start ramping down
 #define ADC_CRIT        113 // When do we shut the light off
+// these two are just for testing low-batt behavior
+//#define ADC_LOW         139 // When do we start ramping down
+//#define ADC_CRIT        138 // When do we shut the light off
 #define ADC_DELAY       188 // Delay in ticks between low-bat rampdowns (188 ~= 3s)
 #define OWN_DELAY       // replace default _delay_ms() with ours
 #define BLINK_ON_POWER  // blink once when power is received
@@ -131,9 +134,12 @@ void reverse() {
 
 inline void prev_mode() {
     // only used for turbo step-down and low-voltage step-down...
-    // ... so go back quite a bit and don't turn entirely off
-    mode_idx -= sizeof(modes) / 8;
-    if (mode_idx <= 0) { mode_idx = 1; }
+    // if we were already at the lowest mode, shut off.
+    if (mode_idx == 1) { mode_idx = 0; }
+    else { // otherwise, go back quite a bit but don't turn entirely off
+        mode_idx -= sizeof(modes) / 8;
+        if (mode_idx <= 0) { mode_idx = 1; }
+    }
 }
 
 inline void PCINT_on() {
