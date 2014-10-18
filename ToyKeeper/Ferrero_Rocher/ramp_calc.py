@@ -21,8 +21,9 @@ def main(args):
         ontimes.append(str(ontime))
         ceilings.append(str(ceil))
 
-        goal *= 1.094
-        #goal *= 1.21
+        #goal *= 1.094 # 64 steps
+        goal *= 1.16 # 40 steps
+        #goal *= 1.21 # 32 steps
     ontimes.insert(0,'0')
     ontimes.append('255')
     ceilings.insert(0,'255')
