@@ -67,10 +67,10 @@
  */
 
 #define VOLTAGE_MON                 // Comment out to disable
+#define OWN_DELAY                   // Should we use the built-in delay or our own?
 
 // Lumen measurements used a Nichia 219B at 1900mA in a Convoy S7 host
 #define MODE_MOON           6       // 6: 0.14 lm (6 through 9 may be useful levels)
-//#define MODE_MOON           9       // 9: lowest visible on a crappy old XM-L
 #define MODE_LOW            14      // 14: 7.3 lm
 #define MODE_MED            39      // 39: 42 lm
 #define MODE_HIGH           120     // 120: 155 lm
@@ -78,22 +78,30 @@
 // If you change these, you'll probably want to change the "modes" array below
 #define SOLID_MODES         5       // How many non-blinky modes will we have?
 #define DUAL_BEACON_MODES   5+3     // How many beacon modes will we have (with background light on)?
-#define FIXED_STROBE_MODES  5+3+3 // How many constant-speed strobe modes?
-#define VARIABLE_STROBE_MODES 5+3+3+2 // How many variable-speed strobe modes?
-#define SINGLE_BEACON_MODES 5+3+3+2+1   // How many beacon modes will we have (without background light on)?
+#define SINGLE_BEACON_MODES 5+3+1   // How many beacon modes will we have (without background light on)?
+#define FIXED_STROBE_MODES  5+3+1+3 // How many constant-speed strobe modes?
+#define VARIABLE_STROBE_MODES 5+3+1+3+2 // How many variable-speed strobe modes?
+#define BATT_CHECK_MODE     5+3+1+3+2+1 // battery check mode index
 // Note: don't use more than 32 modes, or it will interfere with the mechanism used for mode memory
-#define TOTAL_MODES         SINGLE_BEACON_MODES
+#define TOTAL_MODES         BATT_CHECK_MODE
 
 #define WDT_TIMEOUT         2       // Number of WTD ticks before mode is saved (.5 sec each)
 
-#define ADC_LOW             130     // When do we start ramping
-#define ADC_CRIT            120     // When do we shut the light off
+//#define ADC_LOW             130     // When do we start ramping
+//#define ADC_CRIT            120     // When do we shut the light off
+
+#define ADC_42          185 // the ADC value we expect for 4.20 volts
+#define VOLTAGE_FULL    169 // 3.9 V, 4 blinks
+#define VOLTAGE_GREEN   154 // 3.6 V, 3 blinks
+#define VOLTAGE_YELLOW  139 // 3.3 V, 2 blinks
+#define VOLTAGE_RED     124 // 3.0 V, 1 blink
+#define ADC_LOW         123 // When do we start ramping down
+#define ADC_CRIT        113 // When do we shut the light off
 
 /*
  * =========================================================================
  */
 
-#define OWN_DELAY
 #ifdef OWN_DELAY
 #include <util/delay_basic.h>
 // Having own _delay_ms() saves some bytes AND adds possibility to use variables as input
@@ -143,18 +151,16 @@ uint8_t eep[32];
 // Modes (hardcoded to save space)
 static uint8_t modes[TOTAL_MODES] = { // high enough to handle all
     MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, MODE_HIGHER, // regular solid modes
-    0, 1, 2, // dual beacon modes (grab brightness from modes[modes[mode_idx]]
+    MODE_MOON, MODE_LOW, MODE_MED, // dual beacon modes (this level and this level + 2)
+    MODE_HIGHER, // heartbeat beacon
     99, 41, 15, // constant-speed strobe modes (10 Hz, 24 Hz, 60 Hz)
     MODE_HIGHER, MODE_HIGHER, // variable-speed strobe modes
-    MODE_HIGHER, // single beacon modes
+    MODE_MED, // battery check mode
 };
 volatile uint8_t mode_idx = 0;
 // 1 or -1. Do we increase or decrease the idx when moving up to a higher mode?
 // Is set by checking stars in the original STAR firmware, but that's removed to save space.
 #define mode_dir 1
-uint8_t mode_cnt = TOTAL_MODES;
-
-uint8_t lowbatt_cnt = 0;
 
 void store_mode_idx(uint8_t lvl) {  //central method for writing (with wear leveling)
     uint8_t oldpos=eepos;
@@ -210,22 +216,13 @@ inline void ADC_off() {
 }
 
 #ifdef VOLTAGE_MON
-uint8_t low_voltage(uint8_t voltage_val) {
+uint8_t get_voltage() {
     // Start conversion
     ADCSRA |= (1 << ADSC);
     // Wait for completion
     while (ADCSRA & (1 << ADSC));
     // See if voltage is lower than what we were looking for
-    if (ADCH < voltage_val) {
-        // See if it's been low for a while
-        if (++lowbatt_cnt > 8) {
-            lowbatt_cnt = 0;
-            return 1;
-        }
-    } else {
-        lowbatt_cnt = 0;
-    }
-    return 0;
+    return ADCH;
 }
 #endif
 
@@ -292,19 +289,31 @@ int main(void)
     uint8_t j = 0;
     uint8_t strobe_len = 0;
 #ifdef VOLTAGE_MON
-    uint8_t hold_pwm;
+    uint8_t lowbatt_cnt = 0;
+    uint8_t voltage;
+    voltage = get_voltage();
+    //uint8_t hold_pwm;
 #endif
     while(1) {
         if(mode_idx < SOLID_MODES) { // Just stay on at a given brightness
             sleep_mode();
         } else if (mode_idx < DUAL_BEACON_MODES) { // two-level fast strobe pulse at about 1 Hz
             for(i=0; i<4; i++) {
-                PWM_LVL = modes[modes[mode_idx]+2];
+                PWM_LVL = modes[mode_idx-SOLID_MODES+2];
                 _delay_ms(5);
-                PWM_LVL = modes[modes[mode_idx]];
+                PWM_LVL = modes[mode_idx];
                 _delay_ms(65);
             }
             _delay_ms(720);
+        } else if (mode_idx < SINGLE_BEACON_MODES) { // heartbeat flasher
+            PWM_LVL = modes[SOLID_MODES-1];
+            _delay_ms(1);
+            PWM_LVL = 0;
+            _delay_ms(249);
+            PWM_LVL = modes[SOLID_MODES-1];
+            _delay_ms(1);
+            PWM_LVL = 0;
+            _delay_ms(749);
         } else if (mode_idx < FIXED_STROBE_MODES) { // strobe mode, fixed-speed
             strobe_len = 1;
             if (modes[mode_idx] < 50) { strobe_len = 0; }
@@ -332,60 +341,69 @@ int main(void)
                 else { strobe_len = 100-j; }
                 _delay_ms(strobe_len+9);
             }
-        } else if (mode_idx < SINGLE_BEACON_MODES) { // heartbeat flasher
-            PWM_LVL = modes[SOLID_MODES-1];
-            _delay_ms(1);
-            PWM_LVL = 0;
-            _delay_ms(249);
-            PWM_LVL = modes[SOLID_MODES-1];
-            _delay_ms(1);
-            PWM_LVL = 0;
-            _delay_ms(749);
-        }
-    #ifdef VOLTAGE_MON
-        if (low_voltage(ADC_LOW)) {
-            // We need to go to a lower level
-            if (PWM_LVL <= modes[0]) {
-                // Can't go any lower than the lowest mode
-                // Wait until we hit the critical level before flashing 10
-                // times and turning off
-                while (!low_voltage(ADC_CRIT));
-                for(i=0; i<20; i++) {
-                    PWM_LVL = (i&1) ? 0 : modes[0];
-                    _delay_ms(250);
-                }
-                // Turn off the light
-                PWM_LVL = 0;
-                // Disable WDT so it doesn't wake us up
-                WDT_off();
-                // Power down as many components as possible
-                set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-                sleep_mode();
-            } else {
-                // Flash 3 times before lowering
-                hold_pwm = PWM_LVL;
-                for(i=0; i<6; i++) {
-                    PWM_LVL = (i&1) ? 0 : hold_pwm;
-                    _delay_ms(250);
-                }
-                // Lower the mode by half, but don't go below lowest level
-                PWM_LVL = (PWM_LVL >> 1);
-                if (PWM_LVL < modes[0]) {
-                    PWM_LVL = modes[0];
-                    mode_idx = 0;
-                }
-#if memory
-                // See if we should change the current mode level if we've gone
-                // under the current mode.
-                if (PWM_LVL < modes[mode_idx]) {
-                    // Lower our recorded mode
-                    mode_idx--;
-                }
-#endif
+        } else if (mode_idx < BATT_CHECK_MODE) {
+            uint8_t blinks = 0;
+            // division takes too much flash space
+            //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
+            voltage = get_voltage();
+            if (voltage >= ADC_42) {
+                blinks = 5;
             }
-            // Wait 3 seconds before lowering the level again
-            _delay_ms(3000);
+            else if (voltage > VOLTAGE_FULL) {
+                blinks = 4;
+            }
+            else if (voltage > VOLTAGE_GREEN) {
+                blinks = 3;
+            }
+            else if (voltage > VOLTAGE_YELLOW) {
+                blinks = 2;
+            }
+            else if (voltage > ADC_LOW) {
+                blinks = 1;
+            }
+            // turn off and wait one second before showing the value
+            PWM_LVL = 0;
+            _delay_ms(1000);
+            // blink up to five times to show voltage
+            // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
+            for(i=0; i<blinks; i++) {
+                PWM_LVL = MODE_MED;
+                _delay_ms(100);
+                PWM_LVL = 0;
+                _delay_ms(400);
+            }
+            _delay_ms(1000);  // wait at least 1 second between readouts
         }
-    #endif
+#ifdef VOLTAGE_MON
+        if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
+            voltage = get_voltage();
+            // See if voltage is lower than what we were looking for
+            if (voltage < ((mode_idx == 0) ? ADC_CRIT : ADC_LOW)) {
+                ++lowbatt_cnt;
+            } else {
+                lowbatt_cnt = 0;
+            }
+            // See if it's been low for a while, and maybe step down
+            if (lowbatt_cnt >= 3) {
+                if (mode_idx > 0) {
+                    mode_idx = 0;
+                } else { // Already at the lowest mode
+                    // Turn off the light
+                    PWM_LVL = 0;
+                    // Disable WDT so it doesn't wake us up
+                    WDT_off();
+                    // Power down as many components as possible
+                    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+                    sleep_mode();
+                }
+                lowbatt_cnt = 0;
+                // Wait at least 1 second before lowering the level again
+                _delay_ms(1000);  // this will interrupt blinky modes
+            }
+
+            // Make sure conversion is running for next time through
+            ADCSRA |= (1 << ADSC);
+        }
+#endif
     }
 }
