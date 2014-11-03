@@ -16,12 +16,12 @@ The modes are as follows:  (with output measurements from my personal light)
 - 6 taps: 1Hz moon-med flasher (actually, off-med due to a bug)
 - 7 taps: 1Hz low-high flasher
 - 8 taps: 1Hz med-max flasher
-- 9 taps: 10Hz true strobe
-- 10 taps: 24Hz true strobe (my favorite)
-- 11 taps: 60Hz true strobe
-- 12 taps: ~7Hz to ~18Hz self-ramping strobe
-- 13 taps: ~16Hz to ~100Hz self-ramping strobe
-- 14 taps: 1Hz heartbeat beacon
+- 9 taps: 1Hz heartbeat beacon
+- 10 taps: 12Hz true strobe
+- 11 taps: 24Hz true strobe (my favorite)
+- 12 taps: 60Hz true strobe
+- 13 taps: ~7Hz to ~18Hz self-ramping strobe
+- 14 taps: battery check mode (each flash represents 25% total charge)
 
 It uses "short-cycle" memory, so the next tap will reset to the first 
 mode after it has been on for one full second.  This means you don't 
@@ -41,10 +41,20 @@ All strobes are "true" motion-freezing strobes, not tactical strobes.
 
 The self-ramping strobes are just for fun.  Point one at a spinning fan.
 
-There is a low-voltage monitor, but I'm 100% sure it has bugs.  It will 
-detect low voltage but it might not behave well after noticing the 
-situation.  If the light starts blinking slowly, that means the voltage 
-is low and you should probably shut it off soon.
+There is a low-voltage monitor, but I'm not sure if it works quite right 
+because I haven't tested it yet.  It will simply step down to 'low' mode 
+when the battery is low, unless it's already at 'low', in which case it 
+will shut off.
+
+The battery check mode will continuously read the voltage then blink to 
+show the approximate remaining charge.  The blinks are as follows:
+
+  - 0 blinks: < 3.0V
+  - 1 blink: 3.0 - 3.3V
+  - 2 blinks: 3.3 - 3.6V
+  - 3 blinks: 3.6 - 3.9V
+  - 4 blinks: 3.9 - 4.2V
+  - 5 blinks: > 4.2V
 
 No settings can be configured by soldering stars.  You'll need to 
 recompile and reflash to change anything.
