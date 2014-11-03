@@ -66,30 +66,48 @@
  */
 
 #define VOLTAGE_MON			// Comment out to disable
+#define OWN_DELAY			// Should we use the built-in delay or our own?
 
-//#define MODE_MOON			8	// Can comment out to remove mode, but should be set through soldering stars
-//#define MODE_LOW			14  // Can comment out to remove mode
-//#define MODE_MED			39	// Can comment out to remove mode
-//#define MODE_HIGH			120	// Can comment out to remove mode
-#define MODE_MOON			9	// Can comment out to remove mode, but should be set through soldering stars
-#define MODE_LOW			14  // Can comment out to remove mode
+#define MODE_MOON			6	// Can comment out to remove mode, but should be set through soldering stars
+#define MODE_LOW			14	// Can comment out to remove mode
 #define MODE_MED			39	// Can comment out to remove mode
 #define MODE_HIGH			120	// Can comment out to remove mode
 #define MODE_HIGHER			255	// Can comment out to remove mode
 #define SOLID_MODES			5	// How many non-blinky modes will we have?
-#define DUAL_BEACON_MODES	5+4	// How many beacon modes will we have (with background light on)?
-#define SINGLE_BEACON_MODES	5+4+1	// How many beacon modes will we have (without background light on)?
+#define DUAL_BEACON_MODES	5+3	// How many beacon modes will we have (with background light on)?
+#define SINGLE_BEACON_MODES	5+3+1	// How many beacon modes will we have (without background light on)?
+#define BATT_CHECK_MODE		5+3+1+1	// which level is the battery check?
+#define TOTAL_MODES			5+3+1+1	// Total number of modes
 
 #define WDT_TIMEOUT			2	// Number of WTD ticks before mode is saved (.5 sec each)
 
-#define ADC_LOW				130	// When do we start ramping
-#define ADC_CRIT			120 // When do we shut the light off
+//#define ADC_LOW				130	// When do we start ramping
+//#define ADC_CRIT			120 // When do we shut the light off
+
+#define ADC_42          185 // the ADC value we expect for 4.20 volts
+#define VOLTAGE_FULL    169 // 3.9 V, 4 blinks
+#define VOLTAGE_GREEN   154 // 3.6 V, 3 blinks
+#define VOLTAGE_YELLOW  139 // 3.3 V, 2 blinks
+#define VOLTAGE_RED     124 // 3.0 V, 1 blink
+#define ADC_LOW         123 // When do we start ramping down
+#define ADC_CRIT        113 // When do we shut the light off
 
 /*
  * =========================================================================
  */
 
+#ifdef OWN_DELAY
+#include <util/delay_basic.h>
+// Having own _delay_ms() saves some bytes AND adds possibility to use variables as input
+static void _delay_ms(uint16_t n)
+{
+    while(n-- > 0)
+        _delay_loop_2(1000);
+}
+#else
 #include <util/delay.h>
+#endif
+
 #include <avr/interrupt.h>
 #include <avr/wdt.h>
 #include <avr/eeprom.h>
@@ -117,17 +135,15 @@ uint8_t eep[32];
 //uint8_t memory = 0;
 
 // Modes (gets set when the light starts up)
-static uint8_t modes[10] = { // high enough to handle all
+static uint8_t modes[TOTAL_MODES] = { // high enough to handle all
 	MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, MODE_HIGHER, // regular solid modes
-	MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, // dual beacon modes
+	MODE_MOON, MODE_LOW, MODE_MED, // dual beacon modes
 	MODE_HIGHER, // single beacon modes
+	MODE_MED, // battery check
 };
 volatile uint8_t mode_idx = 0;
 // int     mode_dir = 0; // 1 or -1. Determined when checking stars. Do we increase or decrease the idx when moving up to a higher mode.
 #define mode_dir 1
-uint8_t mode_cnt = 10;
-
-uint8_t lowbatt_cnt = 0;
 
 void store_mode_idx(uint8_t lvl) {  //central method for writing (with wear leveling)
 	uint8_t oldpos=eepos;
@@ -141,13 +157,13 @@ void store_mode_idx(uint8_t lvl) {  //central method for writing (with wear leve
 inline void read_mode_idx() {
 	eeprom_read_block(&eep, 0, 32);
 	while((eep[eepos] == 0xff) && (eepos < 32)) eepos++;
-	if (eepos < 32) mode_idx = eep[eepos];//&0x10; What the?
+	if (eepos < 32) mode_idx = eep[eepos];//&0x40; What the?
 	else eepos=0;
 }
 
 inline void next_mode() {
 	mode_idx += mode_dir;
-	if (mode_idx > (mode_cnt - 1)) {
+	if (mode_idx > (TOTAL_MODES - 1)) {
 		// Wrap around
 		mode_idx = 0;
 	}
@@ -182,52 +198,14 @@ inline void ADC_off() {
 	ADCSRA &= ~(1<<7); //ADC off
 }
 
-#ifdef DELAYMS
-void delay_ms(uint16_t ms) {
-	// _delay_ms(ms); // can't accept runtime args, requires compile-time arg
-	/*
-	for(; ms>=10; ms-=10) {
-		_delay_ms(10);
-	}
-	for(; ms>=5; ms-=5) {
-		_delay_ms(5);
-	}
-	for(; ms>0; ms--) {
-		_delay_ms(1);
-	}
-	*/
-	/*
-	uint8_t w, x, y, z;
-	for(x=0; x<ms; x++) {
-		for(y=0; y<255; y++) {
-			for(z=0; z<255; z++) {
-				for(w=0; w<255; w++) {
-					_delay_ms(0);
-				}
-			}
-		}
-	}
-	*/
-}
-#endif
-
 #ifdef VOLTAGE_MON
-uint8_t low_voltage(uint8_t voltage_val) {
+uint8_t get_voltage() {
 	// Start conversion
 	ADCSRA |= (1 << ADSC);
 	// Wait for completion
 	while (ADCSRA & (1 << ADSC));
 	// See if voltage is lower than what we were looking for
-	if (ADCH < voltage_val) {
-		// See if it's been low for a while
-		if (++lowbatt_cnt > 8) {
-			lowbatt_cnt = 0;
-			return 1;
-		}
-	} else {
-		lowbatt_cnt = 0;
-	}
-	return 0;
+	return ADCH;
 }
 #endif
 
@@ -267,29 +245,6 @@ int main(void)
 	#endif
 	ACSR   |=  (1<<7); //AC off
 
-	/*
-	// Load up the modes
-	// Always load up the modes array in order of lowest to highest mode
-	// Moon
-	modes[mode_cnt++] = MODE_MOON;
-	modes[mode_cnt++] = MODE_LOW;
-	modes[mode_cnt++] = MODE_MED;
-	modes[mode_cnt++] = MODE_HIGH;
-	modes[mode_cnt++] = MODE_HIGHER;
-
-	// Now define the base levels for dual beacon modes
-	modes[mode_cnt++] = MODE_MOON;
-	modes[mode_cnt++] = MODE_LOW;
-	modes[mode_cnt++] = MODE_MED;
-	modes[mode_cnt++] = MODE_HIGH;
-
-	// Now define the base levels for single beacon modes
-	modes[mode_cnt++] = MODE_HIGHER;
-	*/
-
-	// Make sure there is one extra mode defined so we can "blink" to it (just in case)
-	//modes[mode_cnt+1] = MODE_MOON;
-
 	// memory is always enabled
 	//memory = 1;
 
@@ -300,16 +255,16 @@ int main(void)
 	// Determine what mode we should fire up
 	// Read the last mode that was saved
 	read_mode_idx();
-	if (mode_idx&0x10) {
+	if (mode_idx&0x40) {
 		// Indicates we did a short press last time, go to the next mode
 		// Remove short press indicator first
-		mode_idx &= 0x0f;
+		mode_idx &= 0x3f;
 		next_mode(); // Will handle wrap arounds
 	} else {
 		// Didn't have a short press, keep the same mode
 	}
 	// Store mode with short press indicator
-	store_mode_idx(mode_idx|0x10);
+	store_mode_idx(mode_idx|0x40);
 
 	WDT_on();
 
@@ -318,71 +273,104 @@ int main(void)
 
 	uint8_t i = 0;
 #ifdef VOLTAGE_MON
-	uint8_t hold_pwm;
+	uint8_t lowbatt_cnt = 0;
+	uint8_t voltage;
+	voltage = get_voltage();
 #endif
 	while(1) {
 		if(mode_idx < SOLID_MODES) {
 			sleep_mode();
 		} else if (mode_idx < DUAL_BEACON_MODES) {
 			for(i=0; i<4; i++) {
-				PWM_LVL = modes[mode_idx+1];
+				PWM_LVL = modes[mode_idx-SOLID_MODES+2];
 				_delay_ms(5);
 				PWM_LVL = modes[mode_idx];
-				_delay_ms(50);
+				_delay_ms(65);
 			}
-			_delay_ms(530);
+			_delay_ms(720);
 		} else if (mode_idx < SINGLE_BEACON_MODES) {
 			PWM_LVL = modes[SINGLE_BEACON_MODES-1];
 			_delay_ms(1);
 			PWM_LVL = 0;
-			_delay_ms(149);
+			_delay_ms(249);
 			PWM_LVL = modes[SINGLE_BEACON_MODES-1];
 			_delay_ms(1);
 			PWM_LVL = 0;
-			_delay_ms(599);
-		}
-	#ifdef VOLTAGE_MON
-		if (low_voltage(ADC_LOW)) {
-			// We need to go to a lower level
-			if (mode_idx == 0 && PWM_LVL <= modes[mode_idx]) {
-				// Can't go any lower than the lowest mode
-				// Wait until we hit the critical level before flashing 10
-				// times and turning off
-				while (!low_voltage(ADC_CRIT));
-				for(i=0; i<20; i++) {
-					PWM_LVL = (i&1) ? 0 : modes[0];
-					_delay_ms(250);
-				}
-				// Turn off the light
-				PWM_LVL = 0;
-				// Disable WDT so it doesn't wake us up
-				WDT_off();
-				// Power down as many components as possible
-				set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-				sleep_mode();
-			} else {
-				// Flash 3 times before lowering
-				hold_pwm = PWM_LVL;
-				for(i=0; i<6; i++) {
-					PWM_LVL = (i&1) ? 0 : hold_pwm;
-					_delay_ms(250);
-				}
-				// Lower the mode by half, but don't go below lowest level
-				PWM_LVL = (PWM_LVL >> 1);
-				if (PWM_LVL < modes[0]) {
-					PWM_LVL = modes[0];
-					mode_idx = 0;
-				}
-				// See if we should change the current mode level if we've gone
-				// under the current mode.
-				if (PWM_LVL < modes[mode_idx]) {
-					// Lower our recorded mode
-					mode_idx--;
-				}
+			_delay_ms(749);
+		} else if (mode_idx < BATT_CHECK_MODE) {
+			uint8_t blinks = 0;
+			// division takes too much flash space
+			//voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
+			voltage = get_voltage();
+			if (voltage >= ADC_42) {
+				blinks = 5;
 			}
-			// Wait 3 seconds before lowering the level again
-			_delay_ms(3000);
+			else if (voltage > VOLTAGE_FULL) {
+				blinks = 4;
+			}
+			else if (voltage > VOLTAGE_GREEN) {
+				blinks = 3;
+			}
+			else if (voltage > VOLTAGE_YELLOW) {
+				blinks = 2;
+			}
+			else if (voltage > ADC_LOW) {
+				blinks = 1;
+			}
+			// turn off and wait one second before showing the value
+			PWM_LVL = 0;
+			_delay_ms(1000);
+			// blink up to five times to show voltage
+			// (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
+			for(i=0; i<blinks; i++) {
+				PWM_LVL = MODE_MED;
+				_delay_ms(100);
+				PWM_LVL = 0;
+				_delay_ms(400);
+			}
+			_delay_ms(1000);  // wait at least 1 second between readouts
 		}
-	#endif
+#ifdef VOLTAGE_MON
+		if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
+			voltage = get_voltage();
+			// See if voltage is lower than what we were looking for
+			if (voltage < ((mode_idx == 0) ? ADC_CRIT : ADC_LOW)) {
+				++lowbatt_cnt;
+			} else {
+				lowbatt_cnt = 0;
+			}
+			// See if it's been low for a while, and maybe step down
+			if (lowbatt_cnt >= 3) {
+				if (mode_idx > 0) {
+					// Go to a dimmer mode
+					if (mode_idx == DUAL_BEACON_MODES) {
+						// step down from heartbeat beacon to lowest solid
+						mode_idx = 0;
+					}
+					else if (mode_idx == SOLID_MODES) {
+						// step down from lowest flasher to lowest solid
+						mode_idx = 0;
+					}
+					else { // lower the brightness
+						mode_idx -= 1;
+					}
+				} else { // Already at the lowest mode
+					// Turn off the light
+					PWM_LVL = 0;
+					// Disable WDT so it doesn't wake us up
+					WDT_off();
+					// Power down as many components as possible
+					set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+					sleep_mode();
+				}
+				lowbatt_cnt = 0;
+				// Wait at least 1 second before lowering the level again
+				_delay_ms(1000);  // this will interrupt blinky modes
+			}
+
+			// Make sure conversion is running for next time through
+			ADCSRA |= (1 << ADSC);
+		}
+#endif
 	}
 }
