@@ -21,15 +21,7 @@
 
 #define VOLTAGE_MON     // Comment out to disable - ramp down and eventual shutoff when battery is low
 // Must be low to high (the lowest values are highly device-dependent)
-// 64 steps
-//#define MODES           0,1,1,1,1,1,1,1,1,2,2,2,2,2,3,3,3,4,4,5,5,6,6,7,7,8,9,10,11,12,13,14,16,17,19,21,23,25,27,30,33,36,39,43,47,52,56,62,68,74,81,89,97,106,116,127,139,153,167,183,200,219,239,255
-// 40 steps
-#define MODES           0,1,1,1,1,1,2,2,2,3,3,4,5,5,6,7,9,10,12,14,16,19,22,26,30,35,40,47,55,63,74,85,99,115,134,155,180,209,242,255
-// counter at which the PWM will loop (variable frequency PWM) (HIGHLY DEVICE-DEPENDENT *AND* VOLTAGE-DEPENDENT!)
-// 64 steps
-//#define CEILINGS        255,255,208,187,169,154,139,125,111,230,200,181,164,149,215,193,176,223,200,243,212,246,215,234,212,222,230,235,237,237,235,232,245,237,243,247,247,246,243,247,249,248,246,248,248,252,248,251,252,251,251,252,251,251,251,252,252,254,253,253,253,254,253,255
-// 40 steps
-#define CEILINGS        255,255,193,165,140,117,220,182,155,210,178,210,234,198,207,210,236,226,235,238,235,242,242,248,247,249,246,249,255,249,255,250,252,252,255,253,253,254,253,255
+#define MODES           0,1,7,28,71,144,255
 //#define TURBO           // Comment out to disable - full output with a step down after n number of seconds
                         // If turbo is enabled, it will be where 255 is listed in the modes above
 #define TURBO_TIMEOUT   5625 // How many WTD ticks before before dropping down (.016 sec each)
@@ -50,9 +42,9 @@
 #define OWN_DELAY       // replace default _delay_ms() with ours
 #define BLINK_ON_POWER  // blink once when power is received
 // Switch handling
-#define LONG_PRESS_DUR   21 // How many WDT ticks until we consider a press a long press
+#define LONG_PRESS_DUR   24 // How many WDT ticks until we consider a press a long press
                             // 32 is roughly .5 s, 21 is roughly 1/3rd second
-#define TICKS_PER_RAMP    3 // How many WDT ticks per step in the ramp (lower == faster ramp)
+#define TICKS_PER_RAMP   32 // How many WDT ticks per step in the ramp (lower == faster ramp)
 #define RAMP_TIMEOUT     64 // un-reverse ramp dir about 1s after button release
 
 
@@ -104,8 +96,8 @@ static void _delay_ms(uint16_t n)
  * global variables
  */
 PROGMEM const uint8_t modes[]     = { MODES };
-PROGMEM const uint8_t ceilings[]  = { CEILINGS };
 volatile int8_t mode_idx = 0;
+// FIXME: ramp_dir should be a define
 volatile int8_t ramp_dir = 1;
 uint8_t press_duration  = 0;
 uint8_t voltages[] = { VOLTAGE_FULL, VOLTAGE_FULL, VOLTAGE_FULL, VOLTAGE_FULL };
@@ -122,20 +114,14 @@ int is_pressed()
 
 void ramp() {
     mode_idx += ramp_dir;
+    // wrap around (can probably remove this)
     if (mode_idx <= 0) {
-        mode_idx = 1;
-        //ramp_dir = 1;
+        mode_idx = sizeof(modes)-1;
     }
+    // wrap around, skip moon mode
     if (mode_idx > sizeof(modes)-1) {
-        mode_idx = sizeof(modes) - 1;
-        //ramp_dir = -1;
+        mode_idx = 2;
     }
-}
-
-void reverse() {
-    ramp_dir = -ramp_dir;
-    if (mode_idx <= 1) { ramp_dir = 1; }
-    if (mode_idx >= sizeof(modes)-1) { ramp_dir = -1; }
 }
 
 inline void prev_mode() {
@@ -246,11 +232,12 @@ ISR(WDT_vect) {
             press_duration++;
         }
 
-        if (press_duration == (LONG_PRESS_DUR+TICKS_PER_RAMP-1)) {
+        if (press_duration == (LONG_PRESS_DUR+1)) {
             // don't trigger double-click action after a long press
             doubleclick_ticks = 255;
             // Long press
             // BTW, long-press from off is a shortcut to minimum
+            //if (mode_idx == 0) { ramp_dir = 1; }
             ramp();
         }
         // let the user keep holding the button to keep cycling through modes
@@ -279,13 +266,11 @@ ISR(WDT_vect) {
                 mode_idx = saved_mode_idx;
                 ontime_ticks = 255;  // avoid the double-reverse on power-on
                 doubleclick_ticks = 0;  // so we can detect double clicks from off
-                reverse();
             } else {
                 if ((doubleclick_ticks < LONG_PRESS_DUR) && (mode_idx < sizeof(modes)-1)) {
                     // double click from off is a shortcut to maximum
                     // (or...  triple-click while on also works)
                     mode_idx = sizeof(modes) - 1;
-                    reverse();
                 } else {
                     // single click while on will toggle power
                     saved_mode_idx = mode_idx;
@@ -293,10 +278,10 @@ ISR(WDT_vect) {
                 }
             }
         } else if ( press_duration > 0 ) { // long press was just released
-            reverse(); // reverse for the first couple seconds
+            // FIXME: omit this, no longer used
         } else {
             if (ontime_ticks == RAMP_TIMEOUT) {
-                reverse(); // un-reverse after a couple seconds
+                // FIXME: omit this, no longer used
             }
 #ifdef TURBO
             // Only do turbo check when switch isn't pressed
@@ -408,7 +393,6 @@ int main(void)
         if (mode_idx != last_mode_idx) {
             // The WDT changed the mode.
             PWM_LVL     = pgm_read_byte(modes + mode_idx);
-            CEIL_LVL    = pgm_read_byte(ceilings + mode_idx);
             last_mode_idx = mode_idx;
             _delay_ms(1);
             if (mode_idx == 0) {
@@ -416,7 +400,7 @@ int main(void)
                 // and/or voltage readout mode before shutdown.
                 do {
                     _delay_ms(1);
-                } while (0);
+                } while (0); // FIXME: stay on for a while to catch doubleclicks
                 // Go to sleep
                 sleep_until_switch_press();
             }
