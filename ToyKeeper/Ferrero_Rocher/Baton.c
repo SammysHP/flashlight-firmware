@@ -46,6 +46,7 @@
                             // 32 is roughly .5 s, 21 is roughly 1/3rd second
 #define TICKS_PER_RAMP   32 // How many WDT ticks per step in the ramp (lower == faster ramp)
 #define RAMP_TIMEOUT     64 // un-reverse ramp dir about 1s after button release
+#define LOCK_PRESS_DUR  188 // Hold for 3s from off to (un)lock light.
 
 
 /*
@@ -99,6 +100,7 @@ PROGMEM const uint8_t modes[]     = { MODES };
 volatile int8_t mode_idx = 0;
 // FIXME: ramp_dir should be a define
 volatile int8_t ramp_dir = 1;
+volatile uint8_t locked = 0;
 uint8_t press_duration  = 0;
 uint8_t voltages[] = { VOLTAGE_FULL, VOLTAGE_FULL, VOLTAGE_FULL, VOLTAGE_FULL };
 
@@ -113,6 +115,7 @@ int is_pressed()
 }
 
 void ramp() {
+    if (locked) { return; }
     mode_idx += ramp_dir;
     // wrap around (can probably remove this)
     if (mode_idx <= 0) {
@@ -216,7 +219,7 @@ ISR(WDT_vect) {
     static uint8_t  ontime_ticks = 0;
     static uint8_t  doubleclick_ticks = 0;
     static uint8_t  lowbatt_cnt = 0;
-    static int8_t   saved_mode_idx = 1; // start at first mode, not "off"
+    static int8_t   saved_mode_idx = 2; // start at first non-moon mode
     uint16_t        voltage = 0;
     uint8_t         i = 0;
 
@@ -238,10 +241,22 @@ ISR(WDT_vect) {
             // Long press
             // BTW, long-press from off is a shortcut to minimum
             //if (mode_idx == 0) { ramp_dir = 1; }
+            if (mode_idx == 0) { press_duration = LONG_PRESS_DUR+TICKS_PER_RAMP+1; }
             ramp();
         }
+        else if (press_duration == LOCK_PRESS_DUR) {
+            locked ^= 1;
+            if (locked)
+            {
+                mode_idx = 0;
+            }
+            else
+            {
+                mode_idx = saved_mode_idx;
+            }
+        }
         // let the user keep holding the button to keep cycling through modes
-        if (press_duration == LONG_PRESS_DUR+TICKS_PER_RAMP) {
+        else if (press_duration == LONG_PRESS_DUR+TICKS_PER_RAMP) {
             press_duration = LONG_PRESS_DUR;
         }
 #ifdef TURBO
@@ -251,6 +266,11 @@ ISR(WDT_vect) {
         // Same with the ramp down delay
         lowbatt_cnt = 0;
     } else {
+        if (locked) {  // don't do anything if the lock-out is active
+            ontime_ticks = 0;
+            press_duration = 0;
+            return;
+        }
         if (mode_idx != 0) {
             if (ontime_ticks < 255) {
                 ontime_ticks ++;
