@@ -22,7 +22,7 @@
 #define VOLTAGE_MON     // Comment out to disable - ramp down and eventual shutoff when battery is low
 // Must be low to high (the lowest values are highly device-dependent)
 #define MODES           0,1,7,28,71,144,255
-//#define TURBO           // Comment out to disable - full output with a step down after n number of seconds
+#define TURBO           // Comment out to disable - full output with a step down after n number of seconds
                         // If turbo is enabled, it will be where 255 is listed in the modes above
 #define TURBO_TIMEOUT   5625 // How many WTD ticks before before dropping down (.016 sec each)
                         // 90  = 5625
@@ -130,11 +130,7 @@ void ramp() {
 inline void prev_mode() {
     // only used for turbo step-down and low-voltage step-down...
     // if we were already at the lowest mode, shut off.
-    if (mode_idx == 1) { mode_idx = 0; }
-    else { // otherwise, go back quite a bit but don't turn entirely off
-        mode_idx -= sizeof(modes) / 8;
-        if (mode_idx <= 0) { mode_idx = 1; }
-    }
+    if (mode_idx >= 1) { mode_idx -= 1; }
 }
 
 inline void PCINT_on() {
@@ -218,7 +214,9 @@ ISR(WDT_vect) {
 #endif
     static uint8_t  ontime_ticks = 0;
     static uint8_t  doubleclick_ticks = 0;
+#ifdef VOLTAGE_MON
     static uint8_t  lowbatt_cnt = 0;
+#endif
     static int8_t   saved_mode_idx = 2; // start at first non-moon mode
     uint16_t        voltage = 0;
     uint8_t         i = 0;
@@ -230,6 +228,14 @@ ISR(WDT_vect) {
 
     if (is_pressed()) {
         ontime_ticks = 0;
+#ifdef TURBO
+        // Just always reset turbo timer whenever the button is pressed
+        turbo_ticks = 0;
+#endif
+#ifdef VOLTAGE_MON
+        // Same with the ramp down delay
+        lowbatt_cnt = 0;
+#endif
 
         if (press_duration < 255) {
             press_duration++;
@@ -259,13 +265,8 @@ ISR(WDT_vect) {
         else if (press_duration == LONG_PRESS_DUR+TICKS_PER_RAMP) {
             press_duration = LONG_PRESS_DUR;
         }
-#ifdef TURBO
-        // Just always reset turbo timer whenever the button is pressed
-        turbo_ticks = 0;
-#endif
-        // Same with the ramp down delay
-        lowbatt_cnt = 0;
     } else {
+        // Not pressed
         if (locked) {  // don't do anything if the lock-out is active
             ontime_ticks = 0;
             press_duration = 0;
@@ -279,7 +280,6 @@ ISR(WDT_vect) {
                 doubleclick_ticks ++;
             }
         }
-        // Not pressed
         if (press_duration > 0 && press_duration < LONG_PRESS_DUR) {
             // Short press
             if ( mode_idx == 0 ) {
@@ -305,7 +305,8 @@ ISR(WDT_vect) {
             }
 #ifdef TURBO
             // Only do turbo check when switch isn't pressed
-            if (modes[mode_idx] == 255) {
+            //if (modes[mode_idx] == 255) {
+            if (mode_idx == sizeof(modes)-1) {
                 turbo_ticks++;
                 if (turbo_ticks > TURBO_TIMEOUT) {
                     // Go to the previous mode
@@ -357,7 +358,7 @@ ISR(WDT_vect) {
 
             // Make sure conversion is running for next time through
             ADCSRA |= (1 << ADSC);
-        #endif
+#endif
         }
         press_duration = 0;
     }
