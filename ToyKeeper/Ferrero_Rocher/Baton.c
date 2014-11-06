@@ -21,7 +21,7 @@
 
 #define VOLTAGE_MON     // Comment out to disable - ramp down and eventual shutoff when battery is low
 // Must be low to high (the lowest values are highly device-dependent)
-#define MODES           0,1,7,28,71,144,255
+#define MODES           0,1,5,23,65,139,255
 #define TURBO           // Comment out to disable - full output with a step down after n number of seconds
                         // If turbo is enabled, it will be where 255 is listed in the modes above
 #define TURBO_TIMEOUT   5625 // How many WTD ticks before before dropping down (.016 sec each)
