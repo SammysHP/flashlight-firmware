@@ -20,16 +20,46 @@
  */
 
 #define VOLTAGE_MON     // Comment out to disable - ramp down and eventual shutoff when battery is low
+
+// This section is all tied together...  to configure it:
+// - Choose a PWM mode/speed:
+//   - fast PWM (18 kHz, might allow PWM=0 for lower moon,
+//     might also reduce brightness of turbo mode)
+//   - phase-correct (9 kHz, may be audible)
+// - Decide whether to use PFM (pulse frequency modulation).  It can make the
+//   low end of the ramp *much* smoother but is rather is voltage-sensitive,
+//   and takes more room.  (eliminates the stairstep effect on bottom few modes)
+// - Choose a ramp size (whatever will fit into 1024 bytes)
+// - Choose a ramp speed ("2" recommended for 64-step ramp, "3" for 40-step ramp)
+// - Choose a ramp shape:
+//   - logarithmic: more adjustment at the low end (works best with PFM)
+//   - cubic: visually linear
+//   - quadratic: somewhat between, but closer to cubic
+// --------------------------------------------------------------------------
+#define PWM_MODE   FAST  // PWM mode/speed: PHASE or FAST
+#define USE_PFM           // comment out to disable pulse frequency modulation
+#define TICKS_PER_RAMP    3 // How many WDT ticks per step in the ramp (lower == faster ramp)
+// PWM levels / ramp shape / ramp size:
 // Must be low to high (the lowest values are highly device-dependent)
-// 64 steps
+// Choose a ramp style and number of steps
+// A: 64 steps, PHASE, logarithmic
 //#define MODES           0,1,1,1,1,1,1,1,1,2,2,2,2,2,3,3,3,4,4,5,5,6,6,7,7,8,9,10,11,12,13,14,16,17,19,21,23,25,27,30,33,36,39,43,47,52,56,62,68,74,81,89,97,106,116,127,139,153,167,183,200,219,239,255
-// 40 steps
-#define MODES           0,1,1,1,1,1,2,2,2,3,3,4,5,5,6,7,9,10,12,14,16,19,22,26,30,35,40,47,55,63,74,85,99,115,134,155,180,209,242,255
-// counter at which the PWM will loop (variable frequency PWM) (HIGHLY DEVICE-DEPENDENT *AND* VOLTAGE-DEPENDENT!)
-// 64 steps
+// B: 40 steps, PHASE, logarithmic
+//#define MODES           0,1,1,1,1,1,2,2,2,3,3,4,5,5,6,7,9,10,12,14,16,19,22,26,30,35,40,47,55,63,74,85,99,115,134,155,180,209,242,255
+// C: 40 steps, FAST, logarithmic
+#define MODES           0,0,0,0,0,0,1,1,1,2,2,3,4,4,5,6,8,9,11,13,15,18,21,25,29,34,39,46,54,62,73,84,98,114,133,154,179,208,241,255
+// D: 40 steps, PHASE, quadratic
+//#define MODES           0,1,1,1,2,3,4,5,6,7,8,10,12,14,16,19,23,28,34,41,49,58,68,79,91,103,116,130,145,161,178,196,215,235,255
+// E: 64 steps, FAST, cubic
+//#define MODES           0,0,1,1,1,1,1,2,2,2,2,3,3,4,5,6,7,8,9,11,12,14,16,18,20,22,24,26,29,32,35,38,41,45,48,52,56,60,65,69,74,79,85,90,96,102,108,114,121,128,135,143,151,159,167,175,184,194,203,213,223,233,244,255
+// (only for PFM) counter at which the PWM will loop (variable frequency PWM) (HIGHLY DEVICE-DEPENDENT *AND* VOLTAGE-DEPENDENT!)
+// A: 64 steps, PHASE, logarithmic
 //#define CEILINGS        255,255,208,187,169,154,139,125,111,230,200,181,164,149,215,193,176,223,200,243,212,246,215,234,212,222,230,235,237,237,235,232,245,237,243,247,247,246,243,247,249,248,246,248,248,252,248,251,252,251,251,252,251,251,251,252,252,254,253,253,253,254,253,255
-// 40 steps
-#define CEILINGS        255,255,193,165,140,117,220,182,155,210,178,210,234,198,207,210,236,226,235,238,235,242,242,248,247,249,246,249,255,249,255,250,252,252,255,253,253,254,253,255
+// B: 40 steps, PHASE, logarithmic
+//#define CEILINGS        255,255,193,165,140,117,220,182,155,210,178,210,234,198,207,210,236,226,235,238,235,242,242,248,247,249,246,249,255,249,255,250,252,252,255,253,253,254,253,255
+// C: 40 steps, FAST, logarithmic
+#define CEILINGS        255,255,146,95,51,10,203,147,106,193,150,196,229,183,195,200,232,221,232,235,233,240,241,248,246,249,245,249,255,249,255,250,251,252,255,253,253,254,253,255
+
 //#define TURBO           // Comment out to disable - full output with a step down after n number of seconds
                         // If turbo is enabled, it will be where 255 is listed in the modes above
 #define TURBO_TIMEOUT   5625 // How many WTD ticks before before dropping down (.016 sec each)
@@ -47,12 +77,11 @@
 //#define ADC_LOW         139 // When do we start ramping down
 //#define ADC_CRIT        138 // When do we shut the light off
 #define ADC_DELAY       188 // Delay in ticks between low-bat rampdowns (188 ~= 3s)
-#define OWN_DELAY       // replace default _delay_ms() with ours
+#define OWN_DELAY       // replace default _delay_ms() with ours, comment to disable
 #define BLINK_ON_POWER  // blink once when power is received
 // Switch handling
 #define LONG_PRESS_DUR   21 // How many WDT ticks until we consider a press a long press
                             // 32 is roughly .5 s, 21 is roughly 1/3rd second
-#define TICKS_PER_RAMP    3 // How many WDT ticks per step in the ramp (lower == faster ramp)
 #define RAMP_TIMEOUT     64 // un-reverse ramp dir about 1s after button release
 
 
@@ -90,7 +119,9 @@ static void _delay_ms(uint16_t n)
 #define ADC_PRSCL   0x06    // clk/64
 
 #define PWM_LVL     OCR0B   // OCR0B is the output compare register for PB1
+#ifdef USE_PFM
 #define CEIL_LVL    OCR0A   // OCR0A is the number of "frames" per PWM loop
+#endif
 
 #define DB_REL_DUR  0b00001111 // time before we consider the switch released after
                                // each bit of 1 from the right equals 16ms, so 0x0f = 64ms
@@ -104,7 +135,9 @@ static void _delay_ms(uint16_t n)
  * global variables
  */
 PROGMEM const uint8_t modes[]     = { MODES };
+#ifdef USE_PFM
 PROGMEM const uint8_t ceilings[]  = { CEILINGS };
+#endif
 volatile int8_t mode_idx = 0;
 volatile int8_t ramp_dir = 1;
 uint8_t press_duration  = 0;
@@ -240,16 +273,17 @@ ISR(WDT_vect) {
     }
 
     if (is_pressed()) {
-        ontime_ticks = 0;
+        ontime_ticks = 0;  // Reset ontime on button press
 
         if (press_duration < 255) {
             press_duration++;
         }
 
+        // Long press  (trigger every TICKS_PER_RAMP time slices)
         if (press_duration == (LONG_PRESS_DUR+TICKS_PER_RAMP-1)) {
-            // don't trigger double-click action after a long press
+            // never trigger double-click action after a long press
             doubleclick_ticks = 255;
-            // Long press
+            // All long-press actions result in a ramp
             // BTW, long-press from off is a shortcut to minimum
             ramp();
         }
@@ -371,11 +405,13 @@ int main(void)
     DDRB = (1 << PWM_PIN);
 
     // Set timer to do PWM for correct output pin and set prescaler timing
-    //TCCR0A = 0x23; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
-    //TCCR0A = 0x25; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
-    TCCR0A = 0x21; // trying to set variable-speed PWM
-    //TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
+    TCCR0A = 0x20 | PWM_MODE; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
+    #ifdef USE_PFM
+    // 0x08 is for variable-speed PWM
     TCCR0B = 0x08 | 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
+    #else
+    TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
+    #endif
 
     // Turn features on or off as needed
     #ifdef VOLTAGE_MON
@@ -387,8 +423,9 @@ int main(void)
 
     #ifdef BLINK_ON_POWER
     // blink once to let the user know we have power
-    //TCCR0A = PHASE | 0b00100000;  // Only use the normal output
+    #ifdef USE_PFM
     CEIL_LVL = 255;
+    #endif
     PWM_LVL = 255;
     _delay_ms(3);
     PWM_LVL = 0;
@@ -408,7 +445,9 @@ int main(void)
         if (mode_idx != last_mode_idx) {
             // The WDT changed the mode.
             PWM_LVL     = pgm_read_byte(modes + mode_idx);
+            #ifdef USE_PFM
             CEIL_LVL    = pgm_read_byte(ceilings + mode_idx);
+            #endif
             last_mode_idx = mode_idx;
             _delay_ms(1);
             if (mode_idx == 0) {
