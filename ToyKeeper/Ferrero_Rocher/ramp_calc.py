@@ -10,14 +10,16 @@ def main(args):
     while goal <= 255:
         f,i = math.modf(goal)
         ontime = int(i)
+        ontime -= 1
         ceil = 255
         if f > 0.01:
             #ceil = int(255 * (1.0 - (f / (i+lowest-0.1))))
-            ratio = 1.0 - (float(ontime+1-lowest) / (ontime+1-lowest + 1 + 0.5))
+            ratio = 1.0 - (float(ontime+1-lowest-0.1) / (ontime+1-lowest + 1 + 0.5))
             f = math.sqrt(f)
+            #f = math.pow(f,1.0/3)
             subtract = 255 * ratio * f
             ceil = int(255 - subtract)
-        print '%.3f: %i/%i' % (goal, ontime, ceil)
+        print '%.3f: %i/%i (visually %.3f)' % (goal, ontime, ceil, math.pow(goal, 1.0/3))
         ontimes.append(str(ontime))
         ceilings.append(str(ceil))
 
