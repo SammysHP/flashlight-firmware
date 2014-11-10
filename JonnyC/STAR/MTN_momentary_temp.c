@@ -1,14 +1,8 @@
-/* STAR_momentary version 1.6
+/* MTN_momentary_temp version 1.0
  *
  * Changelog
  *
- * 1.0 Initial version
- * 1.1 Added ability for star 2 to change mode order
- * 1.2 Fix for newer version of AVR Studio
- * 1.3 Added support for dual PWM outputs and selection of PWM mode per output level
- * 1.4 Added ability to switch to a momentary mode
- * 1.5 Added ability to set mode to 0 but not have it turn off
- * 1.6 Added ability to debounce the press
+ * 1.0 First stab at this based on STAR_momentary v1.6
  *
  */
 
@@ -29,8 +23,8 @@
  *      For more details on these settings, visit http://github.com/JCapSolutions/blf-firmware/wiki/PWM-Frequency
  *
  * STARS
- *		Star 2 = Not used
- *		Star 3 = H-L if connected, L-H if not
+ *		Star 2 = Alt PWM output
+ *		Star 3 = Temp sensor input
  *		Star 4 = Switch input
  *
  * VOLTAGE
@@ -72,6 +66,7 @@
  */
 
 #define VOLTAGE_MON			// Comment out to disable - ramp down and eventual shutoff when battery is low
+#define TEMP_MON            // Comment out to disable - ramp down/up to stabilize temp (read as voltage)
 #define MODES			0,0,32,125,255		// Must be low to high, and must start with 0
 #define ALT_MODES		0,2,32,125,255		// Must be low to high, and must start with 0, the defines the level for the secondary output. Comment out if no secondary output
 #define MODE_PWM		0,PHASE,FAST,FAST,FAST		// Define one per mode above. 0 tells the light to go to sleep
@@ -81,14 +76,20 @@
 							// 90  = 5625
 							// 120 = 7500
 							
-#define ADC_LOW			130	// When do we start ramping
-#define ADC_CRIT		120 // When do we shut the light off
-#define ADC_DELAY		188	// Delay in ticks between low-bat rampdowns (188 ~= 3s)
+#define BATT_LOW		130	// When do we start ramping
+#define BATT_CRIT		120 // When do we shut the light off
+#define TEMP_HIGH       120 // When we should lower the output
+#define TEMP_LOW        100 // When we should raise the output
+#define BATT_ADC_DELAY	188	// Delay in ticks between low-bat rampdowns (188 ~= 3s)
+#define TEMP_ADC_DELAY	188	// Delay in ticks before checking temp (188 ~= 3s)
+#define TEMP_ADC_DELAY_AFTER_RAMP 2000 // Delay in ticks before checking temp again after a ramp
 
-#define MOM_ENTER_DUR   128 // .16ms each.  Comment out to disable this feature
-#define MOM_EXIT_DUR    128 // .16ms each
+#define MOM_ENTER_DUR   128 // 16ms each.  Comment out to disable this feature
+#define MOM_EXIT_DUR    128 // 16ms each
 
 #define MOM_MODE_IDX    4   // The index of the mode to use in MODES above, starting at index of 0
+
+#define LOW_TO_HIGH			// comment out to go high to low for the mode order instead
 
 /*
  * =========================================================================
@@ -103,12 +104,9 @@
 #include <avr/sleep.h>
 //#include <avr/power.h>
 
-#define STAR3_PIN   PB4     // If not connected, will cycle L-H.  Connected, H-L
 #define SWITCH_PIN  PB3		// what pin the switch is connected to, which is Star 4
 #define PWM_PIN     PB1
 #define ALT_PWM_PIN PB0
-#define VOLTAGE_PIN PB2
-#define ADC_CHANNEL 0x01	// MUX 01 corresponds with PB2
 #define ADC_DIDR 	ADC1D	// Digital input disable bit corresponding with PB2
 #define ADC_PRSCL   0x06	// clk/64
 
@@ -140,8 +138,12 @@ const uint8_t alt_modes[] = { ALT_MODES };
 const uint8_t mode_pwm[] = { MODE_PWM };
 volatile uint8_t mode_idx = 0;
 volatile uint8_t press_duration = 0;
-volatile uint8_t low_to_high = 0;
 volatile uint8_t in_momentary = 0;
+#ifdef VOLTAGE_MON
+volatile uint8_t adc_channel = 1;	// MUX 01 corresponds with PB2, 02 for PB3. Will switch back and forth
+#else
+volatile uint8_t adc_channel = 2;	// MUX 01 corresponds with PB2, 02 for PB3. Will switch back and forth
+#endif
 
 // Debounce switch press value
 #ifdef DEBOUNCE_BOTH
@@ -175,14 +177,14 @@ int is_pressed()
 }
 #endif
 
-inline void next_mode() {
+void next_mode() {
 	if (++mode_idx >= sizeof(modes)) {
 		// Wrap around
 		mode_idx = 0;
 	}	
 }
 
-inline void prev_mode() {
+void prev_mode() {
 	if (mode_idx == 0) {
 		// Wrap around
 		mode_idx = sizeof(modes) - 1;
@@ -224,14 +226,14 @@ inline void WDT_off()
 	sei();							// Enable interrupts
 }
 
-inline void ADC_on() {
-	ADMUX  = (1 << REFS0) | (1 << ADLAR) | ADC_CHANNEL; // 1.1v reference, left-adjust, ADC1/PB2
+void ADC_on() {
+	ADMUX  = (1 << REFS0) | (1 << ADLAR) | adc_channel; // 1.1v reference, left-adjust, ADC1/PB2 or ADC2/PB3
     DIDR0 |= (1 << ADC_DIDR);							// disable digital input on ADC pin to reduce power consumption
-	ADCSRA = (1 << ADEN ) | (1 << ADSC ) | ADC_PRSCL;   // enable, start, prescale
+	ADCSRA = (1 << ADEN ) | (1 << ADSC ) | ADC_PRSCL;   // enable, start, prescale, Single Conversion mode
 }
 
-inline void ADC_off() {
-	ADCSRA &= ~(1<<7); //ADC off
+void ADC_off() {
+	ADCSRA &= ~(1 << ADSC); //ADC off
 }
 
 void sleep_until_switch_press()
@@ -265,8 +267,12 @@ ISR(WDT_vect) {
 
 	//static uint8_t  press_duration = 0;  // Pressed or not pressed
 	static uint16_t turbo_ticks = 0;
-	static uint8_t  adc_ticks = ADC_DELAY;
+	static uint16_t batt_adc_ticks = BATT_ADC_DELAY;
+	static uint16_t temp_adc_ticks = TEMP_ADC_DELAY;
 	static uint8_t  lowbatt_cnt = 0;
+	static uint8_t  high_temp_cnt = 0;
+	static uint8_t  low_temp_cnt = 0;
+	static uint8_t  highest_mode_idx = 255;
 
 	if (is_pressed()) {
 		if (press_duration < 255) {
@@ -288,11 +294,12 @@ ISR(WDT_vect) {
 
 		if (press_duration == LONG_PRESS_DUR) {
 			// Long press
-			if (low_to_high) {
+			#ifdef LOW_TO_HIGH
 				prev_mode();
-			} else {
+			#else
 				next_mode();
-			}			
+			#endif
+			highest_mode_idx = mode_idx;
 		}
 		#ifdef MOM_ENTER_DUR
 		if (press_duration == MOM_ENTER_DUR) {
@@ -303,7 +310,8 @@ ISR(WDT_vect) {
 		// Just always reset turbo timer whenever the button is pressed
 		turbo_ticks = 0;
 		// Same with the ramp down delay
-		adc_ticks = ADC_DELAY;
+		batt_adc_ticks = BATT_ADC_DELAY;
+		temp_adc_ticks = TEMP_ADC_DELAY;
 	
 	} else {
 		
@@ -318,11 +326,12 @@ ISR(WDT_vect) {
 		// Not pressed
 		if (press_duration > 0 && press_duration < LONG_PRESS_DUR) {
 			// Short press
-			if (low_to_high) {
+			#ifdef LOW_TO_HIGH
 				next_mode();
-			} else {
+			#else
 				prev_mode();
-			}	
+			#endif
+			highest_mode_idx = mode_idx;
 		} else {
 			// Only do turbo check when switch isn't pressed
 		#ifdef TURBO
@@ -335,34 +344,81 @@ ISR(WDT_vect) {
 			}
 		#endif
 			// Only do voltage monitoring when the switch isn't pressed
-		#ifdef VOLTAGE_MON
-			if (adc_ticks > 0) {
-				--adc_ticks;
+			// See if conversion is done. We moved this up here because we want to stay on
+			// the current ADC input until the conversion is done, and then switch to the new
+			// input, start the monitoring
+			if (batt_adc_ticks > 0) {
+				--batt_adc_ticks;
 			}
-			if (adc_ticks == 0) {
-				// See if conversion is done
-				if (ADCSRA & (1 << ADIF)) {
-					// See if voltage is lower than what we were looking for
-					if (ADCH < ((mode_idx == 1) ? ADC_CRIT : ADC_LOW)) {
-						++lowbatt_cnt;
-					} else {
-						lowbatt_cnt = 0;
+			if (temp_adc_ticks > 0) {
+				--temp_adc_ticks;
+			}
+			if (ADCSRA & (1 << ADIF)) {
+				if (adc_channel == 0x01) {
+					
+					if (batt_adc_ticks == 0) {
+						// See if voltage is lower than what we were looking for
+						if (ADCH < ((mode_idx == 1) ? BATT_CRIT : BATT_LOW)) {
+							++lowbatt_cnt;
+						} else {
+							lowbatt_cnt = 0;
+						}
+					
+						// See if it's been low for a while
+						if (lowbatt_cnt >= 4) {
+							prev_mode();
+							highest_mode_idx = mode_idx;
+							lowbatt_cnt = 0;
+							// If we reach 0 here, main loop will go into sleep mode
+							// Restart the counter to when we step down again
+							batt_adc_ticks = BATT_ADC_DELAY;
+							temp_adc_ticks = TEMP_ADC_DELAY;
+						}
 					}
-				}
+					// Switch ADC to temp monitoring
+					adc_channel = 0x02;
+					ADMUX = ((ADMUX & 0b11111100) | adc_channel);
+				} else if (adc_channel == 0x02) {
+					
+					if (temp_adc_ticks == 0) {
+						// See if temp is higher than the high threshold
+						if (ADCH > ((mode_idx == 1) ? 255 : TEMP_HIGH)) {
+							++high_temp_cnt;
+						// See if it's lower that the low threshold, but not at or above the batt-adjusted mode
+						} else if (ADCH < (modes[mode_idx] >= modes[highest_mode_idx] ? 0 : TEMP_LOW)) {
+							++low_temp_cnt;						
+						} else {
+							high_temp_cnt = 0;
+							low_temp_cnt = 0;
+						}
 				
-				// See if it's been low for a while
-				if (lowbatt_cnt >= 4) {
-					prev_mode();
-					lowbatt_cnt = 0;
-					// If we reach 0 here, main loop will go into sleep mode
-					// Restart the counter to when we step down again
-					adc_ticks = ADC_DELAY;
+						// See if it's been low for a while
+						if (high_temp_cnt >= 4) {
+							// TODO - step down half
+							prev_mode();
+							high_temp_cnt = 0;
+							low_temp_cnt = 0;
+							// If we reach 0 here, main loop will go into sleep mode
+							// Restart the counter to when we step down again
+							temp_adc_ticks = TEMP_ADC_DELAY_AFTER_RAMP;
+						} else if (low_temp_cnt >= 4) {
+							// TODO - step up half
+							next_mode();
+							high_temp_cnt = 0;
+							low_temp_cnt = 0;
+							// TODO - TEMP_ADC_DELAY_AFTER_RAMP?? Might jump up and cause it to overheat waiting too long
+							temp_adc_ticks = TEMP_ADC_DELAY;
+						}
+					}
+					#ifdef VOLTAGE_MON
+					// Switch ADC to battery monitoring
+					adc_channel = 0x01;
+					ADMUX = ((ADMUX & 0b11111100) | adc_channel);
+					#endif;
 				}
-				
-				// Make sure conversion is running for next time through
-				ADCSRA |= (1 << ADSC);
 			}
-		#endif
+			// Start conversion for next time through
+			ADCSRA |= (1 << ADSC);
 		}
 		press_duration = 0;
 	}
@@ -372,7 +428,7 @@ int main(void)
 {	
 	// Set all ports to input, and turn pull-up resistors on for the inputs we are using
 	DDRB = 0x00;
-	PORTB = (1 << SWITCH_PIN) | (1 << STAR3_PIN);
+	PORTB = (1 << SWITCH_PIN);
 
 	// Set the switch as an interrupt for when we turn pin change interrupts on
 	PCMSK = (1 << SWITCH_PIN);
@@ -389,20 +445,8 @@ int main(void)
     TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
 	
 	// Turn features on or off as needed
-	#ifdef VOLTAGE_MON
 	ADC_on();
-	#else
-	ADC_off();
-	#endif
 	ACSR   |=  (1<<7); //AC off
-	
-	// Determine if we are going L-H, or H-L based on Star 3
-	if ((PINB & (1 << STAR3_PIN)) == 0) {
-		// High to Low
-		low_to_high = 0;
-	} else {
-		low_to_high = 1;
-	}
 	
 	// Enable sleep mode set to Power Down that will be triggered by the sleep_mode() command.
 	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
