@@ -19,7 +19,24 @@
  * Settings to modify per driver
  */
 
-#define VOLTAGE_MON     // Comment out to disable - ramp down and eventual shutoff when battery is low
+#define BLINK_ON_POWER      // blink once when power is received
+                            // (helpful on e-switch lights, annoying on dual-switch lights)
+#define VOLTAGE_MON         // Comment out to disable all voltage-related functions:
+                            // (including ramp down and eventual shutoff when battery is low)
+#define REDGREEN_INDICATORS // comment out to disable red/green power indicator LEDs
+#define LOWPASS_VOLTAGE     // Average the last 4 voltage readings for smoother results
+                            // (comment out to use only one value, saves space)
+
+// Switch handling
+#define RAMP_TIMEOUT     64 // un-reverse ramp dir about 1s after button release
+#define LONG_PRESS_DUR   21 // How many WDT ticks until we consider a press a long press
+                            // 32 is roughly .5 s, 21 is roughly 1/3rd second
+
+//#define TURBO           // Comment out to disable - full output with a step down after n number of seconds
+                        // If turbo is enabled, it will be where 255 is listed in the modes above
+#define TURBO_TIMEOUT   5625 // How many WTD ticks before before dropping down (.016 sec each)
+                        // 90  = 5625
+                        // 120 = 7500
 
 // This section is all tied together...  to configure it:
 // - Choose a PWM mode/speed:
@@ -36,8 +53,12 @@
 //   - cubic: visually linear
 //   - quadratic: somewhat between, but closer to cubic
 // --------------------------------------------------------------------------
-#define PWM_MODE   FAST  // PWM mode/speed: PHASE or FAST
+#define PWM_MODE   FAST   // PWM mode/speed: PHASE (9 kHz) or FAST (18 kHz)
+                          // (FAST has side effects when PWM=0, can't
+                          //  shut off light without putting the MCU to sleep)
+                          // (PHASE might make audible whining sounds)
 #define USE_PFM           // comment out to disable pulse frequency modulation
+                          // (makes bottom few modes ramp smoother)
 #define TICKS_PER_RAMP    3 // How many WDT ticks per step in the ramp (lower == faster ramp)
 // PWM levels / ramp shape / ramp size:
 // Must be low to high (the lowest values are highly device-dependent)
@@ -60,12 +81,8 @@
 // C: 40 steps, FAST, logarithmic
 #define CEILINGS        255,255,146,95,51,10,203,147,106,193,150,196,229,183,195,200,232,221,232,235,233,240,241,248,246,249,245,249,255,249,255,250,251,252,255,253,253,254,253,255
 
-//#define TURBO           // Comment out to disable - full output with a step down after n number of seconds
-                        // If turbo is enabled, it will be where 255 is listed in the modes above
-#define TURBO_TIMEOUT   5625 // How many WTD ticks before before dropping down (.016 sec each)
-                        // 90  = 5625
-                        // 120 = 7500
-
+// NOTE: Voltage values are calibrated for the Ferrero Rocher F6-DD driver
+// (may need different values for nanjg/qlite drivers, but only a little different)
 #define ADC_42          185 // the ADC value we expect for 4.20 volts
 #define VOLTAGE_FULL    169 // 3.9 V, 4 blinks
 #define VOLTAGE_GREEN   154 // 3.6 V, 3 blinks
@@ -73,16 +90,11 @@
 #define VOLTAGE_RED     124 // 3.0 V, 1 blink
 #define ADC_LOW         123 // When do we start ramping down
 #define ADC_CRIT        113 // When do we shut the light off
-// these two are just for testing low-batt behavior
+// these two are just for testing low-batt behavior w/ a CR123 cell
 //#define ADC_LOW         139 // When do we start ramping down
 //#define ADC_CRIT        138 // When do we shut the light off
 #define ADC_DELAY       188 // Delay in ticks between low-bat rampdowns (188 ~= 3s)
 #define OWN_DELAY       // replace default _delay_ms() with ours, comment to disable
-#define BLINK_ON_POWER  // blink once when power is received
-// Switch handling
-#define LONG_PRESS_DUR   21 // How many WDT ticks until we consider a press a long press
-                            // 32 is roughly .5 s, 21 is roughly 1/3rd second
-#define RAMP_TIMEOUT     64 // un-reverse ramp dir about 1s after button release
 
 
 /*
@@ -141,7 +153,9 @@ PROGMEM const uint8_t ceilings[]  = { CEILINGS };
 volatile int8_t mode_idx = 0;
 volatile int8_t ramp_dir = 1;
 uint8_t press_duration  = 0;
+#ifdef LOWPASS_VOLTAGE
 uint8_t voltages[] = { VOLTAGE_FULL, VOLTAGE_FULL, VOLTAGE_FULL, VOLTAGE_FULL };
+#endif
 
 // Debounced switch press value
 int is_pressed()
@@ -262,10 +276,16 @@ ISR(WDT_vect) {
 #endif
     static uint8_t  ontime_ticks = 0;
     static uint8_t  doubleclick_ticks = 0;
-    static uint8_t  lowbatt_cnt = 0;
     static int8_t   saved_mode_idx = 1; // start at first mode, not "off"
-    uint16_t        voltage = 0;
+#ifdef VOLTAGE_MON
     uint8_t         i = 0;
+    static uint8_t  lowbatt_cnt = 0;
+#ifdef LOWPASS_VOLTAGE
+    uint16_t        voltage = 0;
+#else
+    uint8_t         voltage = 0;
+#endif
+#endif
 
     if (mode_idx == 0) {
         ontime_ticks = 0;
@@ -295,8 +315,10 @@ ISR(WDT_vect) {
         // Just always reset turbo timer whenever the button is pressed
         turbo_ticks = 0;
 #endif
+#ifdef VOLTAGE_MON
         // Same with the ramp down delay
         lowbatt_cnt = 0;
+#endif
     } else {
         if (mode_idx != 0) {
             if (ontime_ticks < 255) {
@@ -346,18 +368,23 @@ ISR(WDT_vect) {
 #ifdef VOLTAGE_MON
             // See if conversion is done
             if (ADCSRA & (1 << ADIF)) {
+#ifdef LOWPASS_VOLTAGE
                 // Get an average of the past few readings
                 for (i=0;i<3;i++) {
                     voltages[i] = voltages[i+1];
                 }
                 voltages[3] = ADCH;
                 voltage = (voltages[0]+voltages[1]+voltages[2]+voltages[3]) >> 2;
+#else
+                voltage = ADCH;
+#endif
                 // See if voltage is lower than what we were looking for
                 if (voltage < ((mode_idx == 1) ? ADC_CRIT : ADC_LOW)) {
                     ++lowbatt_cnt;
                 } else {
                     lowbatt_cnt = 0;
                 }
+#ifdef REDGREEN_INDICATORS
                 if (voltage > VOLTAGE_GREEN) {
                     // turn on green LED
                     DDRB = (1 << PWM_PIN) | (1 << GREEN_PIN);
@@ -376,6 +403,7 @@ ISR(WDT_vect) {
                     PORTB |= (1 << RED_PIN);
                     PORTB &= 0xff ^ (1 << GREEN_PIN);  // green off
                 }
+#endif
             }
 
             // See if it's been low for a while, and maybe step down
