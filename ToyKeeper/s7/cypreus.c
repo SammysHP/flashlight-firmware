@@ -69,18 +69,21 @@
 #define VOLTAGE_MON                 // Comment out to disable
 #define OWN_DELAY                   // Should we use the built-in delay or our own?
 
-#define MODE_MOON           1       //
-#define MODE_LOW            8       //
-#define MODE_MED            39      //
-#define MODE_HIGH           120     //
-#define MODE_HIGHER         255     //
+// 1,8,39,120,255
+// ... or 0,2,32,110,255
+#define MODE_MOON           0       //
+#define MODE_LOW            1       //
+#define MODE_MED            12      //
+#define MODE_HIGH           52      //
+#define MODE_HIGHER         130     //
+#define MODE_MAX            255     //
 // If you change these, you'll probably want to change the "modes" array below
-#define SOLID_MODES         5       // How many non-blinky modes will we have?
-#define DUAL_BEACON_MODES   5+3     // How many beacon modes will we have (with background light on)?
-#define SINGLE_BEACON_MODES 5+3+1   // How many beacon modes will we have (without background light on)?
-#define FIXED_STROBE_MODES  5+3+1+3 // How many constant-speed strobe modes?
-//#define VARIABLE_STROBE_MODES 5+3+1+3+2 // How many variable-speed strobe modes?
-#define BATT_CHECK_MODE     5+3+1+3+1 // battery check mode index
+#define SOLID_MODES         6       // How many non-blinky modes will we have?
+#define DUAL_BEACON_MODES   6+4     // How many beacon modes will we have (with background light on)?
+#define SINGLE_BEACON_MODES 6+4+1   // How many beacon modes will we have (without background light on)?
+#define FIXED_STROBE_MODES  6+4+1+3 // How many constant-speed strobe modes?
+//#define VARIABLE_STROBE_MODES 6+3+1+4+2 // How many variable-speed strobe modes?
+#define BATT_CHECK_MODE     6+4+1+3+1 // battery check mode index
 // Note: don't use more than 32 modes, or it will interfere with the mechanism used for mode memory
 #define TOTAL_MODES         BATT_CHECK_MODE
 
@@ -96,17 +99,20 @@
 #define VOLTAGE_RED     124 // 3.0 V, 1 blink
 #define ADC_LOW         123 // When do we start ramping down
 #define ADC_CRIT        113 // When do we shut the light off
+// these two are just for testing low-batt behavior w/ a CR123 cell
+//#define ADC_LOW         139 // When do we start ramping down
+//#define ADC_CRIT        138 // When do we shut the light off
 
 // Values between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we
 // consider it a short press to move to the next mode Not sure the lowest you
 // can go before getting bad readings, but with a value of 70 and a 1uF cap, it
 // seemed to switch sometimes even when waiting 10 seconds between presses.
-#define CAP_SHORT       130 // Above this is a "short" press
-#define CAP_MED         90  // Above this is a "medium" press
+#define CAP_SHORT       150 // Above this is a "short" press
+#define CAP_MED         100  // Above this is a "medium" press
                             // ... and anything below that is a "long" press
 #define CAP_PIN         PB3
-#define CAP_CHANNEL 0x03   // MUX 03 corresponds with PB3 (Star 4)
-#define CAP_DIDR    ADC3D  // Digital input disable bit corresponding with PB3
+#define CAP_CHANNEL     0x03   // MUX 03 corresponds with PB3 (Star 4)
+#define CAP_DIDR        ADC3D  // Digital input disable bit corresponding with PB3
 
 
 /*
@@ -161,11 +167,11 @@ uint8_t eep[32];
 
 // Modes (hardcoded to save space)
 static uint8_t modes[TOTAL_MODES] = { // high enough to handle all
-    MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, MODE_HIGHER, // regular solid modes
-    MODE_MOON, MODE_LOW, MODE_MED, // dual beacon modes (this level and this level + 2)
-    MODE_HIGHER, // heartbeat beacon
+    MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, MODE_HIGHER, MODE_MAX, // regular solid modes
+    MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, // dual beacon modes (this level and this level + 2)
+    MODE_MAX, // heartbeat beacon
     99, 41, 15, // constant-speed strobe modes (10 Hz, 24 Hz, 60 Hz)
-    //MODE_HIGHER, MODE_HIGHER, // variable-speed strobe modes
+    //MODE_MAX, MODE_MAX, // variable-speed strobe modes
     MODE_MED, // battery check mode
 };
 static uint8_t neg_modes[] = {
@@ -348,7 +354,8 @@ int main(void)
     // Will allow us to go idle between WDT interrupts
     set_sleep_mode(SLEEP_MODE_IDLE);
 
-    // enable turbo step-down timer
+    // enable turbo step-down timer, if there is one
+    // also makes voltage monitor work, by interrupting sleep
     WDT_on();
 
     //if (mode_idx < 0) {
@@ -358,7 +365,8 @@ int main(void)
 
     // Now just fire up the mode
     // FIXME: move this into the clause for solid modes?
-    PWM_LVL = modes[mode_idx];
+    // (or maybe not, it makes a useful flash on battery check mode)
+    //PWM_LVL = modes[mode_idx];
 
     uint8_t i = 0;
     uint8_t j = 0;
@@ -367,12 +375,19 @@ int main(void)
     uint8_t lowbatt_cnt = 0;
     uint8_t voltage;
     voltage = get_voltage();
-    //uint8_t hold_pwm;
 #endif
 
     while(1) {
         if(mode_idx < SOLID_MODES) { // Just stay on at a given brightness
-            sleep_mode();
+            PWM_LVL = modes[mode_idx];
+            /*
+            if (modes[mode_idx] < 3) {
+                // use phase-correct for really low modes
+                TCCR0A = 0x21; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
+            }
+            */
+            _delay_ms(500); // can't sleep, fast PWM=0 will eat me
+            //sleep_mode();
         } else if (mode_idx < DUAL_BEACON_MODES) { // two-level fast strobe pulse at about 1 Hz
             for(i=0; i<4; i++) {
                 PWM_LVL = modes[mode_idx-SOLID_MODES+2];
@@ -419,6 +434,7 @@ int main(void)
             }
         } */ else if (mode_idx < BATT_CHECK_MODE) {
             uint8_t blinks = 0;
+            PWM_LVL = MODE_MED;
             // division takes too much flash space
             //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
             voltage = get_voltage();
@@ -461,9 +477,16 @@ int main(void)
             }
             // See if it's been low for a while, and maybe step down
             if (lowbatt_cnt >= 3) {
-                if (mode_idx > 0) {
-                    mode_idx = 0;
+                if (mode_idx >= SOLID_MODES) {
+                    // step down from blinky modes to medium
+                    mode_idx = 2;
+                } else if (mode_idx > 1) {
+                    // step down from solid modes one at a time
+                    // (ignore mode 0 because it's probably invisible anyway
+                    //  if the voltage is this low)
+                    mode_idx -= 1;
                 } else { // Already at the lowest mode
+                    mode_idx = 0;
                     // Turn off the light
                     PWM_LVL = 0;
                     // Disable WDT so it doesn't wake us up
@@ -472,9 +495,10 @@ int main(void)
                     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
                     sleep_mode();
                 }
+                store_mode_idx(mode_idx);
                 lowbatt_cnt = 0;
-                // Wait at least 1 second before lowering the level again
-                _delay_ms(1000);  // this will interrupt blinky modes
+                // Wait at least 2 seconds before lowering the level again
+                _delay_ms(2000);  // this will interrupt blinky modes
             }
 
             // Make sure conversion is running for next time through
