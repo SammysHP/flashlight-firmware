@@ -68,6 +68,8 @@
 
 #define VOLTAGE_MON                 // Comment out to disable
 #define OWN_DELAY                   // Should we use the built-in delay or our own?
+#define USE_PFM                     // Use PFM to make moon mode brighter
+#define MOON_PFM_LVL        40      // lower is brighter, 255 is max (same as no PFM)
 
 // 1,8,39,120,255
 // ... or 0,2,32,110,255
@@ -153,6 +155,9 @@ static void _delay_ms(uint16_t n)
 #define ADC_PRSCL   0x06    // clk/64
 
 #define PWM_LVL     OCR0B   // OCR0B is the output compare register for PB1
+#ifdef USE_PFM
+#define CEIL_LVL    OCR0A   // OCR0A is the number of "frames" per PWM loop
+#endif
 
 /*
  * global variables
@@ -170,7 +175,7 @@ static uint8_t modes[TOTAL_MODES] = { // high enough to handle all
     MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, MODE_HIGHER, MODE_MAX, // regular solid modes
     MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, // dual beacon modes (this level and this level + 2)
     MODE_MAX, // heartbeat beacon
-    99, 41, 15, // constant-speed strobe modes (10 Hz, 24 Hz, 60 Hz)
+    79, 41, 15, // constant-speed strobe modes (12.5 Hz, 24 Hz, 60 Hz)
     //MODE_MAX, MODE_MAX, // variable-speed strobe modes
     MODE_MED, // battery check mode
 };
@@ -298,7 +303,13 @@ int main(void)
 
     // Set timer to do PWM for correct output pin and set prescaler timing
     TCCR0A = 0x23; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
+#ifdef USE_PFM
+    // 0x08 is for variable-speed PWM
+    TCCR0B = 0x08 | 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
+    CEIL_LVL = 255; // default
+#else
     TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
+#endif
 
     // Determine what mode we should fire up
     // Read the last mode that was saved
@@ -380,6 +391,13 @@ int main(void)
     while(1) {
         if(mode_idx < SOLID_MODES) { // Just stay on at a given brightness
             PWM_LVL = modes[mode_idx];
+#ifdef USE_PFM
+            if (mode_idx == 0) {
+                CEIL_LVL = MOON_PFM_LVL;
+            } else {
+                CEIL_LVL = 255;
+            }
+#endif
             /*
             if (modes[mode_idx] < 3) {
                 // use phase-correct for really low modes
