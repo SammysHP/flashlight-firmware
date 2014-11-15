@@ -71,7 +71,8 @@
 #define VOLTAGE_MON              // Comment out to disable all battery monitoring
 #define OWN_DELAY                // Should we use the built-in delay or our own?
 #define USE_PFM                  // Use PFM to make moon mode brighter
-#define MOON_PFM_LVL        30   // lower is brighter, 255 is max (same as no PFM)
+// Obsoleted; use moon_ceilings below instead
+//#define MOON_PFM_LVL        30   // lower is brighter, 255 is max (same as no PFM)
 // NOTE: WDT is required for on-time memory and WDT-based turbo step-down
 // NOTE: WDT isn't tested, and probably doesn't work
 //#define ENABLE_WDT               // comment out to turn off WDT and save space
@@ -81,12 +82,13 @@
 #define TURBO_MODES         2    // Treat top N modes as "turbo" modes with timed step-down
                                  // (1 for just highest, 2 for two highest, etc)
 
+// Set your PWM levels here (low to high, maximum 255)
 // 1,8,39,120,255 for 5-step phase-correct PWM
 #define MODE_MOON              0    // can use PFM to fine-tune brightness
-#define MODE_LOW               1    // lowest normal mode, ~11 lm
-#define MODE_MED               8    //
-#define MODE_HIGH              42   //
-#define MODE_HIGHER            120  //
+#define MODE_LOW               1    // lowest normal mode, ~0.4% / ~12 lm
+#define MODE_MED               8    // ~3.1% / ~94 lm
+#define MODE_HIGH              42   // ~16.5% / ~494 lm
+#define MODE_HIGHER            120  // ~47% / ~1411 lm
 #define MODE_MAX               255  // direct drive, ~3000lm
 // If you change these, you'll probably want to change the "modes" array below
 // Each value must be cumulative, so include the value just above it.
@@ -114,12 +116,12 @@
 // These values were measured using a Ferrero Rocher F6DD driver and a DMM
 // Your mileage may vary.  May be off by up to 0.1V or so on different hardware.
 #define ADC_42          185 // the ADC value we expect for 4.20 volts
-#define VOLTAGE_FULL    169 // 3.9 V, 4 blinks
-#define VOLTAGE_GREEN   154 // 3.6 V, 3 blinks
-#define VOLTAGE_YELLOW  139 // 3.3 V, 2 blinks
-#define VOLTAGE_RED     124 // 3.0 V, 1 blink
-#define ADC_LOW         123 // When do we start ramping down
-#define ADC_CRIT        113 // When do we shut the light off
+#define VOLTAGE_FULL    171 // 3.9 V, 4 blinks
+#define VOLTAGE_GREEN   156 // 3.6 V, 3 blinks
+#define VOLTAGE_YELLOW  141 // 3.3 V, 2 blinks
+#define VOLTAGE_RED     126 // 3.0 V, 1 blink
+#define ADC_LOW         125 // When do we start ramping down
+#define ADC_CRIT        115 // When do we shut the light off
 // these two are just for testing low-batt behavior w/ a CR123 cell
 //#define ADC_LOW         139 // When do we start ramping down
 //#define ADC_CRIT        138 // When do we shut the light off
@@ -153,7 +155,7 @@ static void _delay_ms(uint16_t n)
     // for more precise timing?
     // (would probably be better than the if/else here for a special-case
     // sub-millisecond delay)
-    if (n==0) { _delay_loop_2(300); }
+    if (n==0) { _delay_loop_2(400); }
     else {
         while(n-- > 0)
             _delay_loop_2(890);
@@ -167,6 +169,7 @@ static void _delay_ms(uint16_t n)
 #ifdef ENABLE_WDT
 #include <avr/wdt.h>
 #endif
+#include <avr/pgmspace.h>
 #include <avr/eeprom.h>
 #include <avr/sleep.h>
 
@@ -208,16 +211,29 @@ const uint8_t modes[] = {
     79, 41, 15,
     // variable-speed strobe mode
     MODE_MAX,
-    //MODE_MAX, MODE_MAX, // two variable-speed strobe modes
     // battery check mode
     MODE_MED,
 };
 // Semi-hidden modes, only accessible via a "backward" press from first mode.
 // Each value is an index into the modes[] array.
-static uint8_t neg_modes[] = {
+const uint8_t neg_modes[] = {
     SOLID_MODES-1,           // Turbo / "impress" mode
     FIXED_STROBE_MODES-2,    // 24Hz strobe
     BATT_CHECK_MODE-1,       // Battery check
+};
+PROGMEM const uint8_t moon_ceilings[] = {
+    (VOLTAGE_FULL+ADC_42)/2, 120,         // > 4.05V
+    VOLTAGE_FULL, 60,                     // > 3.9V
+    (VOLTAGE_YELLOW+VOLTAGE_FULL)/2, 30,  // > 3.75V
+    VOLTAGE_YELLOW, 7,                    // > 3.6V
+    0, 1,                                 // < 3.6V
+};
+PROGMEM const uint8_t voltage_blinks[] = {
+    VOLTAGE_RED,    // 1 blink
+    VOLTAGE_YELLOW, // 2 blinks
+    VOLTAGE_GREEN,  // 3 blinks
+    VOLTAGE_FULL,   // 4 blinks
+    ADC_42,         // 5 blinks
 };
 volatile uint8_t mode_idx = 0;
 // 1 or -1. Do we increase or decrease the idx when moving up to a higher mode?
@@ -454,10 +470,17 @@ int main(void)
             PWM_LVL = modes[mode_idx];
 #ifdef USE_PFM
             if (mode_idx == 0) {
-                CEIL_LVL = MOON_PFM_LVL;
-            } else {
+                //CEIL_LVL = MOON_PFM_LVL;
+                voltage = get_voltage();
+                for (i=0; i<sizeof(moon_ceilings); i+=2) {
+                    if(voltage > pgm_read_byte(moon_ceilings + i)) {
+                        CEIL_LVL = pgm_read_byte(moon_ceilings + i+1);
+                        break;
+                    }
+                }
+            } /* else {  // was already set to 255
                 CEIL_LVL = 255;
-            }
+            } */
 #endif
             /*
             if (modes[mode_idx] < 3) {
@@ -474,8 +497,12 @@ int main(void)
             if (ontime_ticks < 255) { ontime_ticks ++; }
             if ((mode_idx >= SOLID_MODES-TURBO_MODES)
                     && (ontime_ticks > TURBO_TIMEOUT)) {
+                // step down one level
                 mode_idx -= 1;
+                // reset in case there's more than one level of turbo
                 ontime_ticks = 0;
+                // save, so we can short-press to go back up
+                store_mode_idx(mode_idx);
             }
 #endif
 #endif
@@ -498,6 +525,8 @@ int main(void)
             PWM_LVL = 0;
             _delay_ms(749);
         } else if (mode_idx < FIXED_STROBE_MODES) { // strobe mode, fixed-speed
+#if 1
+            // bigger, better-looking version
             j = modes[mode_idx]; // look up only once, saves a few bytes
             strobe_len = 1;
             if (j < 50) { strobe_len = 0; }
@@ -509,6 +538,14 @@ int main(void)
                 PWM_LVL = 0;
                 _delay_ms(j);
             }
+#else
+            // minimal version to save space
+            PWM_LVL = modes[SOLID_MODES-1];
+            _delay_ms(0);
+            //_delay_ms(modes[mode_idx] >> 6);
+            PWM_LVL = 0;
+            _delay_ms(modes[mode_idx]);
+#endif
         } else if (mode_idx == VARIABLE_STROBE_MODES-1) {
             // strobe mode, smoothly oscillating frequency ~10 Hz to ~24 Hz
             for(j=0; j<60; j++) {
@@ -521,28 +558,22 @@ int main(void)
             }
         } else if (mode_idx < BATT_CHECK_MODE) {
             uint8_t blinks = 0;
-            PWM_LVL = MODE_MED;  // brief flash at start of measurement
+            //PWM_LVL = MODE_MED;  // brief flash at start of measurement
+            voltage = get_voltage();
+            // turn off and wait one second before showing the value
+            // (or not, uses extra space)
+            //PWM_LVL = 0;
+            //_delay_ms(1000);
+
             // division takes too much flash space
             //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
-            voltage = get_voltage();
-            if (voltage >= ADC_42) {
-                blinks = 5;
+            // a table uses less space than 5 logic clauses
+            for (i=0; i<sizeof(voltage_blinks); i++) {
+                if (voltage > pgm_read_byte(voltage_blinks + i)) {
+                    blinks ++;
+                }
             }
-            else if (voltage > VOLTAGE_FULL) {
-                blinks = 4;
-            }
-            else if (voltage > VOLTAGE_GREEN) {
-                blinks = 3;
-            }
-            else if (voltage > VOLTAGE_YELLOW) {
-                blinks = 2;
-            }
-            else if (voltage > ADC_LOW) {
-                blinks = 1;
-            }
-            // turn off and wait one second before showing the value
-            PWM_LVL = 0;
-            _delay_ms(1000);
+
             // blink up to five times to show voltage
             // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
             for(i=0; i<blinks; i++) {
@@ -551,13 +582,13 @@ int main(void)
                 PWM_LVL = 0;
                 _delay_ms(400);
             }
-            _delay_ms(1000);  // wait at least 1 second between readouts
+            _delay_ms(2000);  // wait at least 2 seconds between readouts
         }
 #ifdef VOLTAGE_MON
         if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
             voltage = ADCH; // get_voltage();
             // See if voltage is lower than what we were looking for
-            if (voltage < ((mode_idx == 0) ? ADC_CRIT : ADC_LOW)) {
+            if (voltage < ((mode_idx <= 1) ? ADC_CRIT : ADC_LOW)) {
                 ++lowbatt_cnt;
             } else {
                 lowbatt_cnt = 0;
