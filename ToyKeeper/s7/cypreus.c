@@ -77,8 +77,9 @@
 // NOTE: WDT isn't tested, and probably doesn't work
 //#define ENABLE_WDT               // comment out to turn off WDT and save space
 #define NON_WDT_TURBO            // enable turbo step-down without WDT
-#define TURBO_TIMEOUT       60   // "ticks" until turbo step-down (~0.5s each)
-                                 // (maximum is 254, or 127 seconds)
+#define TURBO_TIMEOUT       4000 // "ticks" until turbo step-down (~0.005s each)
+                                 // (maximum is 65535, or 127 seconds)
+                                 // Remove me: (maximum is 254, or 127 seconds)
 #define TURBO_MODES         2    // Treat top N modes as "turbo" modes with timed step-down
                                  // (1 for just highest, 2 for two highest, etc)
 
@@ -222,11 +223,11 @@ const uint8_t neg_modes[] = {
     BATT_CHECK_MODE-1,       // Battery check
 };
 PROGMEM const uint8_t moon_ceilings[] = {
-    (VOLTAGE_FULL+ADC_42)/2, 120,         // > 4.05V
+    (VOLTAGE_FULL+ADC_42)/2, 160,         // > 4.05V
     VOLTAGE_FULL, 60,                     // > 3.9V
     (VOLTAGE_YELLOW+VOLTAGE_FULL)/2, 30,  // > 3.75V
-    VOLTAGE_YELLOW, 7,                    // > 3.6V
-    0, 1,                                 // < 3.6V
+    VOLTAGE_YELLOW, 5,                    // > 3.6V
+    0, 2,                                 // < 3.6V
 };
 PROGMEM const uint8_t voltage_blinks[] = {
     VOLTAGE_RED,    // 1 blink
@@ -242,11 +243,11 @@ volatile uint8_t mode_idx = 0;
 // NOTE: Only '1' is known to work; -1 will probably break and is untested.
 #define mode_dir 1
 
-void store_mode_idx(uint8_t lvl) {  //central method for writing (with wear leveling)
+void store_mode_idx() {  //central method for writing (with wear leveling)
     uint8_t oldpos=eepos;
     eepos=(eepos+1)&31;  //wear leveling, use next cell
     // Write the current mode
-    EEARL=eepos;  EEDR=lvl; EECR=32+4; EECR=32+4+2;  //WRITE  //32:write only (no erase)  4:enable  2:go
+    EEARL=eepos;  EEDR=mode_idx; EECR=32+4; EECR=32+4+2;  //WRITE  //32:write only (no erase)  4:enable  2:go
     while(EECR & 2); //wait for completion
     // Erase the last mode
     EEARL=oldpos;           EECR=16+4; EECR=16+4+2;  //ERASE  //16:erase only (no write)  4:enable  2:go
@@ -334,7 +335,7 @@ ISR(WDT_vect) {
     if (ticks < 255) ticks++;
 
     // do a turbo step-down (NOTE: untested)
-    if ((mode_idx == SOLID_MODES-TURBO_MODES) && (ticks > TURBO_TIMEOUT)) {
+    if ((mode_idx == SOLID_MODES-TURBO_MODES) && (ticks > TURBO_TIMEOUT/100)) {
         mode_idx --;
         ticks = 0;
     }
@@ -343,10 +344,13 @@ ISR(WDT_vect) {
     // (we use off-time memory instead)
     if (ticks == WDT_TIMEOUT) {
 #if memory
-        store_mode_idx(mode_idx);
+        store_mode_idx();
 #else
         // Reset the mode to the start for next time
-        store_mode_idx(0);
+        uint8_t foo = mode_idx;
+        mode_idx = 0;
+        store_mode_idx();
+        mode_idx = foo;
 #endif
     }
     */
@@ -396,11 +400,11 @@ int main(void)
     if (ADCH > CAP_SHORT) {
         // Indicates they did a short press, go to the next mode
         next_mode(); // Will handle wrap arounds
-        store_mode_idx(mode_idx);
+        store_mode_idx();
     } else if (ADCH > CAP_MED) {
         // User did a medium press, go back one mode
         prev_mode(); // Will handle "negative" modes and wrap-arounds
-        store_mode_idx(mode_idx);
+        store_mode_idx();
     } else {
         // Long press
 #if memory
@@ -408,7 +412,7 @@ int main(void)
 #else
         // Reset to the first mode
         mode_idx = 0;
-        store_mode_idx(mode_idx);
+        store_mode_idx();
 #endif
     }
     // Turn off ADC
@@ -452,7 +456,7 @@ int main(void)
     uint8_t i = 0;
     uint8_t j = 0;  // only used for strobes
 #ifdef NON_WDT_TURBO
-    uint8_t ontime_ticks = 0;
+    uint16_t ontime_ticks = 0;
 #endif
     uint8_t strobe_len = 0;
 #ifdef VOLTAGE_MON
@@ -474,7 +478,14 @@ int main(void)
                 voltage = get_voltage();
                 for (i=0; i<sizeof(moon_ceilings); i+=2) {
                     if(voltage > pgm_read_byte(moon_ceilings + i)) {
-                        CEIL_LVL = pgm_read_byte(moon_ceilings + i+1);
+                        //CEIL_LVL = pgm_read_byte(moon_ceilings + i+1);
+                        //CEIL_LVL = (CEIL_LVL + pgm_read_byte(moon_ceilings + i+1)) >> 2;
+                        j = CEIL_LVL;
+                        if (j < pgm_read_byte(moon_ceilings + i+1)) {
+                            CEIL_LVL = j + 1;
+                        } else {
+                            CEIL_LVL = j - 1;
+                        }
                         break;
                     }
                 }
@@ -492,9 +503,9 @@ int main(void)
             // Saves a little power, but makes fast PWM=0 moon mode not work
             sleep_mode();
 #else
-            _delay_ms(500); // can't sleep, fast PWM=0 will eat me
+            _delay_ms(5); // can't sleep, fast PWM=0 will eat me
 #ifdef NON_WDT_TURBO
-            if (ontime_ticks < 255) { ontime_ticks ++; }
+            if (ontime_ticks < 65535) { ontime_ticks ++; }
             if ((mode_idx >= SOLID_MODES-TURBO_MODES)
                     && (ontime_ticks > TURBO_TIMEOUT)) {
                 // step down one level
@@ -502,7 +513,7 @@ int main(void)
                 // reset in case there's more than one level of turbo
                 ontime_ticks = 0;
                 // save, so we can short-press to go back up
-                store_mode_idx(mode_idx);
+                store_mode_idx();
             }
 #endif
 #endif
@@ -525,7 +536,7 @@ int main(void)
             PWM_LVL = 0;
             _delay_ms(749);
         } else if (mode_idx < FIXED_STROBE_MODES) { // strobe mode, fixed-speed
-#if 1
+#if 0
             // bigger, better-looking version
             j = modes[mode_idx]; // look up only once, saves a few bytes
             strobe_len = 1;
@@ -615,7 +626,7 @@ int main(void)
                     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
                     sleep_mode();
                 }
-                store_mode_idx(mode_idx);
+                store_mode_idx();
                 lowbatt_cnt = 0;
                 // Wait at least 2 seconds before lowering the level again
                 _delay_ms(2000);  // this will interrupt blinky modes
