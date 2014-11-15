@@ -2,7 +2,7 @@
  * This is intended for use on flashlights with a clicky switch and off-time
  * memory capacitor.  Ideally, a triple XP-L powered by a BLF17DD in a Sinner
  * Cypreus tri-EDC host.  It's mostly based on JonnyC's STAR firmware and
- * ToyKeeper's tail-light firmware.
+ * ToyKeeper's s7.c firmware.
  *
  * Original author: JonnyC
  * Modifications: ToyKeeper / Selene Scriven
@@ -21,7 +21,7 @@
  *                             /8     PWM: 1.176kHz     ####### use low fuse: 0x65  #######
  * define F_CPU 9600000  CPU: 9.6MHz  PWM: 19kHz        ####### use low fuse: 0x7a  #######
  *                             /8     PWM: 2.4kHz       ####### use low fuse: 0x6a  #######
- * 
+ *
  * Above PWM speeds are for phase-correct PWM.  This program uses Fast-PWM,
  * which when the CPU is 4.8MHz will be 18.75 kHz
  *
@@ -60,40 +60,59 @@
  *
  */
 #define F_CPU 4800000UL
+#define FASTPWM 0x23
+#define PHASEPWM 0x21
 
 /*
  * =========================================================================
  * Settings to modify per driver
  */
 
-#define VOLTAGE_MON                 // Comment out to disable
-#define OWN_DELAY                   // Should we use the built-in delay or our own?
-#define USE_PFM                     // Use PFM to make moon mode brighter
-#define MOON_PFM_LVL        40      // lower is brighter, 255 is max (same as no PFM)
+#define VOLTAGE_MON              // Comment out to disable all battery monitoring
+#define OWN_DELAY                // Should we use the built-in delay or our own?
+#define USE_PFM                  // Use PFM to make moon mode brighter
+#define MOON_PFM_LVL        30   // lower is brighter, 255 is max (same as no PFM)
+// NOTE: WDT is required for on-time memory and WDT-based turbo step-down
+// NOTE: WDT isn't tested, and probably doesn't work
+//#define ENABLE_WDT               // comment out to turn off WDT and save space
+#define NON_WDT_TURBO            // enable turbo step-down without WDT
+#define TURBO_TIMEOUT       60   // "ticks" until turbo step-down (~0.5s each)
+                                 // (maximum is 254, or 127 seconds)
+#define TURBO_MODES         2    // Treat top N modes as "turbo" modes with timed step-down
+                                 // (1 for just highest, 2 for two highest, etc)
 
-// 1,8,39,120,255
-// ... or 0,2,32,110,255
-#define MODE_MOON           0       //
-#define MODE_LOW            1       //
-#define MODE_MED            12      //
-#define MODE_HIGH           52      //
-#define MODE_HIGHER         130     //
-#define MODE_MAX            255     //
+// 1,8,39,120,255 for 5-step phase-correct PWM
+#define MODE_MOON              0    // can use PFM to fine-tune brightness
+#define MODE_LOW               1    // lowest normal mode, ~11 lm
+#define MODE_MED               8    //
+#define MODE_HIGH              42   //
+#define MODE_HIGHER            120  //
+#define MODE_MAX               255  // direct drive, ~3000lm
 // If you change these, you'll probably want to change the "modes" array below
-#define SOLID_MODES         6       // How many non-blinky modes will we have?
-#define DUAL_BEACON_MODES   6+4     // How many beacon modes will we have (with background light on)?
-#define SINGLE_BEACON_MODES 6+4+1   // How many beacon modes will we have (without background light on)?
-#define FIXED_STROBE_MODES  6+4+1+3 // How many constant-speed strobe modes?
-//#define VARIABLE_STROBE_MODES 6+3+1+4+2 // How many variable-speed strobe modes?
-#define BATT_CHECK_MODE     6+4+1+3+1 // battery check mode index
-// Note: don't use more than 32 modes, or it will interfere with the mechanism used for mode memory
-#define TOTAL_MODES         BATT_CHECK_MODE
+// Each value must be cumulative, so include the value just above it.
+// How many non-blinky modes will we have?
+#define SOLID_MODES            6
+// How many beacon modes will we have (with background light on)?
+#define DUAL_BEACON_MODES      3+SOLID_MODES
+// How many beacon modes will we have (without background light on)?
+#define SINGLE_BEACON_MODES    1+DUAL_BEACON_MODES
+// How many constant-speed strobe modes?
+#define FIXED_STROBE_MODES     3+SINGLE_BEACON_MODES
+// How many variable-speed strobe modes?
+#define VARIABLE_STROBE_MODES  1+FIXED_STROBE_MODES
+// battery check mode index
+#define BATT_CHECK_MODE        1+VARIABLE_STROBE_MODES
+// Note: don't use more than 32 modes,
+// or it will interfere with the mechanism used for mode memory
+#define TOTAL_MODES            BATT_CHECK_MODE
 
-#define WDT_TIMEOUT         2       // Number of WTD ticks before mode is saved (.5 sec each)
+// NOTE: mode isn't saved this way, this value only applies to on-time memory
+#ifdef ENABLE_WDT
+#define WDT_TIMEOUT         2    // Number of WTD ticks before mode is saved (.5 sec each)
+#endif
 
-//#define ADC_LOW             130     // When do we start ramping
-//#define ADC_CRIT            120     // When do we shut the light off
-
+// These values were measured using a Ferrero Rocher F6DD driver and a DMM
+// Your mileage may vary.  May be off by up to 0.1V or so on different hardware.
 #define ADC_42          185 // the ADC value we expect for 4.20 volts
 #define VOLTAGE_FULL    169 // 3.9 V, 4 blinks
 #define VOLTAGE_GREEN   154 // 3.6 V, 3 blinks
@@ -104,11 +123,15 @@
 // these two are just for testing low-batt behavior w/ a CR123 cell
 //#define ADC_LOW         139 // When do we start ramping down
 //#define ADC_CRIT        138 // When do we shut the light off
+// These were JonnyC's original values
+//#define ADC_LOW             130     // When do we start ramping
+//#define ADC_CRIT            120     // When do we shut the light off
 
 // Values between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we
-// consider it a short press to move to the next mode Not sure the lowest you
-// can go before getting bad readings, but with a value of 70 and a 1uF cap, it
-// seemed to switch sometimes even when waiting 10 seconds between presses.
+// consider it a short press to move to the next mode.
+// Not sure the lowest you can go before getting bad readings, but with a value
+// of 70 and a 1uF cap, it seemed to switch sometimes even when waiting 10
+// seconds between presses.
 #define CAP_SHORT       150 // Above this is a "short" press
 #define CAP_MED         100  // Above this is a "medium" press
                             // ... and anything below that is a "long" press
@@ -133,7 +156,7 @@ static void _delay_ms(uint16_t n)
     if (n==0) { _delay_loop_2(300); }
     else {
         while(n-- > 0)
-            _delay_loop_2(890);
+            _delay_loop_2(930);
     }
 }
 #else
@@ -141,7 +164,9 @@ static void _delay_ms(uint16_t n)
 #endif
 
 #include <avr/interrupt.h>
+#ifdef ENABLE_WDT
 #include <avr/wdt.h>
+#endif
 #include <avr/eeprom.h>
 #include <avr/sleep.h>
 
@@ -167,18 +192,28 @@ static void _delay_ms(uint16_t n)
 uint8_t eepos = 0;
 uint8_t eep[32];
 // change to 1 if you want on-time mode memory instead of "short-cycle" memory
+// NOTE: Not currently implemented; leave it at 0.
 #define memory 0
-//uint8_t memory = 0;
 
-// Modes (hardcoded to save space)
-static uint8_t modes[TOTAL_MODES] = { // high enough to handle all
-    MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, MODE_HIGHER, MODE_MAX, // regular solid modes
-    MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, // dual beacon modes (this level and this level + 2)
-    MODE_MAX, // heartbeat beacon
-    79, 41, 15, // constant-speed strobe modes (12.5 Hz, 24 Hz, 60 Hz)
-    //MODE_MAX, MODE_MAX, // variable-speed strobe modes
-    MODE_MED, // battery check mode
+// Modes (hardcoded to save space, const also to save space)
+const uint8_t modes[] = {
+    // regular solid modes
+    MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, MODE_HIGHER, MODE_MAX,
+    // dual beacon modes (this level and this level + 2)
+    MODE_MOON, MODE_LOW, MODE_MED,
+    // heartbeat beacon
+    MODE_MAX,
+    // constant-speed strobe modes (12.5 Hz, 24 Hz, 60 Hz)
+    // these values represent delay in ms between 1ms flashes
+    79, 41, 15,
+    // variable-speed strobe mode
+    MODE_MAX,
+    //MODE_MAX, MODE_MAX, // two variable-speed strobe modes
+    // battery check mode
+    MODE_MED,
 };
+// Semi-hidden modes, only accessible via a "backward" press from first mode.
+// Each value is an index into the modes[] array.
 static uint8_t neg_modes[] = {
     SOLID_MODES-1,           // Turbo / "impress" mode
     FIXED_STROBE_MODES-2,    // 24Hz strobe
@@ -186,7 +221,9 @@ static uint8_t neg_modes[] = {
 };
 volatile uint8_t mode_idx = 0;
 // 1 or -1. Do we increase or decrease the idx when moving up to a higher mode?
-// Is set by checking stars in the original STAR firmware, but that's removed to save space.
+// Was set by checking stars in the original STAR firmware, but that's removed
+// to save space.
+// NOTE: Only '1' is known to work; -1 will probably break and is untested.
 #define mode_dir 1
 
 void store_mode_idx(uint8_t lvl) {  //central method for writing (with wear leveling)
@@ -215,23 +252,20 @@ inline void next_mode() {
 
 inline void prev_mode() {
     if ((0x40 > mode_idx) && (mode_idx > 0)) {
+        // Regular mode: is between 1 and TOTAL_MODES
         mode_idx -= mode_dir;
     } else if ((mode_idx&0x3f) < sizeof(neg_modes)) {
+        // "Negative" mode (uses 0x40 bit to indicate "negative")
         mode_idx = (mode_idx|0x40) + mode_dir;
+        // FIXME: should maybe change mode group instead?
     } else {
+        // Otherwise, always reset to first mode
+        // (mode was too negative or otherwise out of range)
         mode_idx = 0;
     }
-    /*
-    if (mode_idx < -(sizeof(neg_modes))) {
-        // Wrap around
-        //mode_idx = TOTAL_MODES - 1;
-        // Er, actually, just reset to first mode group
-        mode_idx = 0;
-        // FIXME: should change mode group instead
-    }
-    */
 }
 
+#ifdef ENABLE_WDT
 inline void WDT_on() {
     // Setup watchdog timer to only interrupt, not reset, every 500ms.
     cli();                          // Disable interrupts
@@ -250,6 +284,7 @@ inline void WDT_off()
     WDTCR = 0x00;                   // Disable WDT
     sei();                          // Enable interrupts
 }
+#endif
 
 inline void ADC_on() {
     DIDR0 |= (1 << ADC_DIDR);                           // disable digital input on ADC pin to reduce power consumption
@@ -267,16 +302,26 @@ uint8_t get_voltage() {
     ADCSRA |= (1 << ADSC);
     // Wait for completion
     while (ADCSRA & (1 << ADSC));
-    // See if voltage is lower than what we were looking for
+    // Return the raw value, caller can decide what to do with it
     return ADCH;
 }
 #endif
 
+#ifdef ENABLE_WDT
 ISR(WDT_vect) {
+    // Even if this function does nothing,
+    // having the WDT enabled will at least wake up the main loop
+    // and force it to do voltage monitoring plus optional step-down
+    // (then again, doing a _delay_ms() instead of sleep() in the main loop
+    //  can achieve the same purpose, and makes fast PWM=0 moon mode work)
     static uint8_t ticks = 0;
     if (ticks < 255) ticks++;
 
-    // FIXME: do a turbo step-down here
+    // do a turbo step-down (NOTE: untested)
+    if ((mode_idx == SOLID_MODES-TURBO_MODES) && (ticks > TURBO_TIMEOUT)) {
+        mode_idx --;
+        ticks = 0;
+    }
     /*
     // FIXME: this is short-cycle memory, remove it
     // (we use off-time memory instead)
@@ -290,6 +335,7 @@ ISR(WDT_vect) {
     }
     */
 }
+#endif
 
 int main(void)
 {
@@ -302,7 +348,9 @@ int main(void)
     DDRB = (1 << PWM_PIN);
 
     // Set timer to do PWM for correct output pin and set prescaler timing
-    TCCR0A = 0x23; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
+    // defaulting to PHASE allows PWM=0 to mean "off"
+    // will override later for solid modes where PWM=0 means "moon"
+    TCCR0A = PHASEPWM;
 #ifdef USE_PFM
     // 0x08 is for variable-speed PWM
     TCCR0B = 0x08 | 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
@@ -335,11 +383,12 @@ int main(void)
         store_mode_idx(mode_idx);
     } else if (ADCH > CAP_MED) {
         // User did a medium press, go back one mode
-        prev_mode(); // Will handle wrap arounds
+        prev_mode(); // Will handle "negative" modes and wrap-arounds
         store_mode_idx(mode_idx);
     } else {
+        // Long press
 #if memory
-        // Didn't have a short press, keep the same mode
+        // Keep the same mode
 #else
         // Reset to the first mode
         mode_idx = 0;
@@ -359,37 +408,49 @@ int main(void)
     #else
     //ADC_off();  // was already off
     #endif
-    ACSR   |=  (1<<7); //AC off
+    ACSR  |=  (1<<7); //AC off
 
+#ifdef ENABLE_WDT
     // Enable sleep mode set to Idle that will be triggered by the sleep_mode() command.
     // Will allow us to go idle between WDT interrupts
+    // (not necessary if we're staying awake during all modes, such as to
+    //  enable fast PWM=0 for moon mode)
     set_sleep_mode(SLEEP_MODE_IDLE);
 
     // enable turbo step-down timer, if there is one
     // also makes voltage monitor work, by interrupting sleep
     WDT_on();
+#endif
 
+    // Convert the "negative" mode into its actual (positive) mode
     //if (mode_idx < 0) {
+    // The 0x40 bit is used, because I had issues getting eeprom to store
+    // and retrieve negative values on a signed integer.  So, I'm setting
+    // a "negative" bit manually.
     if (mode_idx & 0x40) {
         mode_idx = neg_modes[(mode_idx&0x3f)-1];
     }
 
-    // Now just fire up the mode
-    // FIXME: move this into the clause for solid modes?
-    // (or maybe not, it makes a useful flash on battery check mode)
-    //PWM_LVL = modes[mode_idx];
-
+    // Hey look, variable declarations after executable code
+    // (we must not be using a strict or ancient C compiler)
     uint8_t i = 0;
-    uint8_t j = 0;
+    uint8_t j = 0;  // only used for strobes
+#ifdef NON_WDT_TURBO
+    uint8_t ontime_ticks = 0;
+#endif
     uint8_t strobe_len = 0;
 #ifdef VOLTAGE_MON
     uint8_t lowbatt_cnt = 0;
     uint8_t voltage;
+    // Make sure voltage reading is running for later
+    //ADCSRA |= (1 << ADSC);
+    // ... and prime the battery check for more accurate first reading
     voltage = get_voltage();
 #endif
 
     while(1) {
         if(mode_idx < SOLID_MODES) { // Just stay on at a given brightness
+            TCCR0A = FASTPWM;
             PWM_LVL = modes[mode_idx];
 #ifdef USE_PFM
             if (mode_idx == 0) {
@@ -404,9 +465,22 @@ int main(void)
                 TCCR0A = 0x21; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
             }
             */
+#ifdef ENABLE_WDT
+            // Saves a little power, but makes fast PWM=0 moon mode not work
+            sleep_mode();
+#else
             _delay_ms(500); // can't sleep, fast PWM=0 will eat me
-            //sleep_mode();
+#ifdef NON_WDT_TURBO
+            if (ontime_ticks < 255) { ontime_ticks ++; }
+            if ((mode_idx >= SOLID_MODES-TURBO_MODES)
+                    && (ontime_ticks > TURBO_TIMEOUT)) {
+                mode_idx -= 1;
+                ontime_ticks = 0;
+            }
+#endif
+#endif
         } else if (mode_idx < DUAL_BEACON_MODES) { // two-level fast strobe pulse at about 1 Hz
+            TCCR0A = FASTPWM;
             for(i=0; i<4; i++) {
                 PWM_LVL = modes[mode_idx-SOLID_MODES+2];
                 _delay_ms(5);
@@ -424,35 +498,30 @@ int main(void)
             PWM_LVL = 0;
             _delay_ms(749);
         } else if (mode_idx < FIXED_STROBE_MODES) { // strobe mode, fixed-speed
+            j = modes[mode_idx]; // look up only once, saves a few bytes
             strobe_len = 1;
-            if (modes[mode_idx] < 50) { strobe_len = 0; }
-            PWM_LVL = modes[SOLID_MODES-1];
-            _delay_ms(strobe_len);
-            PWM_LVL = 0;
-            _delay_ms(modes[mode_idx]);
-        } /* else if (mode_idx == VARIABLE_STROBE_MODES-2) {
-            // strobe mode, smoothly oscillating frequency ~7 Hz to ~18 Hz
-            for(j=0; j<66; j++) {
+            if (j < 50) { strobe_len = 0; }
+            // loop to make timing more consistent
+            // (voltage check messes with timing)
+            for(i=0; i<30; i++) {
+                PWM_LVL = modes[SOLID_MODES-1];
+                _delay_ms(strobe_len);
+                PWM_LVL = 0;
+                _delay_ms(j);
+            }
+        } else if (mode_idx == VARIABLE_STROBE_MODES-1) {
+            // strobe mode, smoothly oscillating frequency ~10 Hz to ~24 Hz
+            for(j=0; j<60; j++) {
                 PWM_LVL = modes[SOLID_MODES-1];
                 _delay_ms(1);
                 PWM_LVL = 0;
-                if (j<33) { strobe_len = j; }
-                else { strobe_len = 66-j; }
-                _delay_ms(2*(strobe_len+33-6));
+                if (j<30) { strobe_len = j; }
+                else { strobe_len = 60-j; }
+                _delay_ms(2*(strobe_len+20));
             }
-        } else if (mode_idx == VARIABLE_STROBE_MODES-1) {
-            // strobe mode, smoothly oscillating frequency ~16 Hz to ~100 Hz
-            for(j=0; j<100; j++) {
-                PWM_LVL = modes[SOLID_MODES-1];
-                _delay_ms(0); // less than a millisecond
-                PWM_LVL = 0;
-                if (j<50) { strobe_len = j; }
-                else { strobe_len = 100-j; }
-                _delay_ms(strobe_len+9);
-            }
-        } */ else if (mode_idx < BATT_CHECK_MODE) {
+        } else if (mode_idx < BATT_CHECK_MODE) {
             uint8_t blinks = 0;
-            PWM_LVL = MODE_MED;
+            PWM_LVL = MODE_MED;  // brief flash at start of measurement
             // division takes too much flash space
             //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
             voltage = get_voltage();
@@ -486,7 +555,7 @@ int main(void)
         }
 #ifdef VOLTAGE_MON
         if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
-            voltage = get_voltage();
+            voltage = ADCH; // get_voltage();
             // See if voltage is lower than what we were looking for
             if (voltage < ((mode_idx == 0) ? ADC_CRIT : ADC_LOW)) {
                 ++lowbatt_cnt;
@@ -507,8 +576,10 @@ int main(void)
                     mode_idx = 0;
                     // Turn off the light
                     PWM_LVL = 0;
+#ifdef ENABLE_WDT
                     // Disable WDT so it doesn't wake us up
                     WDT_off();
+#endif
                     // Power down as many components as possible
                     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
                     sleep_mode();
