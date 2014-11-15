@@ -156,7 +156,7 @@ static void _delay_ms(uint16_t n)
     if (n==0) { _delay_loop_2(300); }
     else {
         while(n-- > 0)
-            _delay_loop_2(930);
+            _delay_loop_2(890);
     }
 }
 #else
