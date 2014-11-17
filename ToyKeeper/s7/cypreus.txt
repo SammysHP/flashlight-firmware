@@ -57,3 +57,8 @@ during low-voltage step-down.
 
 Lumen outputs above "medium" are estimated, not actually measured.  My 
 light box has difficulties with this light for some reason.
+
+The moon mode can use self-adjusting PFM to keep its brightness level 
+more consistent, but it takes a lot of space in the code and the results 
+are still mediocre.  However, it does at least look cool when it does 
+the initial adjustment (ramps up, looks best on a battery near 3.7V).
