@@ -134,6 +134,14 @@ uint8_t voltage_readout = 0;
 #ifdef LOWPASS_VOLTAGE
 uint8_t voltages[] = { VOLTAGE_FULL, VOLTAGE_FULL, VOLTAGE_FULL, VOLTAGE_FULL };
 #endif
+PROGMEM const uint8_t voltage_blinks[] = {
+    VOLTAGE_RED,    // 1 blink
+    VOLTAGE_YELLOW, // 2 blinks
+    VOLTAGE_GREEN,  // 3 blinks
+    VOLTAGE_FULL,   // 4 blinks
+    ADC_42,         // 5 blinks
+};
+
 
 // Debounced switch press value
 int is_pressed()
@@ -370,29 +378,24 @@ ISR(WDT_vect) {
                     PORTB &= 0xff ^ (1 << GREEN_PIN);  // green off
                 }
 #endif
-                // FIXME: Use smaller version of this from cypreus.c
                 if (voltage_readout) {
-                    char blinks = 0;
-                    // division takes too much flash space
-                    //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
-                    if (voltage >= ADC_42) {
-                        blinks = 5;
-                    }
-                    else if (voltage > VOLTAGE_FULL) {
-                        blinks = 4;
-                    }
-                    else if (voltage > VOLTAGE_GREEN) {
-                        blinks = 3;
-                    }
-                    else if (voltage > VOLTAGE_YELLOW) {
-                        blinks = 2;
-                    }
-                    else if (voltage > ADC_LOW) {
-                        blinks = 1;
-                    }
+                    uint8_t blinks = 0;
+                    //PWM_LVL = MODE_MED;  // brief flash at start of measurement
+                    //voltage = get_voltage();
                     // turn off and wait one second before showing the value
+                    // (or not, uses extra space)
                     PWM_LVL = 0;
                     _delay_ms(1000);
+
+                    // division takes too much flash space
+                    //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
+                    // a table uses less space than 5 logic clauses
+                    for (i=0; i<sizeof(voltage_blinks); i++) {
+                        if (voltage > pgm_read_byte(voltage_blinks + i)) {
+                            blinks ++;
+                        }
+                    }
+
                     // blink up to five times to show voltage
                     // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
                     for(i=0; i<blinks; i++) {
