@@ -1,11 +1,11 @@
 /*
- * NANJG 105C Diagram
- *            ---
- *          -|   |- VCC
- *   Star 4 -|   |- Voltage ADC
- *  Red LED -|   |- PWM
- *      GND -|   |- Green LED
- *            ---
+ * ATTINY13A Diagram
+ *            ----
+ *          -|1  8|- VCC
+ * E-switch -|2  7|- Voltage ADC
+ *  Red LED -|3  6|- PWM
+ *      GND -|4  5|- Green LED
+ *            ----
  */
 
 #define F_CPU 4800000UL
@@ -28,9 +28,9 @@
                             // (comment out to use only one value, saves space)
 
 // Switch handling
-#define RAMP_TIMEOUT     64 // un-reverse ramp dir about 1s after button release
 #define LONG_PRESS_DUR   21 // How many WDT ticks until we consider a press a long press
                             // 32 is roughly .5 s, 21 is roughly 1/3rd second
+#define RAMP_TIMEOUT     64 // un-reverse ramp dir about 1s after button release
 
 //#define TURBO           // Comment out to disable - full output with a step down after n number of seconds
                         // If turbo is enabled, it will be where 255 is listed in the modes above
@@ -277,8 +277,8 @@ ISR(WDT_vect) {
     static uint8_t  ontime_ticks = 0;
     static uint8_t  doubleclick_ticks = 0;
     static int8_t   saved_mode_idx = 1; // start at first mode, not "off"
-#ifdef VOLTAGE_MON
     uint8_t         i = 0;
+#ifdef VOLTAGE_MON
     static uint8_t  lowbatt_cnt = 0;
 #ifdef LOWPASS_VOLTAGE
     uint16_t        voltage = 0;
@@ -294,23 +294,6 @@ ISR(WDT_vect) {
 
     if (is_pressed()) {
         ontime_ticks = 0;  // Reset ontime on button press
-
-        if (press_duration < 255) {
-            press_duration++;
-        }
-
-        // Long press  (trigger every TICKS_PER_RAMP time slices)
-        if (press_duration == (LONG_PRESS_DUR+TICKS_PER_RAMP-1)) {
-            // never trigger double-click action after a long press
-            doubleclick_ticks = 255;
-            // All long-press actions result in a ramp
-            // BTW, long-press from off is a shortcut to minimum
-            ramp();
-        }
-        // let the user keep holding the button to keep cycling through modes
-        if (press_duration == LONG_PRESS_DUR+TICKS_PER_RAMP) {
-            press_duration = LONG_PRESS_DUR;
-        }
 #ifdef TURBO
         // Just always reset turbo timer whenever the button is pressed
         turbo_ticks = 0;
@@ -319,7 +302,26 @@ ISR(WDT_vect) {
         // Same with the ramp down delay
         lowbatt_cnt = 0;
 #endif
+
+        if (press_duration < 255) {
+            press_duration++;
+        }
+
+        // Long press  (trigger every TICKS_PER_RAMP time slices)
+        if (press_duration == (LONG_PRESS_DUR+1)) {
+            // Long press
+            // never trigger double-click action after a long press
+            doubleclick_ticks = 255;
+            // All long-press actions result in a ramp
+            // BTW, long-press from off is a shortcut to minimum
+            ramp();
+        }
+        // let the user keep holding the button to keep cycling through modes
+        else if (press_duration == LONG_PRESS_DUR+TICKS_PER_RAMP) {
+            press_duration = LONG_PRESS_DUR;
+        }
     } else {
+        // Not pressed
         if (mode_idx != 0) {
             if (ontime_ticks < 255) {
                 ontime_ticks ++;
@@ -328,10 +330,10 @@ ISR(WDT_vect) {
                 doubleclick_ticks ++;
             }
         }
-        // Not pressed
         if (press_duration > 0 && press_duration < LONG_PRESS_DUR) {
             // Short press
             if ( mode_idx == 0 ) {
+                // short press from off == restore saved mode
                 mode_idx = saved_mode_idx;
                 ontime_ticks = 255;  // avoid the double-reverse on power-on
                 doubleclick_ticks = 0;  // so we can detect double clicks from off
@@ -343,7 +345,8 @@ ISR(WDT_vect) {
                     mode_idx = sizeof(modes) - 1;
                     reverse();
                 } else {
-                    // single click while on will toggle power
+                    // single click while on will turn the light off
+                    // remember the last-used mode
                     saved_mode_idx = mode_idx;
                     mode_idx = 0;
                 }
@@ -356,7 +359,8 @@ ISR(WDT_vect) {
             }
 #ifdef TURBO
             // Only do turbo check when switch isn't pressed
-            if (modes[mode_idx] == 255) {
+            //if (modes[mode_idx] == 255) { // takes more space
+            if (mode_idx == sizeof(modes)-1) {
                 turbo_ticks++;
                 if (turbo_ticks > TURBO_TIMEOUT) {
                     // Go to the previous mode
@@ -414,7 +418,7 @@ ISR(WDT_vect) {
 
             // Make sure conversion is running for next time through
             ADCSRA |= (1 << ADSC);
-        #endif
+#endif
         }
         press_duration = 0;
     }
@@ -483,7 +487,7 @@ int main(void)
                 // and/or voltage readout mode before shutdown.
                 do {
                     _delay_ms(1);
-                } while (0);
+                } while (0); // FIXME: stay on for a while to catch doubleclicks
                 // Go to sleep
                 sleep_until_switch_press();
             }
