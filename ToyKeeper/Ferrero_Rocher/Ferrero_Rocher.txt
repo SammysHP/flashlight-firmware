@@ -1,0 +1,37 @@
+This UI is similar to STAR momentary.  The interface is:
+
+From off:
+
+  - Short press to enter the lowest level.
+  - Long press to enter the highest level.  Keep holding to step down to 
+    lower levels, and release when the desired level is reached.
+  - Short-then-long press to display battery status and then shut off.
+
+While on:
+
+  - Short press to increase brightness level.
+  - Long press to decrease brightness level.  Keep holding to keep 
+    decreasing.
+
+The long press (and hold) action will stop when it reaches the "off" 
+state, so you can always shut the light off by holding the button down.
+
+Turbo step-down (90 seconds) and low-voltage protection are enabled by 
+default.
+
+The battery check mode will blink up to five times:
+
+  - 0 blinks: < 3.0V
+  - 1 blink : 3.0V to 3.3V
+  - 2 blinks: 3.3V to 3.6V
+  - 3 blinks: 3.6V to 3.9V
+  - 4 blinks: 3.9V to 4.2V
+  - 5 blinks: > 4.2V
+
+You may want to enter the battery check mode more than once to get a 
+better idea of the battery state, because the readings tend to vary 
+significantly each time.  Also, the first reading may not be correct if 
+the light was just connected to power or not recently used.
+
+It is recommended that you charge the battery when it has one or two 
+blinks.
