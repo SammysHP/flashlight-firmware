@@ -80,8 +80,8 @@
 #define DUAL_BEACON_MODES   5+3     // How many beacon modes will we have (with background light on)?
 #define SINGLE_BEACON_MODES 5+3+1   // How many beacon modes will we have (without background light on)?
 #define FIXED_STROBE_MODES  5+3+1+3 // How many constant-speed strobe modes?
-#define VARIABLE_STROBE_MODES 5+3+1+3+1 // How many variable-speed strobe modes?
-#define BATT_CHECK_MODE     5+3+1+3+1+1 // battery check mode index
+#define VARIABLE_STROBE_MODES 5+3+1+3+2 // How many variable-speed strobe modes?
+#define BATT_CHECK_MODE     5+3+1+3+2+1 // battery check mode index
 // Note: don't use more than 32 modes, or it will interfere with the mechanism used for mode memory
 #define TOTAL_MODES         BATT_CHECK_MODE
 
@@ -91,10 +91,11 @@
 //#define ADC_CRIT            120     // When do we shut the light off
 
 #define ADC_42          185 // the ADC value we expect for 4.20 volts
-#define VOLTAGE_FULL    169 // 3.9 V, 4 blinks
-#define VOLTAGE_GREEN   154 // 3.6 V, 3 blinks
-#define VOLTAGE_YELLOW  139 // 3.3 V, 2 blinks
-#define VOLTAGE_RED     124 // 3.0 V, 1 blink
+#define ADC_100         185 // the ADC value for 100% full (4.2V resting)
+#define ADC_75          175 // the ADC value for 75% full (4.0V resting)
+#define ADC_50          164 // the ADC value for 50% full (3.8V resting)
+#define ADC_25          154 // the ADC value for 25% full (3.6V resting)
+#define ADC_0           139 // the ADC value for 0% full (3.3V resting)
 #define ADC_LOW         123 // When do we start ramping down
 #define ADC_CRIT        113 // When do we shut the light off
 
@@ -122,6 +123,7 @@ static void _delay_ms(uint16_t n)
 #include <util/delay.h>
 #endif
 
+#include <avr/pgmspace.h>
 #include <avr/interrupt.h>
 #include <avr/wdt.h>
 #include <avr/eeprom.h>
@@ -162,6 +164,13 @@ volatile uint8_t mode_idx = 0;
 // 1 or -1. Do we increase or decrease the idx when moving up to a higher mode?
 // Is set by checking stars in the original STAR firmware, but that's removed to save space.
 #define mode_dir 1
+PROGMEM const uint8_t voltage_blinks[] = {
+    ADC_0,    // 1 blink  for 0%-25%
+    ADC_25,   // 2 blinks for 25%-50%
+    ADC_50,   // 3 blinks for 50%-75%
+    ADC_75,   // 4 blinks for 75%-100%
+    ADC_100,  // 5 blinks for >100%
+};
 
 void store_mode_idx(uint8_t lvl) {  //central method for writing (with wear leveling)
     uint8_t oldpos=eepos;
@@ -323,7 +332,7 @@ int main(void)
             _delay_ms(strobe_len);
             PWM_LVL = 0;
             _delay_ms(modes[mode_idx]);
-        } else if (mode_idx == VARIABLE_STROBE_MODES-1) {
+        } else if (mode_idx == VARIABLE_STROBE_MODES-2) {
             // strobe mode, smoothly oscillating frequency ~7 Hz to ~18 Hz
             for(j=0; j<66; j++) {
                 PWM_LVL = modes[SOLID_MODES-1];
@@ -333,7 +342,7 @@ int main(void)
                 else { strobe_len = 66-j; }
                 _delay_ms(2*(strobe_len+33-6));
             }
-        } /* else if (mode_idx == VARIABLE_STROBE_MODES-1) {
+        } else if (mode_idx == VARIABLE_STROBE_MODES-1) {
             // strobe mode, smoothly oscillating frequency ~16 Hz to ~100 Hz
             for(j=0; j<100; j++) {
                 PWM_LVL = modes[SOLID_MODES-1];
@@ -343,29 +352,23 @@ int main(void)
                 else { strobe_len = 100-j; }
                 _delay_ms(strobe_len+9);
             }
-        } */ else if (mode_idx < BATT_CHECK_MODE) {
+        } else if (mode_idx < BATT_CHECK_MODE) {
             uint8_t blinks = 0;
-            // division takes too much flash space
-            //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
-            voltage = get_voltage();
-            if (voltage >= ADC_42) {
-                blinks = 5;
-            }
-            else if (voltage > VOLTAGE_FULL) {
-                blinks = 4;
-            }
-            else if (voltage > VOLTAGE_GREEN) {
-                blinks = 3;
-            }
-            else if (voltage > VOLTAGE_YELLOW) {
-                blinks = 2;
-            }
-            else if (voltage > ADC_LOW) {
-                blinks = 1;
-            }
             // turn off and wait one second before showing the value
+            // (also, ensure voltage is measured while not under load)
             PWM_LVL = 0;
             _delay_ms(1000);
+            voltage = get_voltage();
+            voltage = get_voltage(); // the first one is unreliable
+            // division takes too much flash space
+            //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
+            // a table uses less space than 5 logic clauses
+            for (i=0; i<sizeof(voltage_blinks); i++) {
+                if (voltage > pgm_read_byte(voltage_blinks + i)) {
+                    blinks ++;
+                }
+            }
+
             // blink up to five times to show voltage
             // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
             for(i=0; i<blinks; i++) {
@@ -374,6 +377,7 @@ int main(void)
                 PWM_LVL = 0;
                 _delay_ms(400);
             }
+
             _delay_ms(1000);  // wait at least 1 second between readouts
         }
 #ifdef VOLTAGE_MON
