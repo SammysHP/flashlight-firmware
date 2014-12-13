@@ -16,22 +16,25 @@ While on:
 The long press (and hold) action will stop when it reaches the "off" 
 state, so you can always shut the light off by holding the button down.
 
-Turbo step-down (90 seconds) and low-voltage protection are enabled by 
+Turbo step-down (30 seconds) and low-voltage protection are enabled by 
 default.
 
-The battery check mode will blink up to five times:
+The battery check mode reads the voltage a few times with no significant 
+load, then should blink up to five times:
 
-  - 0 blinks: < 3.0V
-  - 1 blink : 3.0V to 3.3V
-  - 2 blinks: 3.3V to 3.6V
-  - 3 blinks: 3.6V to 3.9V
-  - 4 blinks: 3.9V to 4.2V
-  - 5 blinks: > 4.2V
+  - 0 blinks: < 3.3V        (low battery, recharge ASAP!)
+  - 1 blink : 3.3V to 3.6V  (0% to 25% full, probably time to recharge)
+  - 2 blinks: 3.6V to 3.8V  (25% to 50% full)
+  - 3 blinks: 3.8V to 4.0V  (50% to 75% full)
+  - 4 blinks: 4.0V to 4.2V  (75% to 100% full)
+  - 5 blinks: > 4.2V        (4.35V battery or > 100% full)
 
-You may want to enter the battery check mode more than once to get a 
-better idea of the battery state, because the readings tend to vary 
-significantly each time.  Also, the first reading may not be correct if 
-the light was just connected to power or not recently used.
+For more information on what the above means for different types of 
+batteries, see the charts in this post:
 
-It is recommended that you charge the battery when it has one or two 
-blinks.
+  http://www.candlepowerforums.com/vb/showthread.php?345795-Estimating-remaning-capacity-in-LiIon-batteries
+
+The short version is: high-amperage batteries maintain a higher voltage 
+than high-capacity batteries, so one blink might mean 5% full for a 
+high-amp cell while it would mean 30% full for a high-cap cell.  It is 
+recommended that you remember what kind of battery is being used.
