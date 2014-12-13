@@ -55,14 +55,20 @@
 #define TURBO           // Comment out to disable - full output with a step down after n number of seconds
                         // If turbo is enabled, it will be where 255 is listed in the modes above
 #define TURBO_TIMEOUT   5625 // How many WTD ticks before before dropping down (.016 sec each)
+                        // 30  = 1875
                         // 90  = 5625
                         // 120 = 7500
 
 #define ADC_42          185 // the ADC value we expect for 4.20 volts
-#define VOLTAGE_FULL    169 // 3.9 V, 4 blinks
-#define VOLTAGE_GREEN   154 // 3.6 V, 3 blinks
-#define VOLTAGE_YELLOW  139 // 3.3 V, 2 blinks
-#define VOLTAGE_RED     124 // 3.0 V, 1 blink
+#define ADC_100         185 // the ADC value for 100% full (4.2V resting)
+#define ADC_75          175 // the ADC value for 75% full (4.0V resting)
+#define ADC_50          164 // the ADC value for 50% full (3.8V resting)
+#define ADC_25          154 // the ADC value for 25% full (3.6V resting)
+#define ADC_0           139 // the ADC value for 0% full (3.3V resting)
+#define VOLTAGE_FULL    169 // 3.9 V under load
+#define VOLTAGE_GREEN   154 // 3.6 V under load
+#define VOLTAGE_YELLOW  139 // 3.3 V under load
+#define VOLTAGE_RED     124 // 3.0 V under load
 #define ADC_LOW         123 // When do we start ramping down
 #define ADC_CRIT        113 // When do we shut the light off
 // these two are just for testing low-batt behavior w/ a CR123 cell
@@ -135,11 +141,11 @@ uint8_t voltage_readout = 0;
 uint8_t voltages[] = { VOLTAGE_FULL, VOLTAGE_FULL, VOLTAGE_FULL, VOLTAGE_FULL };
 #endif
 PROGMEM const uint8_t voltage_blinks[] = {
-    VOLTAGE_RED,    // 1 blink
-    VOLTAGE_YELLOW, // 2 blinks
-    VOLTAGE_GREEN,  // 3 blinks
-    VOLTAGE_FULL,   // 4 blinks
-    ADC_42,         // 5 blinks
+    ADC_0,    // 1 blink  for 0%-25%
+    ADC_25,   // 2 blinks for 25%-50%
+    ADC_50,   // 3 blinks for 50%-75%
+    ADC_75,   // 4 blinks for 75%-100%
+    ADC_100,  // 5 blinks for >100%
 };
 
 
@@ -295,7 +301,7 @@ ISR(WDT_vect) {
             // User short-tapped on and immediately long-pressed off
             // (this triggers the voltage check mode)
             if ((ontime_ticks < (LONG_PRESS_DUR*2)) && (mode_idx == 0)) {
-                voltage_readout = 1;
+                voltage_readout = 4;
             }
 #endif
         }
@@ -322,7 +328,7 @@ ISR(WDT_vect) {
                 // (also happens if they long-press to first mode then
                 //  immediately tap to turn it off again)
                 if (mode_idx == 0) {
-                    voltage_readout = 1;
+                    voltage_readout = 4;
                 }
             }
 #endif
@@ -378,9 +384,14 @@ ISR(WDT_vect) {
                     PORTB &= 0xff ^ (1 << GREEN_PIN);  // green off
                 }
 #endif
-                if (voltage_readout) {
+                // allow us to get another voltage reading, not under load
+                if (voltage_readout > 1) {
+                    PWM_LVL = 0;
+                    voltage_readout --;
+                } else if (voltage_readout == 1) {
                     uint8_t blinks = 0;
-                    //PWM_LVL = MODE_MED;  // brief flash at start of measurement
+                    PWM_LVL = modes[2];  // brief flash at start of measurement
+                    _delay_ms(5);
                     //voltage = get_voltage();
                     // turn off and wait one second before showing the value
                     // (or not, uses extra space)
