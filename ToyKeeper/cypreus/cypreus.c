@@ -135,7 +135,7 @@
 // Not sure the lowest you can go before getting bad readings, but with a value
 // of 70 and a 1uF cap, it seemed to switch sometimes even when waiting 10
 // seconds between presses.
-#define CAP_SHORT       150 // Above this is a "short" press
+#define CAP_SHORT       190 // Above this is a "short" press
 #define CAP_MED         100  // Above this is a "medium" press
                             // ... and anything below that is a "long" press
 #define CAP_PIN         PB3
@@ -553,7 +553,6 @@ int main(void)
             // minimal version to save space
             PWM_LVL = modes[SOLID_MODES-1];
             _delay_ms(0);
-            //_delay_ms(modes[mode_idx] >> 6);
             PWM_LVL = 0;
             _delay_ms(modes[mode_idx]);
 #endif
