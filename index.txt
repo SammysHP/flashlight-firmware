@@ -59,6 +59,11 @@ will be noted when appropriate.
     emitter driven by a 2x7135 nanjg 105c driver.  The AK-47A driver is 
     a good starting point.
 
+  alexvh/basic_off_time_driver/
+
+    Nanjg 105C firmware which implements off-time memory without an 
+    off-time capacitor.
+
   bin/
 
     Miscellaneous scripts which might be useful.
