@@ -95,7 +95,6 @@
 #define ADC_LOW         123 // When do we start ramping down
 #define ADC_CRIT        113 // When do we shut the light off
 
-
 /*
  * =========================================================================
  */
