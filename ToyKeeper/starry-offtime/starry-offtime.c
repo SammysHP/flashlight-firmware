@@ -64,6 +64,11 @@
  * Settings to modify per driver
  */
 
+//#define FAST 0x23           // fast PWM channel 1 only
+//#define PHASE 0x21          // phase-correct PWM channel 1 only
+#define FAST 0xA3             // fast PWM both channels
+#define PHASE 0xA1            // phase-correct PWM both channels
+
 #define VOLTAGE_MON         // Comment out to disable
 #define OWN_DELAY           // Should we use the built-in delay or our own?
 // Adjust the timing per-driver, since the hardware has high variance
@@ -75,19 +80,19 @@
 //#define TICKS_250MS       // If enabled, ticks are every 250 ms. If disabled, ticks are every 500 ms
                             // Affects turbo timeout/rampdown timing
 
-#define MODE_MOON           3   // Can comment out to remove mode, but should be set through soldering stars
-#define MODE_LOW            14  // Can comment out to remove mode
-#define MODE_MED            39  // Can comment out to remove mode
-//#define MODE_HIGH         255 // Can comment out to remove mode
-#define MODE_TURBO          255 // Can comment out to remove mode
+// PWM levels for the big circuit (FET or Nx7135)
+#define MODESNx             0,0,0,70,255
+// PWM levels for the small circuit (1x7135)
+// (if the big circuit is a FET, use 0 for high modes here instead of 255)
+#define MODES1x             3,15,128,255,255
+#define MODES_PWM           PHASE,FAST,FAST,FAST,PHASE
+
 #define MODE_TURBO_LOW      140 // Level turbo ramps down to if turbo enabled
+#define TURBO                   // comment out to disable turbo step-down
 #define TURBO_TIMEOUT       240 // How many WTD ticks before before dropping down.  If ticks set for 500 ms, then 240 x .5 = 120 seconds.  Max value of 255 unless you change "ticks"
                                 // variable to uint8_t
 //#define TURBO_RAMP_DOWN           // By default we will start to gradually ramp down, once TURBO_TIMEOUT ticks are reached, 1 PWM_LVL each tick until reaching MODE_TURBO_LOW PWM_LVL
                                 // If commented out, we will step down to MODE_TURBO_LOW once TURBO_TIMEOUT ticks are reached
-
-#define FAST_PWM_START      8 // Above what output level should we switch from phase correct to fast-PWM?
-//#define DUAL_PWM_START        8 // Above what output level should we switch from the alternate PWM output to both PWM outputs?  Comment out to disable alternate PWM output
 
 #define ADC_LOW             130 // When do we start ramping
 #define ADC_CRIT            120 // When do we shut the light off
@@ -113,7 +118,7 @@ static void _delay_ms(uint16_t n)
 #include <util/delay.h>
 #endif
 
-//#include <avr/pgmspace.h>
+#include <avr/pgmspace.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/wdt.h>
@@ -142,13 +147,19 @@ static void _delay_ms(uint16_t n)
 // Mode storage
 uint8_t eepos = 0;
 uint8_t eep[32];
+#ifdef MEMORY
+uint8_t memory = 1;
+#else
 uint8_t memory = 0;
+#endif
 
 // Modes (gets set when the light starts up based on stars)
-static uint8_t modes[10];  // Don't need 10, but keeping it high enough to handle all
+PROGMEM const uint8_t modesNx[] = { MODESNx };
+PROGMEM const uint8_t modes1x[] = { MODES1x };
+PROGMEM const uint8_t modes_pwm[] = { MODES_PWM };
 volatile uint8_t mode_idx = 0;
-int     mode_dir = 0; // 1 or -1. Determined when checking stars. Do we increase or decrease the idx when moving up to a higher mode.
-uint8_t mode_cnt = 0;
+int     mode_dir = 1; // 1 or -1. Determined when checking stars. Do we increase or decrease the idx when moving up to a higher mode.
+uint8_t mode_cnt = sizeof(modesNx);
 
 uint8_t lowbatt_cnt = 0;
 
@@ -182,36 +193,29 @@ inline void next_mode() {
 }
 
 inline void check_stars() {
-    // Load up the modes based on stars
-    // Always load up the modes array in order of lowest to highest mode
+    // Configure options based on stars
     // 0 being low for soldered, 1 for pulled-up for not soldered
+#if 0  // not implemented, STAR2_PIN is used for second PWM channel
     // Moon
-#ifdef MODE_MOON
-#ifndef DUAL_PWM_START
+    // enable moon mode?
     if ((PINB & (1 << STAR2_PIN)) == 0) {
-#endif
         modes[mode_cnt++] = MODE_MOON;
-#ifndef DUAL_PWM_START
     }
 #endif
-#endif
-#ifdef MODE_LOW
-    modes[mode_cnt++] = MODE_LOW;
-#endif
-#ifdef MODE_MED
-    modes[mode_cnt++] = MODE_MED;
-#endif
-#ifdef MODE_HIGH
-    modes[mode_cnt++] = MODE_HIGH;
-#endif
-#ifdef MODE_TURBO
-    modes[mode_cnt++] = MODE_TURBO;
-#endif
+#if 0  // Mode order not as important as mem/no-mem
+    // Mode order
     if ((PINB & (1 << STAR3_PIN)) == 0) {
         // High to Low
         mode_dir = -1;
     } else {
         mode_dir = 1;
+    }
+#endif
+    // Memory
+    if ((PINB & (1 << STAR3_PIN)) == 0) {
+        memory = 1;  // solder to enable memory
+    } else {
+        memory = 0;  // unsolder to disable memory
     }
 }
 
@@ -248,21 +252,18 @@ inline void ADC_off() {
     ADCSRA &= ~(1<<7); //ADC off
 }
 
-void set_output(uint8_t pwm_lvl) {
-    #ifdef DUAL_PWM_START
-    if (pwm_lvl > DUAL_PWM_START) {
-        // Using the normal output along with the alternate
-        PWM_LVL = pwm_lvl;
-    } else {
-        PWM_LVL = 0;
+void set_output(uint8_t pwm1, uint8_t pwm2) {
+    // Need PHASE to properly turn off the light
+    if ((pwm1==0) && (pwm2==0)) {
+        TCCR0A = PHASE;
     }
-    #else
-    PWM_LVL = pwm_lvl;
-    #endif
-    // Always set alternate PWM value even if not compiled for dual output as we will use this value
-    // throughout the code when trying to see what the current output level is.  Setting this wont affect
-    // the output when alternate output is disabled.
-    ALT_PWM_LVL = pwm_lvl;
+    PWM_LVL = pwm1;
+    ALT_PWM_LVL = pwm2;
+}
+
+void set_mode(mode) {
+    TCCR0A = pgm_read_byte(modes_pwm + mode);
+    set_output(pgm_read_byte(modesNx + mode), pgm_read_byte(modes1x + mode));
 }
 
 #ifdef VOLTAGE_MON
@@ -292,20 +293,22 @@ ISR(WDT_vect) {
     //static uint16_t ticks = 0;
     //if (ticks < 60000) ticks++;
 
-#ifdef MODE_TURBO
+#ifdef TURBO
     //if (ticks == TURBO_TIMEOUT && modes[mode_idx] == MODE_TURBO) { // Doesn't make any sense why this doesn't work
     if (ticks >= TURBO_TIMEOUT && mode_idx == (mode_cnt - 1) && PWM_LVL > MODE_TURBO_LOW) {
         #ifdef TURBO_RAMP_DOWN
-        set_output(PWM_LVL - 1);
+        set_output(PWM_LVL - 1, PWM_LVL - 1);
         #else
         // Turbo mode is always at end
-        set_output(MODE_TURBO_LOW);
+        set_output(MODE_TURBO_LOW, MODE_TURBO_LOW);
+        /*
         if (MODE_TURBO_LOW <= modes[mode_idx-1]) {
             // Dropped at or below the previous mode, so set it to the stored mode
             // Kept this as it was the same functionality as before.  For the TURBO_RAMP_DOWN feature
             // it doesn't do this logic because I don't know what makes the most sense
             store_mode_idx(--mode_idx);
         }
+        */
         #endif
     }
 #endif
@@ -315,11 +318,9 @@ ISR(WDT_vect) {
 int main(void)
 {
     // All ports default to input, but turn pull-up resistors on for the stars (not the ADC input!  Made that mistake already)
-    #ifdef DUAL_PWM_START
+    // only one star, because one is used for PWM channel 2
+    // and the other is used for the off-time capacitor
     PORTB = (1 << STAR3_PIN);
-    #else
-    PORTB = (1 << STAR2_PIN) | (1 << STAR3_PIN);
-    #endif
 
     // Determine what mode we should fire up
     // Read the last mode that was saved
@@ -344,11 +345,12 @@ int main(void)
         store_mode_idx(mode_idx);
     } else {
         // Didn't have a short press, keep the same mode
-    #ifndef MEMORY
-        // Reset to the first mode
-        mode_idx = ((mode_dir == 1) ? 0 : (mode_cnt - 1));
-        store_mode_idx(mode_idx);
-    #endif
+        // ... or reset to the first mode
+        if (! memory) {
+            // Reset to the first mode
+            mode_idx = 0;
+            store_mode_idx(mode_idx);
+        }
     }
     // Turn off ADC
     ADC_off();
@@ -358,14 +360,12 @@ int main(void)
     PORTB |= (1 << CAP_PIN);    // High
 
     // Set PWM pin to output
-    DDRB |= (1 << PWM_PIN);
-    #ifdef DUAL_PWM_START
-    DDRB |= (1 << STAR2_PIN);
-    #endif
+    DDRB |= (1 << PWM_PIN);     // enable main channel
+    DDRB |= (1 << STAR2_PIN);   // enable second channel
 
     // Set timer to do PWM for correct output pin and set prescaler timing
-    TCCR0A = 0x23; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
-    TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
+    //TCCR0A = 0x23; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
+    //TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
 
     // Turn features on or off as needed
     #ifdef VOLTAGE_MON
@@ -379,48 +379,35 @@ int main(void)
     // Will allow us to go idle between WDT interrupts
     set_sleep_mode(SLEEP_MODE_IDLE);
 
-    uint8_t prev_mode_idx = mode_idx;
-
     WDT_on();
 
     // Now just fire up the mode
     // Set timer to do PWM for correct output pin and set prescaler timing
-    if (modes[mode_idx] > FAST_PWM_START) {
-        #ifdef DUAL_PWM_START
-        TCCR0A = 0b10100011; // fast-PWM both outputs
-        #else
-        TCCR0A = 0b00100011; // fast-PWM normal output
-        #endif
-    } else {
-        #ifdef DUAL_PWM_START
-        TCCR0A = 0b10100001; // phase corrected PWM both outputs
-        #else
-        TCCR0A = 0b00100001; // phase corrected PWM normal output
-        #endif
-    }
     TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
 
-    set_output(modes[mode_idx]);
+    set_mode(mode_idx);
 
+#ifdef VOLTAGE_MON
     uint8_t i = 0;
     uint8_t hold_pwm;
+#endif
     while(1) {
     #ifdef VOLTAGE_MON
         if (low_voltage(ADC_LOW)) {
             // We need to go to a lower level
-            if (mode_idx == 0 && ALT_PWM_LVL <= modes[mode_idx]) {
+            if (mode_idx == 0 && ALT_PWM_LVL <= modes1x[mode_idx]) {
                 // Can't go any lower than the lowest mode
                 // Wait until we hit the critical level before flashing 10 times and turning off
                 while (!low_voltage(ADC_CRIT));
                 i = 0;
                 while (i++<10) {
-                    set_output(0);
+                    set_output(0,0);
                     _delay_ms(250);
-                    set_output(modes[0]);
+                    set_mode(0);
                     _delay_ms(500);
                 }
                 // Turn off the light
-                set_output(0);
+                set_output(0,0);
                 // Disable WDT so it doesn't wake us up
                 WDT_off();
                 // Power down as many components as possible
@@ -431,20 +418,20 @@ int main(void)
                 hold_pwm = ALT_PWM_LVL;
                 i = 0;
                 while (i++<3) {
-                    set_output(0);
+                    set_output(0,0);
                     _delay_ms(250);
-                    set_output(hold_pwm);
+                    set_output(hold_pwm,hold_pwm);
                     _delay_ms(500);
                 }
                 // Lower the mode by half, but don't go below lowest level
-                if ((ALT_PWM_LVL >> 1) < modes[0]) {
-                    set_output(modes[0]);
+                if ((ALT_PWM_LVL >> 1) < modes1x[0]) {
+                    set_mode(0);
                     mode_idx = 0;
                 } else {
-                    set_output(ALT_PWM_LVL >> 1);
+                    set_output(0,ALT_PWM_LVL >> 1);
                 }
                 // See if we should change the current mode level if we've gone under the current mode.
-                if (ALT_PWM_LVL < modes[mode_idx]) {
+                if (ALT_PWM_LVL < modes1x[mode_idx]) {
                     // Lower our recorded mode
                     mode_idx--;
                 }
