@@ -1,14 +1,3 @@
-/* STAR_off_time version 1.2
- *
- * Changelog
- *
- * 1.0 Initial version
- * 1.1 Bug fix
- * 1.2 Added support for dual PWM outputs and selection of PWM mode per output level
- * 1.3 Added ability to have turbo ramp down gradually instead of step down
- *
- */
-
 /*
  * NANJG 105C Diagram
  *           ---
@@ -26,8 +15,8 @@
  *      For more details on these settings, visit http://github.com/JCapSolutions/blf-firmware/wiki/PWM-Frequency
  *
  * STARS
- *      Star 2 = Moon if connected and alternate PWM output not used
- *      Star 3 = H-L if connected, L-H if not
+ *      Star 2 = second PWM output channel
+ *      Star 3 = mode memory if soldered, no memory by default
  *      Star 4 = Capacitor for off-time
  *
  * VOLTAGE
@@ -74,8 +63,6 @@
 // Adjust the timing per-driver, since the hardware has high variance
 // Higher values will run slower, lower values run faster.
 #define DELAY_TWEAK         950
-
-#define MEMORY              // Comment out to disable
 
 //#define TICKS_250MS       // If enabled, ticks are every 250 ms. If disabled, ticks are every 500 ms
                             // Affects turbo timeout/rampdown timing
@@ -147,11 +134,7 @@ static void _delay_ms(uint16_t n)
 // Mode storage
 uint8_t eepos = 0;
 uint8_t eep[32];
-#ifdef MEMORY
-uint8_t memory = 1;
-#else
 uint8_t memory = 0;
-#endif
 
 // Modes (gets set when the light starts up based on stars)
 PROGMEM const uint8_t modesNx[] = { MODESNx };
