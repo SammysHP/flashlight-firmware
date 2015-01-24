@@ -65,6 +65,10 @@
  */
 
 #define VOLTAGE_MON         // Comment out to disable
+#define OWN_DELAY           // Should we use the built-in delay or our own?
+// Adjust the timing per-driver, since the hardware has high variance
+// Higher values will run slower, lower values run faster.
+#define DELAY_TWEAK         950
 
 #define MEMORY              // Comment out to disable
 
@@ -96,9 +100,21 @@
  * =========================================================================
  */
 
+#ifdef OWN_DELAY
+#include <util/delay_basic.h>
+// Having own _delay_ms() saves some bytes AND adds possibility to use variables as input
+static void _delay_ms(uint16_t n)
+{
+    // TODO: make this take tenths of a ms instead of ms,
+    // for more precise timing?
+    while(n-- > 0) _delay_loop_2(DELAY_TWEAK);
+}
+#else
+#include <util/delay.h>
+#endif
+
 //#include <avr/pgmspace.h>
 #include <avr/io.h>
-#include <util/delay.h>
 #include <avr/interrupt.h>
 #include <avr/wdt.h>
 #include <avr/eeprom.h>
