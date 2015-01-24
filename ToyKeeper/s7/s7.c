@@ -15,20 +15,18 @@
  *     GND -|   |- Star 2
  *           ---
  *
- * CPU speed is 4.8Mhz without the 8x divider when low fuse is 0x75
+ * CPU speed is 4.8Mhz without the 8x divider when low fuse is 0x79
  *
- * define F_CPU 4800000  CPU: 4.8MHz  PWM: 9.4kHz       ####### use low fuse: 0x75  #######
- *                             /8     PWM: 1.176kHz     ####### use low fuse: 0x65  #######
- * define F_CPU 9600000  CPU: 9.6MHz  PWM: 19kHz        ####### use low fuse: 0x7a  #######
- *                             /8     PWM: 2.4kHz       ####### use low fuse: 0x6a  #######
+ * define F_CPU 4800000  CPU: 4.8MHz  PWM: 9.4kHz       ####### use low fuse: 0x79  #######
  * 
  * Above PWM speeds are for phase-correct PWM.  This program uses Fast-PWM,
  * which when the CPU is 4.8MHz will be 18.75 kHz
  *
  * FUSES
  *      I use these fuse settings
- *      Low:  0x75
- *      High: 0xff
+ *      Low:  0x79
+ *      High: 0xed
+ *      (flash-noinit.sh has an example)
  *
  * STARS (not used)
  *
@@ -85,16 +83,15 @@
 // Note: don't use more than 32 modes, or it will interfere with the mechanism used for mode memory
 #define TOTAL_MODES         BATT_CHECK_MODE
 
-#define WDT_TIMEOUT         2       // Number of WTD ticks before mode is saved (.5 sec each)
-
 //#define ADC_LOW             130     // When do we start ramping
 //#define ADC_CRIT            120     // When do we shut the light off
 
 #define ADC_42          185 // the ADC value we expect for 4.20 volts
-#define VOLTAGE_FULL    169 // 3.9 V, 4 blinks
-#define VOLTAGE_GREEN   154 // 3.6 V, 3 blinks
-#define VOLTAGE_YELLOW  139 // 3.3 V, 2 blinks
-#define VOLTAGE_RED     124 // 3.0 V, 1 blink
+#define ADC_100         185 // the ADC value for 100% full (4.2V resting)
+#define ADC_75          175 // the ADC value for 75% full (4.0V resting)
+#define ADC_50          164 // the ADC value for 50% full (3.8V resting)
+#define ADC_25          154 // the ADC value for 25% full (3.6V resting)
+#define ADC_0           139 // the ADC value for 0% full (3.3V resting)
 #define ADC_LOW         123 // When do we start ramping down
 #define ADC_CRIT        113 // When do we shut the light off
 
@@ -121,8 +118,8 @@ static void _delay_ms(uint16_t n)
 #include <util/delay.h>
 #endif
 
+#include <avr/pgmspace.h>
 #include <avr/interrupt.h>
-#include <avr/wdt.h>
 #include <avr/eeprom.h>
 #include <avr/sleep.h>
 
@@ -142,18 +139,22 @@ static void _delay_ms(uint16_t n)
  */
 
 // Mode storage
-uint8_t eepos = 0;
-uint8_t eep[32];
+// store in uninitialized memory so it will not be overwritten and
+// can still be read at startup after short (<500ms) power off
+// decay used to tell if user did a short press.
+volatile uint8_t noinit_decay __attribute__ ((section (".noinit")));
+volatile uint8_t noinit_mode __attribute__ ((section (".noinit")));
+
 // change to 1 if you want on-time mode memory instead of "short-cycle" memory
+// (actually, don't.  It's not supported any more, and doesn't work)
 #define memory 0
-//uint8_t memory = 0;
 
 // Modes (hardcoded to save space)
 static uint8_t modes[TOTAL_MODES] = { // high enough to handle all
     MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, MODE_HIGHER, // regular solid modes
     MODE_MOON, MODE_LOW, MODE_MED, // dual beacon modes (this level and this level + 2)
     MODE_HIGHER, // heartbeat beacon
-    99, 41, 15, // constant-speed strobe modes (10 Hz, 24 Hz, 60 Hz)
+    79, 41, 15, // constant-speed strobe modes (12.5 Hz, 24 Hz, 60 Hz)
     MODE_HIGHER, MODE_HIGHER, // variable-speed strobe modes
     MODE_MED, // battery check mode
 };
@@ -161,22 +162,13 @@ volatile uint8_t mode_idx = 0;
 // 1 or -1. Do we increase or decrease the idx when moving up to a higher mode?
 // Is set by checking stars in the original STAR firmware, but that's removed to save space.
 #define mode_dir 1
-
-void store_mode_idx(uint8_t lvl) {  //central method for writing (with wear leveling)
-    uint8_t oldpos=eepos;
-    eepos=(eepos+1)&31;  //wear leveling, use next cell
-    // Write the current mode
-    EEARL=eepos;  EEDR=lvl; EECR=32+4; EECR=32+4+2;  //WRITE  //32:write only (no erase)  4:enable  2:go
-    while(EECR & 2); //wait for completion
-    // Erase the last mode
-    EEARL=oldpos;           EECR=16+4; EECR=16+4+2;  //ERASE  //16:erase only (no write)  4:enable  2:go
-}
-inline void read_mode_idx() {
-    eeprom_read_block(&eep, 0, 32);
-    while((eep[eepos] == 0xff) && (eepos < 32)) eepos++;
-    if (eepos < 32) mode_idx = eep[eepos];
-    else eepos=0;
-}
+PROGMEM const uint8_t voltage_blinks[] = {
+    ADC_0,    // 1 blink  for 0%-25%
+    ADC_25,   // 2 blinks for 25%-50%
+    ADC_50,   // 3 blinks for 50%-75%
+    ADC_75,   // 4 blinks for 75%-100%
+    ADC_100,  // 5 blinks for >100%
+};
 
 inline void next_mode() {
     mode_idx += mode_dir;
@@ -184,25 +176,6 @@ inline void next_mode() {
         // Wrap around
         mode_idx = 0;
     }
-}
-
-inline void WDT_on() {
-    // Setup watchdog timer to only interrupt, not reset, every 500ms.
-    cli();                          // Disable interrupts
-    wdt_reset();                    // Reset the WDT
-    WDTCR |= (1<<WDCE) | (1<<WDE);  // Start timed sequence
-    WDTCR = (1<<WDTIE) | (1<<WDP2) | (1<<WDP0); // Enable interrupt every 500ms
-    sei();                          // Enable interrupts
-}
-
-inline void WDT_off()
-{
-    cli();                          // Disable interrupts
-    wdt_reset();                    // Reset the WDT
-    MCUSR &= ~(1<<WDRF);            // Clear Watchdog reset flag
-    WDTCR |= (1<<WDCE) | (1<<WDE);  // Start timed sequence
-    WDTCR = 0x00;                   // Disable WDT
-    sei();                          // Enable interrupts
 }
 
 inline void ADC_on() {
@@ -225,20 +198,6 @@ uint8_t get_voltage() {
     return ADCH;
 }
 #endif
-
-ISR(WDT_vect) {
-    static uint8_t ticks = 0;
-    if (ticks < 255) ticks++;
-
-    if (ticks == WDT_TIMEOUT) {
-#if memory
-        store_mode_idx(mode_idx);
-#else
-        // Reset the mode to the start for next time
-        store_mode_idx(0);
-#endif
-    }
-}
 
 int main(void)
 {
@@ -263,24 +222,22 @@ int main(void)
     ACSR   |=  (1<<7); //AC off
 
     // Enable sleep mode set to Idle that will be triggered by the sleep_mode() command.
-    // Will allow us to go idle between WDT interrupts
+    // Will allow us to go idle between WDT interrupts (which we're not using anyway)
     set_sleep_mode(SLEEP_MODE_IDLE);
 
     // Determine what mode we should fire up
     // Read the last mode that was saved
-    read_mode_idx();
-    if (mode_idx&0x20) {  // maximum of 32 modes allowed, uses bit 5 as a mode memory timer
-        // Indicates we did a short press last time, go to the next mode
-        // Remove short press indicator first
-        mode_idx &= 0x1f;
-        next_mode(); // Will handle wrap arounds
-    } else {
-        // Didn't have a short press, keep the same mode
+    if (noinit_decay) // not short press, forget mode
+    {
+        noinit_mode = 0;
+        mode_idx = 0;
+    } else { // short press, advance to next mode
+        mode_idx = noinit_mode;
+        next_mode();
+        noinit_mode = mode_idx;
     }
-    // Store mode with short press indicator
-    store_mode_idx(mode_idx|0x20);
-
-    WDT_on();
+    // set noinit data for next boot
+    noinit_decay = 0;
 
     // Now just fire up the mode
     PWM_LVL = modes[mode_idx];
@@ -291,8 +248,6 @@ int main(void)
 #ifdef VOLTAGE_MON
     uint8_t lowbatt_cnt = 0;
     uint8_t voltage;
-    voltage = get_voltage();
-    //uint8_t hold_pwm;
 #endif
     while(1) {
         if(mode_idx < SOLID_MODES) { // Just stay on at a given brightness
@@ -343,27 +298,21 @@ int main(void)
             }
         } else if (mode_idx < BATT_CHECK_MODE) {
             uint8_t blinks = 0;
-            // division takes too much flash space
-            //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
-            voltage = get_voltage();
-            if (voltage >= ADC_42) {
-                blinks = 5;
-            }
-            else if (voltage > VOLTAGE_FULL) {
-                blinks = 4;
-            }
-            else if (voltage > VOLTAGE_GREEN) {
-                blinks = 3;
-            }
-            else if (voltage > VOLTAGE_YELLOW) {
-                blinks = 2;
-            }
-            else if (voltage > ADC_LOW) {
-                blinks = 1;
-            }
             // turn off and wait one second before showing the value
+            // (also, ensure voltage is measured while not under load)
             PWM_LVL = 0;
             _delay_ms(1000);
+            voltage = get_voltage();
+            voltage = get_voltage(); // the first one is unreliable
+            // division takes too much flash space
+            //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
+            // a table uses less space than 5 logic clauses
+            for (i=0; i<sizeof(voltage_blinks); i++) {
+                if (voltage > pgm_read_byte(voltage_blinks + i)) {
+                    blinks ++;
+                }
+            }
+
             // blink up to five times to show voltage
             // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
             for(i=0; i<blinks; i++) {
@@ -372,6 +321,7 @@ int main(void)
                 PWM_LVL = 0;
                 _delay_ms(400);
             }
+
             _delay_ms(1000);  // wait at least 1 second between readouts
         }
 #ifdef VOLTAGE_MON
@@ -390,8 +340,6 @@ int main(void)
                 } else { // Already at the lowest mode
                     // Turn off the light
                     PWM_LVL = 0;
-                    // Disable WDT so it doesn't wake us up
-                    WDT_off();
                     // Power down as many components as possible
                     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
                     sleep_mode();

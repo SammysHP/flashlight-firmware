@@ -1,11 +1,11 @@
 /*
- * NANJG 105C Diagram
- *            ---
- *          -|   |- VCC
- *   Star 4 -|   |- Voltage ADC
- *  Red LED -|   |- PWM
- *      GND -|   |- Green LED
- *            ---
+ * ATTINY13A Diagram
+ *            ----
+ *          -|1  8|- VCC
+ * E-switch -|2  7|- Voltage ADC
+ *  Red LED -|3  6|- PWM
+ *      GND -|4  5|- Green LED
+ *            ----
  */
 
 #define F_CPU 4800000UL
@@ -13,15 +13,39 @@
 // PWM Mode
 #define PHASE 0b00000001
 #define FAST  0b00000011
+#define PWM_MODE   FAST   // PWM mode/speed: PHASE (9 kHz) or FAST (18 kHz)
+                          // (FAST has side effects when PWM=0, can't
+                          //  shut off light without putting the MCU to sleep)
+                          // (PHASE might make audible whining sounds)
+// PFM not supported in this firmware, don't uncomment
+//#define USE_PFM           // comment out to disable pulse frequency modulation
+                          // (makes bottom few modes ramp smoother)
 
 /*
  * =========================================================================
  * Settings to modify per driver
  */
 
-#define VOLTAGE_MON     // Comment out to disable - ramp down and eventual shutoff when battery is low
-// Must be low to high (the lowest values are highly device-dependent)
+#define BLINK_ON_POWER      // blink once when power is received
+                            // (helpful on e-switch lights, annoying on dual-switch lights)
+#define VOLTAGE_MON         // Comment out to disable all voltage-related functions:
+                            // (including ramp down and eventual shutoff when battery is low)
+#define REDGREEN_INDICATORS // comment out to disable red/green power indicator LEDs
+#define LOWPASS_VOLTAGE     // Average the last 4 voltage readings for smoother results
+                            // (comment out to use only one value, saves space)
+
+// Switch handling
+#define LONG_PRESS_DUR   21 // How many WDT ticks until we consider a press a long press
+                            // 32 is roughly .5 s, 21 is roughly 1/3rd second
+#define TICKS_PER_RAMP   32 // How many WDT ticks per step in the ramp (lower == faster ramp)
+#define LOCK_PRESS_DUR  188 // Hold for 3s from off to (un)lock light.
+#define RAMP_TIMEOUT     64 // un-reverse ramp dir about 1s after button release
+
+
+// Must be low to high, starting with 0
+// (and the lowest values are highly device-dependent)
 #define MODES           0,1,5,23,65,139,255
+
 #define TURBO           // Comment out to disable - full output with a step down after n number of seconds
                         // If turbo is enabled, it will be where 255 is listed in the modes above
 #define TURBO_TIMEOUT   5625 // How many WTD ticks before before dropping down (.016 sec each)
@@ -35,18 +59,11 @@
 #define VOLTAGE_RED     124 // 3.0 V, 1 blink
 #define ADC_LOW         123 // When do we start ramping down
 #define ADC_CRIT        113 // When do we shut the light off
-// these two are just for testing low-batt behavior
+// these two are just for testing low-batt behavior w/ a CR123 cell
 //#define ADC_LOW         139 // When do we start ramping down
 //#define ADC_CRIT        138 // When do we shut the light off
 #define ADC_DELAY       188 // Delay in ticks between low-bat rampdowns (188 ~= 3s)
-#define OWN_DELAY       // replace default _delay_ms() with ours
-#define BLINK_ON_POWER  // blink once when power is received
-// Switch handling
-#define LONG_PRESS_DUR   24 // How many WDT ticks until we consider a press a long press
-                            // 32 is roughly .5 s, 21 is roughly 1/3rd second
-#define TICKS_PER_RAMP   32 // How many WDT ticks per step in the ramp (lower == faster ramp)
-#define RAMP_TIMEOUT     64 // un-reverse ramp dir about 1s after button release
-#define LOCK_PRESS_DUR  188 // Hold for 3s from off to (un)lock light.
+#define OWN_DELAY       // replace default _delay_ms() with ours, comment to disable
 
 
 /*
@@ -83,7 +100,9 @@ static void _delay_ms(uint16_t n)
 #define ADC_PRSCL   0x06    // clk/64
 
 #define PWM_LVL     OCR0B   // OCR0B is the output compare register for PB1
+#ifdef USE_PFM
 #define CEIL_LVL    OCR0A   // OCR0A is the number of "frames" per PWM loop
+#endif
 
 #define DB_REL_DUR  0b00001111 // time before we consider the switch released after
                                // each bit of 1 from the right equals 16ms, so 0x0f = 64ms
@@ -102,7 +121,9 @@ volatile int8_t mode_idx = 0;
 volatile int8_t ramp_dir = 1;
 volatile uint8_t locked = 0;
 uint8_t press_duration  = 0;
+#ifdef LOWPASS_VOLTAGE
 uint8_t voltages[] = { VOLTAGE_FULL, VOLTAGE_FULL, VOLTAGE_FULL, VOLTAGE_FULL };
+#endif
 
 // Debounced switch press value
 int is_pressed()
@@ -214,12 +235,16 @@ ISR(WDT_vect) {
 #endif
     static uint8_t  ontime_ticks = 0;
     static uint8_t  doubleclick_ticks = 0;
+    static int8_t   saved_mode_idx = 2; // start at first non-moon mode
+    uint8_t         i = 0;
 #ifdef VOLTAGE_MON
     static uint8_t  lowbatt_cnt = 0;
-#endif
-    static int8_t   saved_mode_idx = 2; // start at first non-moon mode
+#ifdef LOWPASS_VOLTAGE
     uint16_t        voltage = 0;
-    uint8_t         i = 0;
+#else
+    uint8_t         voltage = 0;
+#endif
+#endif
 
     if (mode_idx == 0) {
         ontime_ticks = 0;
@@ -227,7 +252,7 @@ ISR(WDT_vect) {
     }
 
     if (is_pressed()) {
-        ontime_ticks = 0;
+        ontime_ticks = 0;  // Reset ontime on button press
 #ifdef TURBO
         // Just always reset turbo timer whenever the button is pressed
         turbo_ticks = 0;
@@ -241,12 +266,14 @@ ISR(WDT_vect) {
             press_duration++;
         }
 
+        // Long press  (trigger every TICKS_PER_RAMP time slices)
         if (press_duration == (LONG_PRESS_DUR+1)) {
-            // don't trigger double-click action after a long press
-            doubleclick_ticks = 255;
             // Long press
+            // never trigger double-click action after a long press
+            doubleclick_ticks = 255;
             // BTW, long-press from off is a shortcut to minimum
             //if (mode_idx == 0) { ramp_dir = 1; }
+            // Ensure long-press-from-off won't ramp
             if (mode_idx == 0) { press_duration = LONG_PRESS_DUR+TICKS_PER_RAMP+1; }
             ramp();
         }
@@ -283,6 +310,7 @@ ISR(WDT_vect) {
         if (press_duration > 0 && press_duration < LONG_PRESS_DUR) {
             // Short press
             if ( mode_idx == 0 ) {
+                // short press from off == restore saved mode
                 mode_idx = saved_mode_idx;
                 ontime_ticks = 255;  // avoid the double-reverse on power-on
                 doubleclick_ticks = 0;  // so we can detect double clicks from off
@@ -292,7 +320,8 @@ ISR(WDT_vect) {
                     // (or...  triple-click while on also works)
                     mode_idx = sizeof(modes) - 1;
                 } else {
-                    // single click while on will toggle power
+                    // single click while on will turn the light off
+                    // remember the last-used mode
                     saved_mode_idx = mode_idx;
                     mode_idx = 0;
                 }
@@ -305,7 +334,7 @@ ISR(WDT_vect) {
             }
 #ifdef TURBO
             // Only do turbo check when switch isn't pressed
-            //if (modes[mode_idx] == 255) {
+            //if (modes[mode_idx] == 255) { // takes more space
             if (mode_idx == sizeof(modes)-1) {
                 turbo_ticks++;
                 if (turbo_ticks > TURBO_TIMEOUT) {
@@ -318,18 +347,23 @@ ISR(WDT_vect) {
 #ifdef VOLTAGE_MON
             // See if conversion is done
             if (ADCSRA & (1 << ADIF)) {
+#ifdef LOWPASS_VOLTAGE
                 // Get an average of the past few readings
                 for (i=0;i<3;i++) {
                     voltages[i] = voltages[i+1];
                 }
                 voltages[3] = ADCH;
                 voltage = (voltages[0]+voltages[1]+voltages[2]+voltages[3]) >> 2;
+#else
+                voltage = ADCH;
+#endif
                 // See if voltage is lower than what we were looking for
                 if (voltage < ((mode_idx == 1) ? ADC_CRIT : ADC_LOW)) {
                     ++lowbatt_cnt;
                 } else {
                     lowbatt_cnt = 0;
                 }
+#ifdef REDGREEN_INDICATORS
                 if (voltage > VOLTAGE_GREEN) {
                     // turn on green LED
                     DDRB = (1 << PWM_PIN) | (1 << GREEN_PIN);
@@ -348,6 +382,7 @@ ISR(WDT_vect) {
                     PORTB |= (1 << RED_PIN);
                     PORTB &= 0xff ^ (1 << GREEN_PIN);  // green off
                 }
+#endif
             }
 
             // See if it's been low for a while, and maybe step down
@@ -377,11 +412,13 @@ int main(void)
     DDRB = (1 << PWM_PIN);
 
     // Set timer to do PWM for correct output pin and set prescaler timing
-    //TCCR0A = 0x23; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
-    //TCCR0A = 0x25; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
-    TCCR0A = 0x21; // trying to set variable-speed PWM
-    //TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
+    TCCR0A = 0x20 | PWM_MODE; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
+    #ifdef USE_PFM
+    // 0x08 is for variable-speed PWM
     TCCR0B = 0x08 | 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
+    #else
+    TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
+    #endif
 
     // Turn features on or off as needed
     #ifdef VOLTAGE_MON
@@ -394,7 +431,9 @@ int main(void)
     #ifdef BLINK_ON_POWER
     // blink once to let the user know we have power
     //TCCR0A = PHASE | 0b00100000;  // Only use the normal output
+    #ifdef USE_PFM
     CEIL_LVL = 255;
+    #endif
     PWM_LVL = 255;
     _delay_ms(3);
     PWM_LVL = 0;

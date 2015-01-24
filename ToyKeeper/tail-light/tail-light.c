@@ -84,11 +84,12 @@
 //#define ADC_LOW				130	// When do we start ramping
 //#define ADC_CRIT			120 // When do we shut the light off
 
-#define ADC_42          185 // the ADC value we expect for 4.20 volts
-#define VOLTAGE_FULL    169 // 3.9 V, 4 blinks
-#define VOLTAGE_GREEN   154 // 3.6 V, 3 blinks
-#define VOLTAGE_YELLOW  139 // 3.3 V, 2 blinks
-#define VOLTAGE_RED     124 // 3.0 V, 1 blink
+#define ADC_42          184 // the ADC value we expect for 4.20 volts
+#define ADC_100         184 // the ADC value for 100% full (4.2V resting)
+#define ADC_75          174 // the ADC value for 75% full (4.0V resting)
+#define ADC_50          164 // the ADC value for 50% full (3.8V resting)
+#define ADC_25          154 // the ADC value for 25% full (3.6V resting)
+#define ADC_0           139 // the ADC value for 0% full (3.3V resting)
 #define ADC_LOW         123 // When do we start ramping down
 #define ADC_CRIT        113 // When do we shut the light off
 
@@ -108,6 +109,7 @@ static void _delay_ms(uint16_t n)
 #include <util/delay.h>
 #endif
 
+#include <avr/pgmspace.h>
 #include <avr/interrupt.h>
 #include <avr/wdt.h>
 #include <avr/eeprom.h>
@@ -144,6 +146,13 @@ static uint8_t modes[TOTAL_MODES] = { // high enough to handle all
 volatile uint8_t mode_idx = 0;
 // int     mode_dir = 0; // 1 or -1. Determined when checking stars. Do we increase or decrease the idx when moving up to a higher mode.
 #define mode_dir 1
+PROGMEM const uint8_t voltage_blinks[] = {
+    ADC_0,    // 1 blink  for 0%-25%
+    ADC_25,   // 2 blinks for 25%-50%
+    ADC_50,   // 3 blinks for 50%-75%
+    ADC_75,   // 4 blinks for 75%-100%
+    ADC_100,  // 5 blinks for >100%
+};
 
 void store_mode_idx(uint8_t lvl) {  //central method for writing (with wear leveling)
 	uint8_t oldpos=eepos;
@@ -299,27 +308,21 @@ int main(void)
 			_delay_ms(749);
 		} else if (mode_idx < BATT_CHECK_MODE) {
 			uint8_t blinks = 0;
-			// division takes too much flash space
-			//voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
-			voltage = get_voltage();
-			if (voltage >= ADC_42) {
-				blinks = 5;
-			}
-			else if (voltage > VOLTAGE_FULL) {
-				blinks = 4;
-			}
-			else if (voltage > VOLTAGE_GREEN) {
-				blinks = 3;
-			}
-			else if (voltage > VOLTAGE_YELLOW) {
-				blinks = 2;
-			}
-			else if (voltage > ADC_LOW) {
-				blinks = 1;
-			}
 			// turn off and wait one second before showing the value
+			// (also, ensure voltage is measured while not under load)
 			PWM_LVL = 0;
 			_delay_ms(1000);
+			voltage = get_voltage();
+			voltage = get_voltage(); // the first one is unreliable
+			// division takes too much flash space
+			//voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
+			// a table uses less space than 5 logic clauses
+			for (i=0; i<sizeof(voltage_blinks); i++) {
+				if (voltage > pgm_read_byte(voltage_blinks + i)) {
+					blinks ++;
+				}
+			}
+			
 			// blink up to five times to show voltage
 			// (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
 			for(i=0; i<blinks; i++) {
