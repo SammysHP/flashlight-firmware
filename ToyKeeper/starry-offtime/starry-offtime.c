@@ -67,12 +67,20 @@
 //#define TICKS_250MS       // If enabled, ticks are every 250 ms. If disabled, ticks are every 500 ms
                             // Affects turbo timeout/rampdown timing
 
+#define OFFTIM3             // Use short/med/long off-time presses
+                            // instead of just short/long
+
 // PWM levels for the big circuit (FET or Nx7135)
 #define MODESNx             0,0,0,70,255
 // PWM levels for the small circuit (1x7135)
 // (if the big circuit is a FET, use 0 for high modes here instead of 255)
 #define MODES1x             3,15,128,255,255
 #define MODES_PWM           PHASE,FAST,FAST,FAST,PHASE
+// Hidden modes are *before* the lowest (moon) mode, and should be specified
+// in reverse order.  So, to go backward from moon to turbo to strobe to
+// battcheck, use BATTCHECK,STROBE,255 .
+#define HIDDENMODES         BATTCHECK,STROBE,255
+#define HIDDENMODES_PWM     PHASE,PHASE,PHASE
 
 #define MODE_TURBO_LOW      140 // Level turbo ramps down to if turbo enabled
 #define TURBO                   // comment out to disable turbo step-down
@@ -81,12 +89,31 @@
 //#define TURBO_RAMP_DOWN           // By default we will start to gradually ramp down, once TURBO_TIMEOUT ticks are reached, 1 PWM_LVL each tick until reaching MODE_TURBO_LOW PWM_LVL
                                 // If commented out, we will step down to MODE_TURBO_LOW once TURBO_TIMEOUT ticks are reached
 
-#define ADC_LOW             130 // When do we start ramping
-#define ADC_CRIT            120 // When do we shut the light off
+// These values were measured using "Moonlight Special" driver from RMM.
+// Your mileage may vary.
+#define ADC_42          195 // the ADC value we expect for 4.20 volts
+#define ADC_100         195 // the ADC value for 100% full (4.2V resting)
+#define ADC_75          184 // the ADC value for 75% full (4.0V resting)
+#define ADC_50          174 // the ADC value for 50% full (3.8V resting)
+#define ADC_25          159 // the ADC value for 25% full (3.5V resting)
+#define ADC_0           133 // the ADC value for 0% full (3.0V resting)
+#define ADC_LOW         123 // When do we start ramping down (2.8V)
+#define ADC_CRIT        118 // When do we shut the light off (2.7V)
+// These were JonnyC's original values
+//#define ADC_LOW             130     // When do we start ramping
+//#define ADC_CRIT            120     // When do we shut the light off
 
-#define CAP_THRESHOLD       130  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
+#ifdef OFFTIM3
+#define CAP_SHORT           190  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
+#define CAP_MED             100  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
+#else
+#define CAP_SHORT           130  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
                                  // Not sure the lowest you can go before getting bad readings, but with a value of 70 and a 1uF cap, it seemed to switch sometimes
                                  // even when waiting 10 seconds between presses.
+#endif
+
+#define STROBE    254       // Convenience code for strobe mode
+#define BATTCHECK 253       // Convenience code for battery check mode
 
 /*
  * =========================================================================
@@ -137,14 +164,25 @@ uint8_t eep[32];
 uint8_t memory = 0;
 
 // Modes (gets set when the light starts up based on stars)
-PROGMEM const uint8_t modesNx[] = { MODESNx };
-PROGMEM const uint8_t modes1x[] = { MODES1x };
-PROGMEM const uint8_t modes_pwm[] = { MODES_PWM };
+PROGMEM const uint8_t modesNx[] = { MODESNx , HIDDENMODES };
+PROGMEM const uint8_t modes1x[] = { MODES1x , HIDDENMODES };
+PROGMEM const uint8_t modes_pwm[] = { MODES_PWM , HIDDENMODES_PWM };
 volatile uint8_t mode_idx = 0;
-int     mode_dir = 1; // 1 or -1. Determined when checking stars. Do we increase or decrease the idx when moving up to a higher mode.
+// NOTE: Only '1' is known to work; -1 will probably break and is untested.
+// In other words, short press goes to the next (higher) mode,
+// medium press goes to the previous (lower) mode.
+#define mode_dir 1
 uint8_t mode_cnt = sizeof(modesNx);
 
 uint8_t lowbatt_cnt = 0;
+
+PROGMEM const uint8_t voltage_blinks[] = {
+    ADC_0,    // 1 blink  for 0%-25%
+    ADC_25,   // 2 blinks for 25%-50%
+    ADC_50,   // 3 blinks for 50%-75%
+    ADC_75,   // 4 blinks for 75%-100%
+    ADC_100,  // 5 blinks for >100%
+};
 
 void store_mode_idx(uint8_t lvl) {  //central method for writing (with wear leveling)
     uint8_t oldpos=eepos;
@@ -163,17 +201,39 @@ inline void read_mode_idx() {
 }
 
 inline void next_mode() {
-    if (mode_idx == 0 && mode_dir == -1) {
+    mode_idx += mode_dir;
+    if (mode_idx >= mode_cnt) {
         // Wrap around
-        mode_idx = mode_cnt - 1;
-    } else {
-        mode_idx += mode_dir;
-        if (mode_idx > (mode_cnt - 1)) {
-            // Wrap around
-            mode_idx = 0;
-        }
+        mode_idx = 0;
     }
 }
+
+#ifdef OFFTIM3
+inline void prev_mode() {
+    if (mode_idx > 0) {
+        // Regular mode: is between 1 and TOTAL_MODES
+        mode_idx -= mode_dir;
+    } else {
+        // Otherwise, wrap around
+        mode_idx = mode_cnt - 1;
+    }
+    /* For future use:
+    // FIXME: use a different mechanism for hidden modes
+    if ((0x40 > mode_idx) && (mode_idx > 0)) {
+        // Regular mode: is between 1 and TOTAL_MODES
+        mode_idx -= mode_dir;
+    // FIXME: use a different mechanism for hidden modes
+    } else if ((mode_idx&0x3f) < sizeof(neg_modes)) {
+        // "Negative" mode (uses 0x40 bit to indicate "negative")
+        mode_idx = (mode_idx|0x40) + mode_dir;
+    } else {
+        // Otherwise, always reset to first mode
+        // (mode was too negative or otherwise out of range)
+        mode_idx = 0;
+    }
+    */
+}
+#endif
 
 inline void check_stars() {
     // Configure options based on stars
@@ -246,22 +306,33 @@ void set_output(uint8_t pwm1, uint8_t pwm2) {
 
 void set_mode(mode) {
     TCCR0A = pgm_read_byte(modes_pwm + mode);
-    set_output(pgm_read_byte(modesNx + mode), pgm_read_byte(modes1x + mode));
+    // Only set output for solid modes
+    uint8_t out = pgm_read_byte(modesNx + mode);
+    if ((out < 250) || (out == 255)) {
+        set_output(pgm_read_byte(modesNx + mode), pgm_read_byte(modes1x + mode));
+    }
 }
 
 #ifdef VOLTAGE_MON
-uint8_t low_voltage(uint8_t voltage_val) {
+uint8_t get_voltage() {
     // Start conversion
     ADCSRA |= (1 << ADSC);
     // Wait for completion
     while (ADCSRA & (1 << ADSC));
     // See if voltage is lower than what we were looking for
-    if (ADCH < voltage_val) {
+    return ADCH;
+}
+
+uint8_t low_voltage(uint8_t voltage_val) {
+    uint8_t voltage = get_voltage();
+    // See if voltage is lower than what we were looking for
+    if (voltage < voltage_val) {
         // See if it's been low for a while
         if (++lowbatt_cnt > 8) {
             lowbatt_cnt = 0;
             return 1;
         }
+        _delay_ms(100);  // don't take a reading *too* often
     } else {
         lowbatt_cnt = 0;
     }
@@ -322,10 +393,16 @@ int main(void)
     ADCSRA |= (1 << ADSC);
     // Wait for completion
     while (ADCSRA & (1 << ADSC));
-    if (ADCH > CAP_THRESHOLD) {
+    if (ADCH > CAP_SHORT) {
         // Indicates they did a short press, go to the next mode
         next_mode(); // Will handle wrap arounds
         store_mode_idx(mode_idx);
+#ifdef OFFTIM3
+    } else if (ADCH > CAP_MED) {
+        // User did a medium press, go back one mode
+        prev_mode(); // Will handle "negative" modes and wrap-arounds
+        store_mode_idx(mode_idx);
+#endif
     } else {
         // Didn't have a short press, keep the same mode
         // ... or reset to the first mode
@@ -360,7 +437,7 @@ int main(void)
 
     // Enable sleep mode set to Idle that will be triggered by the sleep_mode() command.
     // Will allow us to go idle between WDT interrupts
-    set_sleep_mode(SLEEP_MODE_IDLE);
+    //set_sleep_mode(SLEEP_MODE_IDLE);  // not used due to blinky modes
 
     WDT_on();
 
@@ -370,11 +447,48 @@ int main(void)
 
     set_mode(mode_idx);
 
+    uint8_t output;
 #ifdef VOLTAGE_MON
     uint8_t i = 0;
     uint8_t hold_pwm;
+    uint8_t voltage;
 #endif
     while(1) {
+        output = pgm_read_byte(modesNx + mode_idx);
+        if (output == STROBE) {
+            set_output(255,255);
+            _delay_ms(50);
+            set_output(0,0);
+            _delay_ms(50);
+        }
+        else if (output == BATTCHECK) {
+            uint8_t blinks = 0;
+            // turn off and wait one second before showing the value
+            // (also, ensure voltage is measured while not under load)
+            set_output(0,0);
+            _delay_ms(1000);
+            voltage = get_voltage();
+            voltage = get_voltage(); // the first one is unreliable
+            // division takes too much flash space
+            //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
+            // a table uses less space than 5 logic clauses
+            for (i=0; i<sizeof(voltage_blinks); i++) {
+                if (voltage > pgm_read_byte(voltage_blinks + i)) {
+                    blinks ++;
+                }
+            }
+
+            // blink up to five times to show voltage
+            // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
+            for(i=0; i<blinks; i++) {
+                set_output(0,40);
+                _delay_ms(100);
+                set_output(0,0);
+                _delay_ms(400);
+            }
+
+            _delay_ms(1000);  // wait at least 1 second between readouts
+        }
     #ifdef VOLTAGE_MON
         if (low_voltage(ADC_LOW)) {
             // We need to go to a lower level
@@ -423,7 +537,7 @@ int main(void)
             _delay_ms(3000);
         }
     #endif
-        sleep_mode();
+        //sleep_mode();  // incompatible with blinky modes
     }
 
     return 0; // Standard Return Code
