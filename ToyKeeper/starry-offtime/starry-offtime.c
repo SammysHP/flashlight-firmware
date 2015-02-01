@@ -79,8 +79,8 @@
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,255 .
-#define HIDDENMODES         STROBE,255
-#define HIDDENMODES_PWM     PHASE,PHASE
+#define HIDDENMODES         BATTCHECK,STROBE,255
+#define HIDDENMODES_PWM     PHASE,PHASE,PHASE
 
 #define MODE_TURBO_LOW      140 // Level turbo ramps down to if turbo enabled
 #define TURBO                   // comment out to disable turbo step-down
@@ -89,8 +89,19 @@
 //#define TURBO_RAMP_DOWN           // By default we will start to gradually ramp down, once TURBO_TIMEOUT ticks are reached, 1 PWM_LVL each tick until reaching MODE_TURBO_LOW PWM_LVL
                                 // If commented out, we will step down to MODE_TURBO_LOW once TURBO_TIMEOUT ticks are reached
 
-#define ADC_LOW             130 // When do we start ramping
-#define ADC_CRIT            120 // When do we shut the light off
+// These values were measured using "Moonlight Special" driver from RMM.
+// Your mileage may vary.
+#define ADC_42          195 // the ADC value we expect for 4.20 volts
+#define ADC_100         195 // the ADC value for 100% full (4.2V resting)
+#define ADC_75          184 // the ADC value for 75% full (4.0V resting)
+#define ADC_50          174 // the ADC value for 50% full (3.8V resting)
+#define ADC_25          159 // the ADC value for 25% full (3.5V resting)
+#define ADC_0           133 // the ADC value for 0% full (3.0V resting)
+#define ADC_LOW         123 // When do we start ramping down (2.8V)
+#define ADC_CRIT        118 // When do we shut the light off (2.7V)
+// These were JonnyC's original values
+//#define ADC_LOW             130     // When do we start ramping
+//#define ADC_CRIT            120     // When do we shut the light off
 
 #ifdef OFFTIM3
 #define CAP_SHORT           190  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
@@ -164,6 +175,14 @@ volatile uint8_t mode_idx = 0;
 uint8_t mode_cnt = sizeof(modesNx);
 
 uint8_t lowbatt_cnt = 0;
+
+PROGMEM const uint8_t voltage_blinks[] = {
+    ADC_0,    // 1 blink  for 0%-25%
+    ADC_25,   // 2 blinks for 25%-50%
+    ADC_50,   // 3 blinks for 50%-75%
+    ADC_75,   // 4 blinks for 75%-100%
+    ADC_100,  // 5 blinks for >100%
+};
 
 void store_mode_idx(uint8_t lvl) {  //central method for writing (with wear leveling)
     uint8_t oldpos=eepos;
@@ -295,13 +314,19 @@ void set_mode(mode) {
 }
 
 #ifdef VOLTAGE_MON
-uint8_t low_voltage(uint8_t voltage_val) {
+uint8_t get_voltage() {
     // Start conversion
     ADCSRA |= (1 << ADSC);
     // Wait for completion
     while (ADCSRA & (1 << ADSC));
     // See if voltage is lower than what we were looking for
-    if (ADCH < voltage_val) {
+    return ADCH;
+}
+
+uint8_t low_voltage(uint8_t voltage_val) {
+    uint8_t voltage = get_voltage();
+    // See if voltage is lower than what we were looking for
+    if (voltage < voltage_val) {
         // See if it's been low for a while
         if (++lowbatt_cnt > 8) {
             lowbatt_cnt = 0;
@@ -412,7 +437,7 @@ int main(void)
 
     // Enable sleep mode set to Idle that will be triggered by the sleep_mode() command.
     // Will allow us to go idle between WDT interrupts
-    set_sleep_mode(SLEEP_MODE_IDLE);
+    //set_sleep_mode(SLEEP_MODE_IDLE);  // not used due to blinky modes
 
     WDT_on();
 
@@ -426,6 +451,7 @@ int main(void)
 #ifdef VOLTAGE_MON
     uint8_t i = 0;
     uint8_t hold_pwm;
+    uint8_t voltage;
 #endif
     while(1) {
         output = pgm_read_byte(modesNx + mode_idx);
@@ -435,8 +461,34 @@ int main(void)
             set_output(0,0);
             _delay_ms(50);
         }
-        //else if (mode_idx == BATTCHECK) {
-        //}
+        else if (output == BATTCHECK) {
+            uint8_t blinks = 0;
+            // turn off and wait one second before showing the value
+            // (also, ensure voltage is measured while not under load)
+            set_output(0,0);
+            _delay_ms(1000);
+            voltage = get_voltage();
+            voltage = get_voltage(); // the first one is unreliable
+            // division takes too much flash space
+            //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
+            // a table uses less space than 5 logic clauses
+            for (i=0; i<sizeof(voltage_blinks); i++) {
+                if (voltage > pgm_read_byte(voltage_blinks + i)) {
+                    blinks ++;
+                }
+            }
+
+            // blink up to five times to show voltage
+            // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
+            for(i=0; i<blinks; i++) {
+                set_output(0,40);
+                _delay_ms(100);
+                set_output(0,0);
+                _delay_ms(400);
+            }
+
+            _delay_ms(1000);  // wait at least 1 second between readouts
+        }
     #ifdef VOLTAGE_MON
         if (low_voltage(ADC_LOW)) {
             // We need to go to a lower level
