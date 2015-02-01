@@ -67,6 +67,9 @@
 //#define TICKS_250MS       // If enabled, ticks are every 250 ms. If disabled, ticks are every 500 ms
                             // Affects turbo timeout/rampdown timing
 
+#define OFFTIM3             // Use short/med/long off-time presses
+                            // instead of just short/long
+
 // PWM levels for the big circuit (FET or Nx7135)
 #define MODESNx             0,0,0,70,255
 // PWM levels for the small circuit (1x7135)
@@ -84,9 +87,14 @@
 #define ADC_LOW             130 // When do we start ramping
 #define ADC_CRIT            120 // When do we shut the light off
 
-#define CAP_THRESHOLD       130  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
+#ifdef OFFTIM3
+#define CAP_SHORT           190  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
+#define CAP_MED             100  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
+#else
+#define CAP_SHORT           130  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
                                  // Not sure the lowest you can go before getting bad readings, but with a value of 70 and a 1uF cap, it seemed to switch sometimes
                                  // even when waiting 10 seconds between presses.
+#endif
 
 /*
  * =========================================================================
@@ -174,6 +182,33 @@ inline void next_mode() {
         }
     }
 }
+
+#ifdef OFFTIM3
+inline void prev_mode() {
+    if (mode_idx > 0) {
+        // Regular mode: is between 1 and TOTAL_MODES
+        mode_idx -= mode_dir;
+    } else {
+        // Otherwise, wrap around
+        mode_idx = mode_cnt - 1;
+    }
+    /* For future use:
+    // FIXME: use a different mechanism for hidden modes
+    if ((0x40 > mode_idx) && (mode_idx > 0)) {
+        // Regular mode: is between 1 and TOTAL_MODES
+        mode_idx -= mode_dir;
+    // FIXME: use a different mechanism for hidden modes
+    } else if ((mode_idx&0x3f) < sizeof(neg_modes)) {
+        // "Negative" mode (uses 0x40 bit to indicate "negative")
+        mode_idx = (mode_idx|0x40) + mode_dir;
+    } else {
+        // Otherwise, always reset to first mode
+        // (mode was too negative or otherwise out of range)
+        mode_idx = 0;
+    }
+    */
+}
+#endif
 
 inline void check_stars() {
     // Configure options based on stars
@@ -322,10 +357,16 @@ int main(void)
     ADCSRA |= (1 << ADSC);
     // Wait for completion
     while (ADCSRA & (1 << ADSC));
-    if (ADCH > CAP_THRESHOLD) {
+    if (ADCH > CAP_SHORT) {
         // Indicates they did a short press, go to the next mode
         next_mode(); // Will handle wrap arounds
         store_mode_idx(mode_idx);
+#ifdef OFFTIM3
+    } else if (ADCH > CAP_MED) {
+        // User did a medium press, go back one mode
+        prev_mode(); // Will handle "negative" modes and wrap-arounds
+        store_mode_idx(mode_idx);
+#endif
     } else {
         // Didn't have a short press, keep the same mode
         // ... or reset to the first mode
