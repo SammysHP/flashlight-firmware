@@ -1,4 +1,7 @@
+Values in ()'s are estimated based on the other readings.
+
 Ferrero Rocher
+  183 - 4.17V
   177 - 4.06V
   167 - 3.83V
   157 - 3.61V
@@ -8,3 +11,15 @@ AK-47 w/ 2x7135 (350mA)
   174 - 4.00V
   166 - 3.83V
   132 - 3.09V
+
+RMM's Moonlight Special
+  (195 - 4.2V)
+  189 - 4.08V
+  (184 - 4.0V)
+  (174 - 3.8V)
+  160 - 3.48V
+  (159 - 3.5V)
+  134 - 3.01V
+  (133 - 3.0V)
+  (123 - 2.8V)
+  (118 - 2.7V)
