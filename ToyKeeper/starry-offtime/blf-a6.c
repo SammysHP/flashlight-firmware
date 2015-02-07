@@ -327,23 +327,6 @@ uint8_t get_voltage() {
     return ADCH;
 }
 
-#if 0
-uint8_t low_voltage(uint8_t voltage_val) {
-    uint8_t voltage = get_voltage();
-    // See if voltage is lower than what we were looking for
-    if (voltage < voltage_val) {
-        // See if it's been low for a while
-        if (++lowbatt_cnt > 8) {
-            lowbatt_cnt = 0;
-            return 1;
-        }
-        _delay_ms(100);  // don't take a reading *too* often
-    } else {
-        lowbatt_cnt = 0;
-    }
-    return 0;
-}
-#endif
 #endif
 
 ISR(WDT_vect) {
@@ -540,54 +523,6 @@ int main(void)
             // Make sure conversion is running for next time through
             ADCSRA |= (1 << ADSC);
         }
-#if 0
-        if (low_voltage(ADC_LOW)) {
-            // We need to go to a lower level
-            if (mode_idx == 0 && ALT_PWM_LVL <= modes1x[mode_idx]) {
-                // Can't go any lower than the lowest mode
-                // Wait until we hit the critical level before flashing 10 times and turning off
-                while (!low_voltage(ADC_CRIT));
-                i = 0;
-                while (i++<10) {
-                    set_output(0,0);
-                    _delay_ms(250);
-                    set_mode(0);
-                    _delay_ms(500);
-                }
-                // Turn off the light
-                set_output(0,0);
-                // Disable WDT so it doesn't wake us up
-                WDT_off();
-                // Power down as many components as possible
-                set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-                sleep_mode();
-            } else {
-                // Flash 3 times before lowering
-                hold_pwm = ALT_PWM_LVL;
-                i = 0;
-                while (i++<3) {
-                    set_output(0,0);
-                    _delay_ms(250);
-                    set_output(hold_pwm,hold_pwm);
-                    _delay_ms(500);
-                }
-                // Lower the mode by half, but don't go below lowest level
-                if ((ALT_PWM_LVL >> 1) < modes1x[0]) {
-                    set_mode(0);
-                    mode_idx = 0;
-                } else {
-                    set_output(0,ALT_PWM_LVL >> 1);
-                }
-                // See if we should change the current mode level if we've gone under the current mode.
-                if (ALT_PWM_LVL < modes1x[mode_idx]) {
-                    // Lower our recorded mode
-                    mode_idx--;
-                }
-            }
-            // Wait 3 seconds before lowering the level again
-            _delay_ms(3000);
-        }
-#endif
 #endif
         //sleep_mode();  // incompatible with blinky modes
     }
