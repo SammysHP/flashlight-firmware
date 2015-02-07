@@ -172,6 +172,10 @@ volatile uint8_t mode_idx = 0;
 // In other words, short press goes to the next (higher) mode,
 // medium press goes to the previous (lower) mode.
 #define mode_dir 1
+// FIXME: set this based on the actual number of solid modes,
+// not the length of the array
+// FIXME: also, track the number of hidden modes...
+// TODO: and maybe use a fixed-size array? (might be easier)
 uint8_t mode_cnt = sizeof(modesNx);
 
 uint8_t lowbatt_cnt = 0;
@@ -323,6 +327,7 @@ uint8_t get_voltage() {
     return ADCH;
 }
 
+#if 0
 uint8_t low_voltage(uint8_t voltage_val) {
     uint8_t voltage = get_voltage();
     // See if voltage is lower than what we were looking for
@@ -338,6 +343,7 @@ uint8_t low_voltage(uint8_t voltage_val) {
     }
     return 0;
 }
+#endif
 #endif
 
 ISR(WDT_vect) {
@@ -450,8 +456,12 @@ int main(void)
     uint8_t output;
 #ifdef VOLTAGE_MON
     uint8_t i = 0;
-    uint8_t hold_pwm;
+    //uint8_t hold_pwm;
     uint8_t voltage;
+    // Prime the battery check for more accurate first reading
+    voltage = get_voltage();
+    // ... and make sure voltage reading is running for later
+    //ADCSRA |= (1 << ADSC);
 #endif
     while(1) {
         output = pgm_read_byte(modesNx + mode_idx);
@@ -489,7 +499,48 @@ int main(void)
 
             _delay_ms(1000);  // wait at least 1 second between readouts
         }
-    #ifdef VOLTAGE_MON
+#ifdef VOLTAGE_MON
+        if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
+            voltage = ADCH; // get_voltage();
+            // See if voltage is lower than what we were looking for
+            if (voltage < ((mode_idx <= 1) ? ADC_CRIT : ADC_LOW)) {
+                ++lowbatt_cnt;
+            } else {
+                lowbatt_cnt = 0;
+            }
+            // See if it's been low for a while, and maybe step down
+            if (lowbatt_cnt >= 3) {
+                // FIXME: properly track hidden vs normal modes
+                if (mode_idx >= mode_cnt) {
+                    // step down from blinky modes to medium
+                    mode_idx = 2;
+                } else if (mode_idx > 1) {
+                    // step down from solid modes one at a time
+                    // (ignore mode 0 because it's probably invisible anyway
+                    //  if the voltage is this low)
+                    mode_idx -= 1;
+                } else { // Already at the lowest mode
+                    mode_idx = 0;
+                    // Turn off the light
+                    set_output(0,0);
+#ifdef ENABLE_WDT
+                    // Disable WDT so it doesn't wake us up
+                    WDT_off();
+#endif
+                    // Power down as many components as possible
+                    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+                    sleep_mode();
+                }
+                store_mode_idx(mode_idx);
+                lowbatt_cnt = 0;
+                // Wait at least 2 seconds before lowering the level again
+                _delay_ms(2000);  // this will interrupt blinky modes
+            }
+
+            // Make sure conversion is running for next time through
+            ADCSRA |= (1 << ADSC);
+        }
+#if 0
         if (low_voltage(ADC_LOW)) {
             // We need to go to a lower level
             if (mode_idx == 0 && ALT_PWM_LVL <= modes1x[mode_idx]) {
@@ -536,7 +587,8 @@ int main(void)
             // Wait 3 seconds before lowering the level again
             _delay_ms(3000);
         }
-    #endif
+#endif
+#endif
         //sleep_mode();  // incompatible with blinky modes
     }
 
