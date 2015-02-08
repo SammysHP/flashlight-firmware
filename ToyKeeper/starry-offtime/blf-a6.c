@@ -66,9 +66,6 @@
 // Higher values will run slower, lower values run faster.
 #define DELAY_TWEAK         950
 
-//#define TICKS_250MS       // If enabled, ticks are every 250 ms. If disabled, ticks are every 500 ms
-                            // Affects turbo timeout/rampdown timing
-
 #define OFFTIM3             // Use short/med/long off-time presses
                             // instead of just short/long
 
@@ -87,9 +84,13 @@
 // NOTE: WDT is required for on-time memory and WDT-based turbo step-down
 // NOTE: WDT isn't tested, and probably doesn't work
 //#define ENABLE_WDT               // comment out to turn off WDT and save space
-#define MODE_TURBO_LOW      140 // Level turbo ramps down to if turbo enabled
-#define TURBO_STEPDOWN          // comment out to disable turbo step-down
-#define TURBO_TIMEOUT       240 // How many WTD ticks before before dropping down.  If ticks set for 500 ms, then 240 x .5 = 120 seconds.  Max value of 255 unless you change "ticks"
+//#define MODE_TURBO_LOW      140 // Level turbo ramps down to if turbo enabled
+//#define TURBO_STEPDOWN          // comment out to disable turbo step-down
+#define NON_WDT_TURBO            // enable turbo step-down without WDT
+// How many timer ticks before before dropping down.
+// Each timer tick is 500ms, so "60" would be a 30-second stepdown.
+// Max value of 255 unless you change "ticks"
+#define TURBO_TIMEOUT       60
                                 // variable to uint8_t
 //#define TURBO_RAMP_DOWN           // By default we will start to gradually ramp down, once TURBO_TIMEOUT ticks are reached, 1 PWM_LVL each tick until reaching MODE_TURBO_LOW PWM_LVL
                                 // If commented out, we will step down to MODE_TURBO_LOW once TURBO_TIMEOUT ticks are reached
@@ -510,6 +511,9 @@ int main(void)
     set_mode(mode_idx);
 
     uint8_t output;
+#ifdef NON_WDT_TURBO
+    uint8_t ticks = 0;
+#endif
 #ifdef VOLTAGE_MON
     uint8_t lowbatt_cnt = 0;
     uint8_t i = 0;
@@ -559,9 +563,18 @@ int main(void)
             // This part of the code will mostly replace the WDT tick code.
             // TODO: Do some magic in here to detect many-quick-presses
             //       so we can enter config mode
-            // TODO: Also do some magic here to handle turbo step-down
+#ifdef NON_WDT_TURBO
+            // Do some magic here to handle turbo step-down
+            if (ticks < 255) ticks++;
+            if ((ticks > TURBO_TIMEOUT) 
+                    && (output == TURBO)) {
+                mode_idx = solid_modes - 2; // step down to second-highest mode
+                set_mode(mode_idx);
+                store_mode_idx();
+            }
+#endif
             // TODO: Otherwise, just sleep.
-            _delay_ms(250);
+            _delay_ms(500);
         }
 #ifdef VOLTAGE_MON
         if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
