@@ -53,8 +53,6 @@
  * Settings to modify per driver
  */
 
-//#define DEBUG_BLINK
-
 //#define FAST 0x23           // fast PWM channel 1 only
 //#define PHASE 0x21          // phase-correct PWM channel 1 only
 #define FAST 0xA3             // fast PWM both channels
@@ -70,23 +68,24 @@
                             // instead of just short/long
 
 // PWM levels for the big circuit (FET or Nx7135)
-#define MODESNx             0,0,0,34,79,150,255
+#define NUM_MODES1          7
+#define NUM_MODES2          4
+#define MODESNx1            0,0,0,34,79,150,255
+#define MODESNx2            0,0,90,255
 // PWM levels for the small circuit (1x7135)
 // (if the big circuit is a FET, use 0 for high modes here instead of 255)
-#define MODES1x             3,20,128,0,0,0,255
-#define MODES_PWM           PHASE,FAST,FAST,FAST,FAST,FAST,PHASE
+#define MODES1x1            3,20,128,0,0,0,255
+#define MODES1x2            10,180,0,255
+#define MODES_PWM1          PHASE,FAST,FAST,FAST,FAST,FAST,PHASE
+#define MODES_PWM2          FAST,FAST,FAST,PHASE
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,TURBO .
+#define NUM_HIDDEN          3
 #define HIDDENMODES         BATTCHECK,STROBE,TURBO
 #define HIDDENMODES_PWM     PHASE,PHASE,PHASE
 
-// NOTE: WDT is required for on-time memory and WDT-based turbo step-down
-// NOTE: WDT isn't tested, and probably doesn't work
-//#define ENABLE_WDT               // comment out to turn off WDT and save space
-//#define MODE_TURBO_LOW      140 // Level turbo ramps down to if turbo enabled
-//#define TURBO_STEPDOWN          // comment out to disable turbo step-down
-#define NON_WDT_TURBO            // enable turbo step-down without WDT
+//#define NON_WDT_TURBO            // enable turbo step-down without WDT
 // How many timer ticks before before dropping down.
 // Each timer tick is 500ms, so "60" would be a 30-second stepdown.
 // Max value of 255 unless you change "ticks"
@@ -111,8 +110,8 @@
 
 // the BLF EE A6 driver may have different offtime cap values than most other drivers
 #ifdef OFFTIM3
-#define CAP_SHORT           240  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
-#define CAP_MED             180  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
+#define CAP_SHORT           250  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
+#define CAP_MED             190  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
 #else
 #define CAP_SHORT           190  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
                                  // Not sure the lowest you can go before getting bad readings, but with a value of 70 and a 1uF cap, it seemed to switch sometimes
@@ -143,9 +142,6 @@ static void _delay_ms(uint16_t n)
 #include <avr/pgmspace.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#ifdef ENABLE_WDT
-#include <avr/wdt.h>
-#endif
 #include <avr/eeprom.h>
 #include <avr/sleep.h>
 //#include <avr/power.h>
@@ -156,6 +152,7 @@ static void _delay_ms(uint16_t n)
 #define CAP_CHANNEL 0x03    // MUX 03 corresponds with PB3 (Star 4)
 #define CAP_DIDR    ADC3D   // Digital input disable bit corresponding with PB3
 #define PWM_PIN     PB1
+#define ALT_PWM_PIN PB0
 #define VOLTAGE_PIN PB2
 #define ADC_CHANNEL 0x01    // MUX 01 corresponds with PB2
 #define ADC_DIDR    ADC1D   // Digital input disable bit corresponding with PB2
@@ -171,11 +168,8 @@ static void _delay_ms(uint16_t n)
 // Mode storage
 uint8_t eepos = 0;
 uint8_t memory = 0;
+uint8_t modegroup = 0;
 
-// Modes (gets set when the light starts up based on stars)
-PROGMEM const uint8_t modesNx[] = { MODESNx , 0, HIDDENMODES, 0 };
-PROGMEM const uint8_t modes1x[] = { MODES1x , 0, HIDDENMODES, 0 };
-PROGMEM const uint8_t modes_pwm[] = { MODES_PWM , 0, HIDDENMODES_PWM, 0 };
 uint8_t mode_idx = 0;
 uint8_t fast_presses = 0;
 // NOTE: Only '1' is known to work; -1 will probably break and is untested.
@@ -185,10 +179,23 @@ uint8_t fast_presses = 0;
 // this is set based on the actual number of solid modes,
 // not the length of the array
 // also, it tracks the number of hidden modes...
-// cancelled: and maybe use a fixed-size array? (might be easier) (nah)
-//uint8_t mode_cnt = sizeof(modesNx);
 uint8_t mode_cnt;
-uint8_t solid_modes, hidden_modes;
+uint8_t solid_modes;
+//uint8_t hidden_modes = NUM_HIDDEN;  // this is never used
+
+
+// Modes (gets set when the light starts up based on stars)
+PROGMEM const uint8_t modesNx1[] = { MODESNx1 , 0, HIDDENMODES };
+PROGMEM const uint8_t modesNx2[] = { MODESNx2 , 0, HIDDENMODES };
+const uint8_t *modesNx;
+
+PROGMEM const uint8_t modes1x1[] = { MODES1x1 , 0, HIDDENMODES };
+PROGMEM const uint8_t modes1x2[] = { MODES1x2 , 0, HIDDENMODES };
+const uint8_t *modes1x;
+
+PROGMEM const uint8_t modes_pwm1[] = { MODES_PWM1 , 0, HIDDENMODES_PWM };
+PROGMEM const uint8_t modes_pwm2[] = { MODES_PWM2 , 0, HIDDENMODES_PWM };
+const uint8_t *modes_pwm;
 
 PROGMEM const uint8_t voltage_blinks[] = {
     ADC_0,    // 1 blink  for 0%-25%
@@ -205,7 +212,7 @@ void save_state() {  //central method for writing (with wear leveling)
 
     eepos=(eepos+2)&31;  //wear leveling, use next cell
 
-    eep = mode_idx | (fast_presses << 12) | (memory << 8);
+    eep = mode_idx | (fast_presses << 12) | (modegroup << 8);
     eeprom_write_word((uint16_t *)(eepos), eep);
     eeprom_write_word((uint16_t *)(oldpos), 0xffff);
 }
@@ -221,7 +228,7 @@ void restore_state() {
     if (eepos < 32) {
         mode_idx = eep1;
         fast_presses = (eep2 >> 4);
-        memory = eep2 & 1;  // FIXME: this shouldn't toggle memory
+        modegroup = eep2 & 1;
     }
     else eepos=0;
 }
@@ -288,59 +295,31 @@ void count_modes() {
      * (this matters because, in theory, it might have more than one
      *  set of modes to choose from, so we need to count at runtime)
      */
-    uint8_t i;
-    uint8_t val;
-    uint8_t hidden=0;
-    for(i=0; i<32; i++) {
-        val = pgm_read_byte(modes_pwm + i);
-        if (val == 0) {
-            if (hidden == 1) {
-                hidden_modes = i - solid_modes;
-                hidden = 2; // just in case it keeps going
-                break;
-            } else {
-                hidden = 1;
-                solid_modes = i;
-            }
-        }
+    if (modegroup == 0) {
+        solid_modes = NUM_MODES1;
+        modesNx = modesNx1;
+        modes1x = modes1x1;
+        modes_pwm = modes_pwm1;
+    } else {
+        solid_modes = NUM_MODES2;
+        modesNx = modesNx2;
+        modes1x = modes1x2;
+        modes_pwm = modes_pwm2;
     }
-    mode_cnt = solid_modes + hidden_modes;
+    mode_cnt = solid_modes + 1 + NUM_HIDDEN;
 }
 
-#ifdef ENABLE_WDT
-inline void WDT_on() {
-    // Setup watchdog timer to only interrupt, not reset
-    cli();                          // Disable interrupts
-    wdt_reset();                    // Reset the WDT
-    WDTCR |= (1<<WDCE) | (1<<WDE);  // Start timed sequence
-    #ifdef TICKS_250MS
-    WDTCR = (1<<WDTIE) | (1<<WDP2); // Enable interrupt every 250ms
-    #else
-    WDTCR = (1<<WDTIE) | (1<<WDP2) | (1<<WDP0); // Enable interrupt every 500ms
-    #endif
-    sei();                          // Enable interrupts
-}
-
-inline void WDT_off()
-{
-    cli();                          // Disable interrupts
-    wdt_reset();                    // Reset the WDT
-    MCUSR &= ~(1<<WDRF);            // Clear Watchdog reset flag
-    WDTCR |= (1<<WDCE) | (1<<WDE);  // Start timed sequence
-    WDTCR = 0x00;                   // Disable WDT
-    sei();                          // Enable interrupts
-}
-#endif
-
+#ifdef VOLTAGE_MON
 inline void ADC_on() {
     DIDR0 |= (1 << ADC_DIDR);                           // disable digital input on ADC pin to reduce power consumption
     ADMUX  = (1 << REFS0) | (1 << ADLAR) | ADC_CHANNEL; // 1.1v reference, left-adjust, ADC1/PB2
     ADCSRA = (1 << ADEN ) | (1 << ADSC ) | ADC_PRSCL;   // enable, start, prescale
 }
-
+#else
 inline void ADC_off() {
     ADCSRA &= ~(1<<7); //ADC off
 }
+#endif
 
 void set_output(uint8_t pwm1, uint8_t pwm2) {
     // Need PHASE to properly turn off the light
@@ -353,11 +332,14 @@ void set_output(uint8_t pwm1, uint8_t pwm2) {
 
 void set_mode(mode) {
     TCCR0A = pgm_read_byte(modes_pwm + mode);
+    set_output(pgm_read_byte(modesNx + mode), pgm_read_byte(modes1x + mode));
+    /*
     // Only set output for solid modes
     uint8_t out = pgm_read_byte(modesNx + mode);
     if ((out < 250) || (out == 255)) {
         set_output(pgm_read_byte(modesNx + mode), pgm_read_byte(modes1x + mode));
     }
+    */
 }
 
 #ifdef VOLTAGE_MON
@@ -368,39 +350,6 @@ uint8_t get_voltage() {
     while (ADCSRA & (1 << ADSC));
     // See if voltage is lower than what we were looking for
     return ADCH;
-}
-
-#endif
-
-#ifdef ENABLE_WDT
-ISR(WDT_vect) {
-    static uint8_t ticks = 0;
-    if (ticks < 255) ticks++;
-    // If you want more than 255 for longer turbo timeouts
-    //static uint16_t ticks = 0;
-    //if (ticks < 60000) ticks++;
-
-#ifdef TURBO_STEPDOWN
-    //if (ticks == TURBO_TIMEOUT && modes[mode_idx] == MODE_TURBO) { // Doesn't make any sense why this doesn't work
-    if (ticks >= TURBO_TIMEOUT && mode_idx == (mode_cnt - 1) && PWM_LVL > MODE_TURBO_LOW) {
-        #ifdef TURBO_RAMP_DOWN
-        set_output(PWM_LVL - 1, PWM_LVL - 1);
-        #else
-        // Turbo mode is always at end
-        set_output(MODE_TURBO_LOW, MODE_TURBO_LOW);
-        /*
-        if (MODE_TURBO_LOW <= modes[mode_idx-1]) {
-            // Dropped at or below the previous mode, so set it to the stored mode
-            // Kept this as it was the same functionality as before.  For the TURBO_RAMP_DOWN feature
-            // it doesn't do this logic because I don't know what makes the most sense
-            mode_idx --;
-            save_state();
-        }
-        */
-        #endif
-    }
-#endif
-
 }
 #endif
 
@@ -440,7 +389,7 @@ int main(void)
 
     // Set PWM pin to output
     DDRB |= (1 << PWM_PIN);     // enable main channel
-    DDRB |= (1 << STAR2_PIN);   // enable second channel
+    DDRB |= (1 << ALT_PWM_PIN); // enable second channel
 
     // Set timer to do PWM for correct output pin and set prescaler timing
     //TCCR0A = 0x23; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
@@ -449,53 +398,33 @@ int main(void)
     // Set timer to do PWM for correct output pin and set prescaler timing
     TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
 
-    // Determine what mode we should fire up
-    // Read the last mode that was saved
-    check_stars(); // Moving down here as it might take a bit for the pull-up to turn on?
+    // Read config values and saved state
+    check_stars();
     restore_state();
-
+    // Enable the current mode group
     count_modes();
 
-
-    #ifdef DEBUG_BLINK
-    blink(mode_idx);
-    _delay_ms(1000);
-    #endif
 
     if (cap_val > CAP_SHORT) {
         // Indicates they did a short press, go to the next mode
         next_mode(); // Will handle wrap arounds
         if (fast_presses < 15) fast_presses ++;
-        save_state();
-        #ifdef DEBUG_BLINK
-        blink(1);
-        #endif
 #ifdef OFFTIM3
     } else if (cap_val > CAP_MED) {
         // User did a medium press, go back one mode
         prev_mode(); // Will handle "negative" modes and wrap-arounds
         fast_presses = 0;
-        save_state();
-        #ifdef DEBUG_BLINK
-        blink(2);
-        #endif
 #endif
     } else {
-        // Didn't have a short press, keep the same mode
+        // Long press, keep the same mode
         // ... or reset to the first mode
         fast_presses = 0;
         if (! memory) {
             // Reset to the first mode
             mode_idx = 0;
-            save_state();
         }
-        #ifdef DEBUG_BLINK
-        blink(3);
-        #endif
     }
-    #ifdef DEBUG_BLINK
-    _delay_ms(1000);
-    #endif
+    save_state();
 
     // Turn off ADC
     //ADC_off();
@@ -510,18 +439,11 @@ int main(void)
     #else
     ADC_off();
     #endif
-    ACSR   |=  (1<<7); //AC off
+    //ACSR   |=  (1<<7); //AC off
 
     // Enable sleep mode set to Idle that will be triggered by the sleep_mode() command.
     // Will allow us to go idle between WDT interrupts
     //set_sleep_mode(SLEEP_MODE_IDLE);  // not used due to blinky modes
-
-#ifdef ENABLE_WDT
-    WDT_on();
-#endif
-
-    // Now just fire up the mode
-    //set_mode(mode_idx);
 
     uint8_t output;
 #ifdef NON_WDT_TURBO
@@ -531,9 +453,7 @@ int main(void)
     uint8_t lowbatt_cnt = 0;
     uint8_t i = 0;
     uint8_t voltage;
-    // Prime the battery check for more accurate first reading
-    //voltage = get_voltage();
-    // ... and make sure voltage reading is running for later
+    // Make sure voltage reading is running for later
     ADCSRA |= (1 << ADSC);
 #endif
     while(1) {
@@ -542,19 +462,11 @@ int main(void)
             _delay_ms(1000);  // wait for user to stop fast-pressing button
             fast_presses = 0; // exit this mode after one use
             mode_idx = 0;
-            save_state();
-            //blink(4);
 
-            // Allow user to set mem/no-mem
-            memory ^= 1;
+            // Toggle the mode group, blink, then exit
+            modegroup ^= 1;
             save_state();
             blink(1);
-            _delay_ms(1000);
-            memory ^= 1;
-            save_state();
-
-            //fast_presses = 0;
-            //save_state();
         }
         else if (output == STROBE) {
             set_output(255,255);
@@ -582,15 +494,6 @@ int main(void)
             // blink up to five times to show voltage
             // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
             blink(blinks);
-            /*
-            for(i=0; i<blinks; i++) {
-                set_output(0,40);
-                _delay_ms(100);
-                set_output(0,0);
-                _delay_ms(400);
-            }
-            */
-
             _delay_ms(1000);  // wait at least 1 second between readouts
         }
         else {  // Regular non-hidden solid mode
@@ -606,15 +509,16 @@ int main(void)
                 save_state();
             }
 #endif
-            // TODO: Otherwise, just sleep.
+            // Otherwise, just sleep.
             _delay_ms(500);
 
-            // TODO: Do some magic in here to detect many-quick-presses
-            //       so we can enter config mode
+            // If we got this far, the user has stopped fast-pressing.
+            // So, don't enter config mode.
             fast_presses = 0;
             save_state();
         }
 #ifdef VOLTAGE_MON
+#if 1
         if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
             voltage = ADCH; // get_voltage();
             // See if voltage is lower than what we were looking for
@@ -640,10 +544,6 @@ int main(void)
                     i = 0;
                     // Turn off the light
                     set_output(0,0);
-#ifdef ENABLE_WDT
-                    // Disable WDT so it doesn't wake us up
-                    WDT_off();
-#endif
                     // Power down as many components as possible
                     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
                     sleep_mode();
@@ -660,8 +560,9 @@ int main(void)
             ADCSRA |= (1 << ADSC);
         }
 #endif
+#endif
         //sleep_mode();  // incompatible with blinky modes
     }
 
-    return 0; // Standard Return Code
+    //return 0; // Standard Return Code
 }
