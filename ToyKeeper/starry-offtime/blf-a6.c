@@ -177,6 +177,7 @@ PROGMEM const uint8_t modesNx[] = { MODESNx , 0, HIDDENMODES, 0 };
 PROGMEM const uint8_t modes1x[] = { MODES1x , 0, HIDDENMODES, 0 };
 PROGMEM const uint8_t modes_pwm[] = { MODES_PWM , 0, HIDDENMODES_PWM, 0 };
 uint8_t mode_idx = 0;
+uint8_t fast_presses = 0;
 // NOTE: Only '1' is known to work; -1 will probably break and is untested.
 // In other words, short press goes to the next (higher) mode,
 // medium press goes to the previous (lower) mode.
@@ -199,20 +200,33 @@ PROGMEM const uint8_t voltage_blinks[] = {
 
 void save_state() {  //central method for writing (with wear leveling)
     uint8_t oldpos=eepos;
-    eepos=(eepos+1)&31;  //wear leveling, use next cell
+    uint16_t eep;
+    eepos=(eepos+2)&31;  //wear leveling, use next cell
+
+    eep = mode_idx | (fast_presses << 12);
+    //eep = mode_idx | (fast_presses << 12) | (memory << 8);
+    eeprom_write_word((uint16_t *)(eepos), eep);
+    eeprom_busy_wait();
+    eeprom_write_word((uint16_t *)(oldpos), 0xffff);
+    /*
     // Write the current mode
     EEARL=eepos;  EEDR=mode_idx; EECR=32+4; EECR=32+4+2;  //WRITE  //32:write only (no erase)  4:enable  2:go
     while(EECR & 2); //wait for completion
     // Erase the last mode
     EEARL=oldpos;           EECR=16+4; EECR=16+4+2;  //ERASE  //16:erase only (no write)  4:enable  2:go
+    */
 }
 void restore_state() {
-    uint8_t eep;
-    for(eepos=0; (eepos<32); eepos++) {
-        eep = eeprom_read_byte((const uint8_t *)eepos);
-        if (eep != 0xff) break;
+    uint16_t eep;
+    for(eepos=0; (eepos<32); eepos+=2) {
+        eep = eeprom_read_word((const uint16_t *)eepos);
+        if (eep != 0xffff) break;
     }
-    if (eepos < 32) mode_idx = eep;
+    if (eepos < 32) {
+        mode_idx = (eep & 0xff);
+        fast_presses = (eep >> 12);
+        //memory = (eep >> 8) & 1;
+    }
     else eepos=0;
 }
 
@@ -394,18 +408,16 @@ ISR(WDT_vect) {
 }
 #endif
 
-#ifdef DEBUG_BLINK
 void blink(uint8_t val)
 {
     for (; val>0; val--)
     {
         set_output(0,20);
-        _delay_ms(150);
+        _delay_ms(100);
         set_output(0,0);
-        _delay_ms(200);
+        _delay_ms(400);
     }
 }
-#endif
 
 int main(void)
 {
@@ -457,6 +469,7 @@ int main(void)
     if (cap_val > CAP_SHORT) {
         // Indicates they did a short press, go to the next mode
         next_mode(); // Will handle wrap arounds
+        if (fast_presses < 15) fast_presses ++;
         save_state();
         #ifdef DEBUG_BLINK
         blink(1);
@@ -465,6 +478,7 @@ int main(void)
     } else if (cap_val > CAP_MED) {
         // User did a medium press, go back one mode
         prev_mode(); // Will handle "negative" modes and wrap-arounds
+        fast_presses = 0;
         save_state();
         #ifdef DEBUG_BLINK
         blink(2);
@@ -473,6 +487,7 @@ int main(void)
     } else {
         // Didn't have a short press, keep the same mode
         // ... or reset to the first mode
+        fast_presses = 0;
         if (! memory) {
             // Reset to the first mode
             mode_idx = 0;
@@ -510,7 +525,7 @@ int main(void)
 #endif
 
     // Now just fire up the mode
-    set_mode(mode_idx);
+    //set_mode(mode_idx);
 
     uint8_t output;
 #ifdef NON_WDT_TURBO
@@ -527,7 +542,27 @@ int main(void)
 #endif
     while(1) {
         output = pgm_read_byte(modesNx + mode_idx);
-        if (output == STROBE) {
+        if (fast_presses == 0x0f) {  // Config mode
+            _delay_ms(1000);  // wait for user to stop fast-pressing button
+            fast_presses = 0; // exit this mode after one use
+            mode_idx = 0;
+            save_state();
+            blink(4);
+
+            // Allow user to set mem/no-mem
+            /*
+            memory ^= 1;
+            save_state();
+            blink(1);
+            _delay_ms(1000);
+            memory ^= 1;
+            save_state();
+            */
+
+            //fast_presses = 0;
+            //save_state();
+        }
+        else if (output == STROBE) {
             set_output(255,255);
             _delay_ms(50);
             set_output(0,0);
@@ -552,19 +587,21 @@ int main(void)
 
             // blink up to five times to show voltage
             // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
+            blink(blinks);
+            /*
             for(i=0; i<blinks; i++) {
                 set_output(0,40);
                 _delay_ms(100);
                 set_output(0,0);
                 _delay_ms(400);
             }
+            */
 
             _delay_ms(1000);  // wait at least 1 second between readouts
         }
         else {  // Regular non-hidden solid mode
+            set_mode(mode_idx);
             // This part of the code will mostly replace the WDT tick code.
-            // TODO: Do some magic in here to detect many-quick-presses
-            //       so we can enter config mode
 #ifdef NON_WDT_TURBO
             // Do some magic here to handle turbo step-down
             if (ticks < 255) ticks++;
@@ -577,6 +614,11 @@ int main(void)
 #endif
             // TODO: Otherwise, just sleep.
             _delay_ms(500);
+
+            // TODO: Do some magic in here to detect many-quick-presses
+            //       so we can enter config mode
+            fast_presses = 0;
+            save_state();
         }
 #ifdef VOLTAGE_MON
         if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
