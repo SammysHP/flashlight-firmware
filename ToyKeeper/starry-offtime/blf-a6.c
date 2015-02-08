@@ -590,15 +590,16 @@ int main(void)
             if (lowbatt_cnt >= 8) {
                 // DEBUG: blink on step-down:
                 //set_output(0,0);  _delay_ms(100);
+                i = mode_idx; // save space by not accessing mode_idx more than necessary
                 // properly track hidden vs normal modes
-                if (mode_idx >= solid_modes) {
+                if (i >= solid_modes) {
                     // step down from blinky modes to medium
-                    mode_idx = 3;
-                } else if (mode_idx > 0) {
+                    i = 3;
+                } else if (i > 0) {
                     // step down from solid modes one at a time
-                    mode_idx -= 1;
+                    i -= 1;
                 } else { // Already at the lowest mode
-                    mode_idx = 0;
+                    i = 0;
                     // Turn off the light
                     set_output(0,0);
 #ifdef ENABLE_WDT
@@ -609,7 +610,8 @@ int main(void)
                     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
                     sleep_mode();
                 }
-                set_mode(mode_idx);
+                set_mode(i);
+                mode_idx = i;
                 store_mode_idx();
                 lowbatt_cnt = 0;
                 // Wait at least 2 seconds before lowering the level again
