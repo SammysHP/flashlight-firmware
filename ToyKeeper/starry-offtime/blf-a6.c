@@ -94,16 +94,16 @@
 //#define TURBO_RAMP_DOWN           // By default we will start to gradually ramp down, once TURBO_TIMEOUT ticks are reached, 1 PWM_LVL each tick until reaching MODE_TURBO_LOW PWM_LVL
                                 // If commented out, we will step down to MODE_TURBO_LOW once TURBO_TIMEOUT ticks are reached
 
-// These values were measured using "Moonlight Special" driver from RMM.
+// These values were measured using wight's "A17HYBRID-S" driver built by DBCstm.
 // Your mileage may vary.
-#define ADC_42          185 // the ADC value we expect for 4.20 volts
-#define ADC_100         185 // the ADC value for 100% full (4.2V resting)
-#define ADC_75          175 // the ADC value for 75% full (4.0V resting)
-#define ADC_50          164 // the ADC value for 50% full (3.8V resting)
-#define ADC_25          154 // the ADC value for 25% full (3.5V resting)
-#define ADC_0           133 // the ADC value for 0% full (3.0V resting)
-#define ADC_LOW         123 // When do we start ramping down (2.8V)
-#define ADC_CRIT        118 // When do we shut the light off (2.7V)
+#define ADC_42          174 // the ADC value we expect for 4.20 volts
+#define ADC_100         174 // the ADC value for 100% full (4.2V resting)
+#define ADC_75          165 // the ADC value for 75% full (4.0V resting)
+#define ADC_50          155 // the ADC value for 50% full (3.8V resting)
+#define ADC_25          141 // the ADC value for 25% full (3.5V resting)
+#define ADC_0           118 // the ADC value for 0% full (3.0V resting)
+#define ADC_LOW         109 // When do we start ramping down (2.8V)
+#define ADC_CRIT        104 // When do we shut the light off (2.7V)
 // These were JonnyC's original values
 //#define ADC_LOW             130     // When do we start ramping
 //#define ADC_CRIT            120     // When do we shut the light off
