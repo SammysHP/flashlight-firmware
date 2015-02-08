@@ -203,8 +203,8 @@ void save_state() {  //central method for writing (with wear leveling)
     uint16_t eep;
     eepos=(eepos+2)&31;  //wear leveling, use next cell
 
-    eep = mode_idx | (fast_presses << 12);
-    //eep = mode_idx | (fast_presses << 12) | (memory << 8);
+    //eep = mode_idx | (fast_presses << 12);
+    eep = mode_idx | (fast_presses << 12) | (memory << 8);
     eeprom_write_word((uint16_t *)(eepos), eep);
     eeprom_busy_wait();
     eeprom_write_word((uint16_t *)(oldpos), 0xffff);
@@ -225,7 +225,7 @@ void restore_state() {
     if (eepos < 32) {
         mode_idx = (eep & 0xff);
         fast_presses = (eep >> 12);
-        //memory = (eep >> 8) & 1;
+        memory = (eep >> 8) & 1;
     }
     else eepos=0;
 }
@@ -455,9 +455,9 @@ int main(void)
 
     // Determine what mode we should fire up
     // Read the last mode that was saved
+    check_stars(); // Moving down here as it might take a bit for the pull-up to turn on?
     restore_state();
 
-    check_stars(); // Moving down here as it might take a bit for the pull-up to turn on?
     count_modes();
 
 
@@ -547,17 +547,15 @@ int main(void)
             fast_presses = 0; // exit this mode after one use
             mode_idx = 0;
             save_state();
-            blink(4);
+            //blink(4);
 
             // Allow user to set mem/no-mem
-            /*
             memory ^= 1;
             save_state();
             blink(1);
             _delay_ms(1000);
             memory ^= 1;
             save_state();
-            */
 
             //fast_presses = 0;
             //save_state();
