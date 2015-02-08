@@ -177,7 +177,7 @@ uint8_t memory = 0;
 PROGMEM const uint8_t modesNx[] = { MODESNx , 0, HIDDENMODES, 0 };
 PROGMEM const uint8_t modes1x[] = { MODES1x , 0, HIDDENMODES, 0 };
 PROGMEM const uint8_t modes_pwm[] = { MODES_PWM , 0, HIDDENMODES_PWM, 0 };
-volatile uint8_t mode_idx = 0;
+uint8_t mode_idx = 0;
 // NOTE: Only '1' is known to work; -1 will probably break and is untested.
 // In other words, short press goes to the next (higher) mode,
 // medium press goes to the previous (lower) mode.
