@@ -111,7 +111,7 @@
 // the BLF EE A6 driver may have different offtime cap values than most other drivers
 #ifdef OFFTIM3
 #define CAP_SHORT           240  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
-#define CAP_MED             170  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
+#define CAP_MED             180  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
 #else
 #define CAP_SHORT           190  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
                                  // Not sure the lowest you can go before getting bad readings, but with a value of 70 and a 1uF cap, it seemed to switch sometimes
@@ -217,7 +217,7 @@ inline void read_mode_idx() {
 
 inline void next_mode() {
     mode_idx += 1;
-    if (mode_idx >= mode_cnt) {
+    if (mode_idx >= solid_modes) {
         // Wrap around
         mode_idx = 0;
     }
@@ -231,6 +231,10 @@ inline void prev_mode() {
     } else {
         // Otherwise, wrap around
         mode_idx = mode_cnt - 1;
+    }
+    // If we hit the end of the hidden modes, go back to moon
+    if (pgm_read_byte(modes_pwm + mode_idx) == 0) {
+        mode_idx = 0;
     }
     /* For future use:
     // FIXME: use a different mechanism for hidden modes
