@@ -80,8 +80,8 @@
 #define MODES_PWM           PHASE,FAST,FAST,FAST,FAST,FAST,PHASE
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
-// battcheck, use BATTCHECK,STROBE,255 .
-#define HIDDENMODES         BATTCHECK,STROBE,255
+// battcheck, use BATTCHECK,STROBE,TURBO .
+#define HIDDENMODES         BATTCHECK,STROBE,TURBO
 #define HIDDENMODES_PWM     PHASE,PHASE,PHASE
 
 // NOTE: WDT is required for on-time memory and WDT-based turbo step-down
@@ -181,10 +181,10 @@ volatile uint8_t mode_idx = 0;
 // In other words, short press goes to the next (higher) mode,
 // medium press goes to the previous (lower) mode.
 #define mode_dir 1
-// FIXME: set this based on the actual number of solid modes,
+// this is set based on the actual number of solid modes,
 // not the length of the array
-// FIXME: also, track the number of hidden modes...
-// TODO: and maybe use a fixed-size array? (might be easier)
+// also, it tracks the number of hidden modes...
+// cancelled: and maybe use a fixed-size array? (might be easier) (nah)
 //uint8_t mode_cnt = sizeof(modesNx);
 uint8_t mode_cnt;
 uint8_t solid_modes, hidden_modes;
@@ -219,6 +219,7 @@ inline void next_mode() {
     mode_idx += 1;
     if (mode_idx >= solid_modes) {
         // Wrap around
+        // (note: this also applies when going "forward" from any hidden mode)
         mode_idx = 0;
     }
 }
@@ -236,21 +237,6 @@ inline void prev_mode() {
     if (pgm_read_byte(modes_pwm + mode_idx) == 0) {
         mode_idx = 0;
     }
-    /* For future use:
-    // FIXME: use a different mechanism for hidden modes
-    if ((0x40 > mode_idx) && (mode_idx > 0)) {
-        // Regular mode: is between 1 and TOTAL_MODES
-        mode_idx -= 1;
-    // FIXME: use a different mechanism for hidden modes
-    } else if ((mode_idx&0x3f) < sizeof(neg_modes)) {
-        // "Negative" mode (uses 0x40 bit to indicate "negative")
-        mode_idx = (mode_idx|0x40) + 1;
-    } else {
-        // Otherwise, always reset to first mode
-        // (mode was too negative or otherwise out of range)
-        mode_idx = 0;
-    }
-    */
 }
 #endif
 
@@ -571,6 +557,13 @@ int main(void)
 
             _delay_ms(1000);  // wait at least 1 second between readouts
         }
+        else {  // Regular non-hidden solid mode
+            // This part of the code will mostly replace the WDT tick code.
+            // TODO: Do some magic in here to detect many-quick-presses
+            //       so we can enter config mode
+            // TODO: Also do some magic here to handle turbo step-down
+            // TODO: Otherwise, just sleep.
+        }
 #ifdef VOLTAGE_MON
 #if 0
         if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
@@ -583,8 +576,8 @@ int main(void)
             }
             // See if it's been low for a while, and maybe step down
             if (lowbatt_cnt >= 3) {
-                // FIXME: properly track hidden vs normal modes
-                if (mode_idx >= mode_cnt) {
+                // properly track hidden vs normal modes
+                if (mode_idx >= solid_modes) {
                     // step down from blinky modes to medium
                     mode_idx = 2;
                 } else if (mode_idx > 1) {
