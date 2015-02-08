@@ -70,12 +70,12 @@
 // PWM levels for the big circuit (FET or Nx7135)
 #define NUM_MODES1          7
 #define NUM_MODES2          4
-#define MODESNx1            0,0,0,34,79,150,255
+#define MODESNx1            0,0,0,38,83,150,255
 #define MODESNx2            0,0,90,255
 // PWM levels for the small circuit (1x7135)
 // (if the big circuit is a FET, use 0 for high modes here instead of 255)
 #define MODES1x1            3,20,128,0,0,0,255
-#define MODES1x2            10,180,0,255
+#define MODES1x2            20,160,0,255
 #define MODES_PWM1          PHASE,FAST,FAST,FAST,FAST,FAST,PHASE
 #define MODES_PWM2          FAST,FAST,FAST,PHASE
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
