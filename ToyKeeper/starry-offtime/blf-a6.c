@@ -104,9 +104,9 @@
 #define ADC_0           118 // the ADC value for 0% full (3.0V resting)
 #define ADC_LOW         109 // When do we start ramping down (2.8V)
 #define ADC_CRIT        104 // When do we shut the light off (2.7V)
-// These were JonnyC's original values
-//#define ADC_LOW             130     // When do we start ramping
-//#define ADC_CRIT            120     // When do we shut the light off
+// Values for testing only:
+//#define ADC_LOW         125 // When do we start ramping down (2.8V)
+//#define ADC_CRIT        124 // When do we shut the light off (2.7V)
 
 // the BLF EE A6 driver may have different offtime cap values than most other drivers
 #ifdef OFFTIM3
@@ -188,8 +188,6 @@ volatile uint8_t mode_idx = 0;
 //uint8_t mode_cnt = sizeof(modesNx);
 uint8_t mode_cnt;
 uint8_t solid_modes, hidden_modes;
-
-uint8_t lowbatt_cnt = 0;
 
 PROGMEM const uint8_t voltage_blinks[] = {
     ADC_0,    // 1 blink  for 0%-25%
@@ -486,7 +484,7 @@ int main(void)
     #endif
 
     // Turn off ADC
-    ADC_off();
+    //ADC_off();
 
     // Charge up the capacitor by setting CAP_PIN to output
     DDRB  |= (1 << CAP_PIN);    // Output
@@ -513,13 +511,13 @@ int main(void)
 
     uint8_t output;
 #ifdef VOLTAGE_MON
+    uint8_t lowbatt_cnt = 0;
     uint8_t i = 0;
-    //uint8_t hold_pwm;
     uint8_t voltage;
     // Prime the battery check for more accurate first reading
-    voltage = get_voltage();
+    //voltage = get_voltage();
     // ... and make sure voltage reading is running for later
-    //ADCSRA |= (1 << ADSC);
+    ADCSRA |= (1 << ADSC);
 #endif
     while(1) {
         output = pgm_read_byte(modesNx + mode_idx);
@@ -563,27 +561,28 @@ int main(void)
             //       so we can enter config mode
             // TODO: Also do some magic here to handle turbo step-down
             // TODO: Otherwise, just sleep.
+            _delay_ms(250);
         }
 #ifdef VOLTAGE_MON
-#if 0
         if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
             voltage = ADCH; // get_voltage();
             // See if voltage is lower than what we were looking for
-            if (voltage < ((mode_idx <= 1) ? ADC_CRIT : ADC_LOW)) {
-                ++lowbatt_cnt;
+            //if (voltage < ((mode_idx <= 1) ? ADC_CRIT : ADC_LOW)) {
+            if (voltage < ADC_LOW) {
+                lowbatt_cnt ++;
             } else {
                 lowbatt_cnt = 0;
             }
             // See if it's been low for a while, and maybe step down
-            if (lowbatt_cnt >= 3) {
+            if (lowbatt_cnt >= 8) {
+                // DEBUG: blink on step-down:
+                //set_output(0,0);  _delay_ms(100);
                 // properly track hidden vs normal modes
                 if (mode_idx >= solid_modes) {
                     // step down from blinky modes to medium
-                    mode_idx = 2;
-                } else if (mode_idx > 1) {
+                    mode_idx = 3;
+                } else if (mode_idx > 0) {
                     // step down from solid modes one at a time
-                    // (ignore mode 0 because it's probably invisible anyway
-                    //  if the voltage is this low)
                     mode_idx -= 1;
                 } else { // Already at the lowest mode
                     mode_idx = 0;
@@ -597,16 +596,16 @@ int main(void)
                     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
                     sleep_mode();
                 }
+                set_mode(mode_idx);
                 store_mode_idx();
                 lowbatt_cnt = 0;
                 // Wait at least 2 seconds before lowering the level again
-                _delay_ms(2000);  // this will interrupt blinky modes
+                _delay_ms(250);  // this will interrupt blinky modes
             }
 
             // Make sure conversion is running for next time through
             ADCSRA |= (1 << ADSC);
         }
-#endif
 #endif
         //sleep_mode();  // incompatible with blinky modes
     }
