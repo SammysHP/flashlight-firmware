@@ -170,7 +170,6 @@ static void _delay_ms(uint16_t n)
 
 // Mode storage
 uint8_t eepos = 0;
-uint8_t eep[32];
 uint8_t memory = 0;
 
 // Modes (gets set when the light starts up based on stars)
@@ -198,7 +197,7 @@ PROGMEM const uint8_t voltage_blinks[] = {
     ADC_100,  // 5 blinks for >100%
 };
 
-void store_mode_idx() {  //central method for writing (with wear leveling)
+void save_state() {  //central method for writing (with wear leveling)
     uint8_t oldpos=eepos;
     eepos=(eepos+1)&31;  //wear leveling, use next cell
     // Write the current mode
@@ -207,10 +206,13 @@ void store_mode_idx() {  //central method for writing (with wear leveling)
     // Erase the last mode
     EEARL=oldpos;           EECR=16+4; EECR=16+4+2;  //ERASE  //16:erase only (no write)  4:enable  2:go
 }
-inline void read_mode_idx() {
-    eeprom_read_block(&eep, 0, 32);
-    while((eep[eepos] == 0xff) && (eepos < 32)) eepos++;
-    if (eepos < 32) mode_idx = eep[eepos];//&0x10; What the?
+void restore_state() {
+    uint8_t eep;
+    for(eepos=0; (eepos<32); eepos++) {
+        eep = eeprom_read_byte((const uint8_t *)eepos);
+        if (eep != 0xff) break;
+    }
+    if (eepos < 32) mode_idx = eep;
     else eepos=0;
 }
 
@@ -382,7 +384,7 @@ ISR(WDT_vect) {
             // Kept this as it was the same functionality as before.  For the TURBO_RAMP_DOWN feature
             // it doesn't do this logic because I don't know what makes the most sense
             mode_idx --;
-            store_mode_idx();
+            save_state();
         }
         */
         #endif
@@ -441,7 +443,7 @@ int main(void)
 
     // Determine what mode we should fire up
     // Read the last mode that was saved
-    read_mode_idx();
+    restore_state();
 
     check_stars(); // Moving down here as it might take a bit for the pull-up to turn on?
     count_modes();
@@ -455,7 +457,7 @@ int main(void)
     if (cap_val > CAP_SHORT) {
         // Indicates they did a short press, go to the next mode
         next_mode(); // Will handle wrap arounds
-        store_mode_idx();
+        save_state();
         #ifdef DEBUG_BLINK
         blink(1);
         #endif
@@ -463,7 +465,7 @@ int main(void)
     } else if (cap_val > CAP_MED) {
         // User did a medium press, go back one mode
         prev_mode(); // Will handle "negative" modes and wrap-arounds
-        store_mode_idx();
+        save_state();
         #ifdef DEBUG_BLINK
         blink(2);
         #endif
@@ -474,7 +476,7 @@ int main(void)
         if (! memory) {
             // Reset to the first mode
             mode_idx = 0;
-            store_mode_idx();
+            save_state();
         }
         #ifdef DEBUG_BLINK
         blink(3);
@@ -570,7 +572,7 @@ int main(void)
                     && (output == TURBO)) {
                 mode_idx = solid_modes - 2; // step down to second-highest mode
                 set_mode(mode_idx);
-                store_mode_idx();
+                save_state();
             }
 #endif
             // TODO: Otherwise, just sleep.
@@ -612,7 +614,7 @@ int main(void)
                 }
                 set_mode(i);
                 mode_idx = i;
-                store_mode_idx();
+                save_state();
                 lowbatt_cnt = 0;
                 // Wait at least 2 seconds before lowering the level again
                 _delay_ms(250);  // this will interrupt blinky modes
