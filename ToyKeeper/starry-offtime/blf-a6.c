@@ -200,32 +200,28 @@ PROGMEM const uint8_t voltage_blinks[] = {
 
 void save_state() {  //central method for writing (with wear leveling)
     uint8_t oldpos=eepos;
+    // a single 16-bit write uses less ROM space than two 8-bit writes
     uint16_t eep;
+
     eepos=(eepos+2)&31;  //wear leveling, use next cell
 
-    //eep = mode_idx | (fast_presses << 12);
     eep = mode_idx | (fast_presses << 12) | (memory << 8);
     eeprom_write_word((uint16_t *)(eepos), eep);
-    eeprom_busy_wait();
     eeprom_write_word((uint16_t *)(oldpos), 0xffff);
-    /*
-    // Write the current mode
-    EEARL=eepos;  EEDR=mode_idx; EECR=32+4; EECR=32+4+2;  //WRITE  //32:write only (no erase)  4:enable  2:go
-    while(EECR & 2); //wait for completion
-    // Erase the last mode
-    EEARL=oldpos;           EECR=16+4; EECR=16+4+2;  //ERASE  //16:erase only (no write)  4:enable  2:go
-    */
 }
 void restore_state() {
-    uint16_t eep;
+    // two 8-bit reads use less ROM space than a single 16-bit write
+    uint8_t eep1;
+    uint8_t eep2;
     for(eepos=0; (eepos<32); eepos+=2) {
-        eep = eeprom_read_word((const uint16_t *)eepos);
-        if (eep != 0xffff) break;
+        eep1 = eeprom_read_byte((const uint8_t *)eepos);
+        eep2 = eeprom_read_byte((const uint8_t *)eepos+1);
+        if (eep1 != 0xff) break;
     }
     if (eepos < 32) {
-        mode_idx = (eep & 0xff);
-        fast_presses = (eep >> 12);
-        memory = (eep >> 8) & 1;
+        mode_idx = eep1;
+        fast_presses = (eep2 >> 4);
+        memory = eep2 & 1;  // FIXME: this shouldn't toggle memory
     }
     else eepos=0;
 }
