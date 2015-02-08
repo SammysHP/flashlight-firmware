@@ -97,6 +97,13 @@ uint8_t get_voltage() {
     return ADCH;
 }
 
+void noblink() {
+    PWM_LVL = (BLINK_PWM>>2);
+    _delay_ms(5);
+    PWM_LVL = 0;
+    _delay_ms(200);
+}
+
 void blink() {
     PWM_LVL = BLINK_PWM;
     _delay_ms(100);
@@ -145,6 +152,9 @@ int main(void)
         _delay_ms(1000);
 
         // tens
+        if (voltage < 10) {
+            noblink();
+        }
         while (voltage >= 10) {
             voltage -= 10;
             blink();
@@ -152,6 +162,9 @@ int main(void)
         _delay_ms(1000);
 
         // ones
+        if (voltage <= 0) {
+            noblink();
+        }
         while (voltage > 0) {
             voltage -= 1;
             blink();
