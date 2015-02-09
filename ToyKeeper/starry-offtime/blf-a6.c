@@ -1,10 +1,16 @@
 /*
+ * BLF EE A6 firmware (special-edition group buy light)
+ * This light uses a FET+1 style driver, with a FET on the main PWM channel
+ * for the brightest high modes and a single 7135 chip on the secondary PWM
+ * channel so we can get stable, efficient low / medium modes.  It also
+ * includes a capacitor for measuring off time.
+ *
  * NANJG 105C Diagram
  *           ---
  *         -|   |- VCC
- *  Star 4 -|   |- Voltage ADC
- *  Star 3 -|   |- PWM
- *     GND -|   |- Star 2
+ *     OTC -|   |- Voltage ADC
+ *  Star 3 -|   |- PWM (FET)
+ *     GND -|   |- PWM (1x7135)
  *           ---
  *
  * FUSES
@@ -35,16 +41,12 @@
  *            |
  *           GND
  *
- *      ADC = ((V_bat - V_diode) * R2   * 255) / ((R1    + R2  ) * V_ref)
- *      125 = ((3.0   - .25    ) * 4700 * 255) / ((19100 + 4700) * 1.1  )
- *      121 = ((2.9   - .25    ) * 4700 * 255) / ((19100 + 4700) * 1.1  )
+ *   To find out what values to use, flash the driver with battcheck.hex
+ *   and hook the light up to each voltage you need a value for.  This is
+ *   much more reliable than attempting to calculate the values from a
+ *   theoretical formula.
  *
- *      Well 125 and 121 were too close, so it shut off right after lowering to low mode, so I went with
- *      130 and 120
- *
- *      To find out what value to use, plug in the target voltage (V) to this equation
- *          value = (V * 4700 * 255) / (23800 * 1.1)
- *
+ *   Same for off-time capacitor values.  Measure, don't guess.
  */
 #define F_CPU 4800000UL
 
@@ -87,14 +89,11 @@
 #define HIDDENMODES         BATTCHECK,STROBE,TURBO
 #define HIDDENMODES_PWM     PHASE,PHASE,PHASE
 
-//#define NON_WDT_TURBO            // enable turbo step-down without WDT
+#define NON_WDT_TURBO            // enable turbo step-down without WDT
 // How many timer ticks before before dropping down.
 // Each timer tick is 500ms, so "60" would be a 30-second stepdown.
 // Max value of 255 unless you change "ticks"
 #define TURBO_TIMEOUT       60
-                                // variable to uint8_t
-//#define TURBO_RAMP_DOWN           // By default we will start to gradually ramp down, once TURBO_TIMEOUT ticks are reached, 1 PWM_LVL each tick until reaching MODE_TURBO_LOW PWM_LVL
-                                // If commented out, we will step down to MODE_TURBO_LOW once TURBO_TIMEOUT ticks are reached
 
 // These values were measured using wight's "A17HYBRID-S" driver built by DBCstm.
 // Your mileage may vary.
@@ -142,8 +141,8 @@ static void _delay_ms(uint16_t n)
 #endif
 
 #include <avr/pgmspace.h>
-#include <avr/io.h>
-#include <avr/interrupt.h>
+//#include <avr/io.h>
+//#include <avr/interrupt.h>
 #include <avr/eeprom.h>
 #include <avr/sleep.h>
 //#include <avr/power.h>
@@ -167,36 +166,37 @@ static void _delay_ms(uint16_t n)
  * global variables
  */
 
-// Mode storage
+// Config / state variables
 uint8_t eepos = 0;
-uint8_t memory = 0;
-uint8_t modegroup = 0;
+uint8_t memory = 0;        // mode memory, or not (set via soldered star)
+uint8_t modegroup = 0;     // which mode group (set above in #defines)
+uint8_t mode_idx = 0;      // current or last-used mode number
+uint8_t fast_presses = 0;  // counter for entering config mode
 
-uint8_t mode_idx = 0;
-uint8_t fast_presses = 0;
 // NOTE: Only '1' is known to work; -1 will probably break and is untested.
 // In other words, short press goes to the next (higher) mode,
 // medium press goes to the previous (lower) mode.
 #define mode_dir 1
-// this is set based on the actual number of solid modes,
-// not the length of the array
-// also, it tracks the number of hidden modes...
+// total length of current mode group's array
 uint8_t mode_cnt;
+// number of regular non-hidden modes in current mode group
 uint8_t solid_modes;
+// number of hidden modes in the current mode group
+// (hardcoded because both groups have the same hidden modes)
 //uint8_t hidden_modes = NUM_HIDDEN;  // this is never used
 
 
-// Modes (gets set when the light starts up based on stars)
-PROGMEM const uint8_t modesNx1[] = { MODESNx1 , 0, HIDDENMODES };
-PROGMEM const uint8_t modesNx2[] = { MODESNx2 , 0, HIDDENMODES };
-const uint8_t *modesNx;
+// Modes (gets set when the light starts up based on saved config values)
+PROGMEM const uint8_t modesNx1[] = { MODESNx1, HIDDENMODES };
+PROGMEM const uint8_t modesNx2[] = { MODESNx2, HIDDENMODES };
+const uint8_t *modesNx;  // gets pointed at whatever group is current
 
-PROGMEM const uint8_t modes1x1[] = { MODES1x1 , 0, HIDDENMODES };
-PROGMEM const uint8_t modes1x2[] = { MODES1x2 , 0, HIDDENMODES };
+PROGMEM const uint8_t modes1x1[] = { MODES1x1, HIDDENMODES };
+PROGMEM const uint8_t modes1x2[] = { MODES1x2, HIDDENMODES };
 const uint8_t *modes1x;
 
-PROGMEM const uint8_t modes_pwm1[] = { MODES_PWM1 , 0, HIDDENMODES_PWM };
-PROGMEM const uint8_t modes_pwm2[] = { MODES_PWM2 , 0, HIDDENMODES_PWM };
+PROGMEM const uint8_t modes_pwm1[] = { MODES_PWM1, HIDDENMODES_PWM };
+PROGMEM const uint8_t modes_pwm2[] = { MODES_PWM2, HIDDENMODES_PWM };
 const uint8_t *modes_pwm;
 
 PROGMEM const uint8_t voltage_blinks[] = {
@@ -207,32 +207,35 @@ PROGMEM const uint8_t voltage_blinks[] = {
     ADC_100,  // 5 blinks for >100%
 };
 
-void save_state() {  //central method for writing (with wear leveling)
+void save_state() {  // central method for writing (with wear leveling)
     uint8_t oldpos=eepos;
     // a single 16-bit write uses less ROM space than two 8-bit writes
     uint16_t eep;
 
-    eepos=(eepos+2)&31;  //wear leveling, use next cell
+    eepos=(eepos+2)&31;  // wear leveling, use next cell
 
     eep = mode_idx | (fast_presses << 12) | (modegroup << 8);
-    eeprom_write_word((uint16_t *)(eepos), eep);
-    eeprom_write_word((uint16_t *)(oldpos), 0xffff);
+    eeprom_write_word((uint16_t *)(eepos), eep);      // save current state
+    eeprom_write_word((uint16_t *)(oldpos), 0xffff);  // erase old state
 }
+
 void restore_state() {
     // two 8-bit reads use less ROM space than a single 16-bit write
     uint8_t eep1;
     uint8_t eep2;
-    for(eepos=0; (eepos<32); eepos+=2) {
+    // find the config data
+    for(eepos=0; eepos<32; eepos+=2) {
         eep1 = eeprom_read_byte((const uint8_t *)eepos);
         eep2 = eeprom_read_byte((const uint8_t *)eepos+1);
         if (eep1 != 0xff) break;
     }
+    // unpack the config data
     if (eepos < 32) {
         mode_idx = eep1;
         fast_presses = (eep2 >> 4);
         modegroup = eep2 & 1;
     }
-    else eepos=0;
+    //else eepos=0;  // unnecessary, save_state handles wrap-around
 }
 
 inline void next_mode() {
@@ -246,16 +249,15 @@ inline void next_mode() {
 
 #ifdef OFFTIM3
 inline void prev_mode() {
-    if (mode_idx > 0) {
+    if (mode_idx == solid_modes) {
+        // If we hit the end of the hidden modes, go back to moon
+        mode_idx = 0;
+    } else if (mode_idx > 0) {
         // Regular mode: is between 1 and TOTAL_MODES
         mode_idx -= 1;
     } else {
         // Otherwise, wrap around
         mode_idx = mode_cnt - 1;
-    }
-    // If we hit the end of the hidden modes, go back to moon
-    if (pgm_read_byte(modes_pwm + mode_idx) == 0) {
-        mode_idx = 0;
     }
 }
 #endif
@@ -289,13 +291,12 @@ inline void check_stars() {
 
 void count_modes() {
     /*
-     * Determine how many solid and hidden modes we have
-     * The modes_pwm array should have several values then a zero,
-     * then several more values then a zero.  Regular modes are the
-     * first group, hidden modes are the second group.
+     * Determine how many solid and hidden modes we have.
+     * The modes_pwm array should have several values for regular modes
+     * then some values for hidden modes.
      *
-     * (this matters because, in theory, it might have more than one
-     *  set of modes to choose from, so we need to count at runtime)
+     * (this matters because we have more than one set of modes to choose
+     *  from, so we need to count at runtime)
      */
     if (modegroup == 0) {
         solid_modes = NUM_MODES1;
@@ -308,7 +309,7 @@ void count_modes() {
         modes1x = modes1x2;
         modes_pwm = modes_pwm2;
     }
-    mode_cnt = solid_modes + 1 + NUM_HIDDEN;
+    mode_cnt = solid_modes + NUM_HIDDEN;
 }
 
 #ifdef VOLTAGE_MON
