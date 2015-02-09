@@ -68,6 +68,9 @@
 
 #define OFFTIM3             // Use short/med/long off-time presses
                             // instead of just short/long
+// comment out to use extended config mode instead of a solderable star
+// (controls whether mode memory is on the star or if it's a setting in config mode)
+#define CONFIG_STARS
 
 // Mode group 1
 #define NUM_MODES1          7
@@ -130,11 +133,15 @@
 #ifdef OWN_DELAY
 #include <util/delay_basic.h>
 // Having own _delay_ms() saves some bytes AND adds possibility to use variables as input
-static void _delay_ms(uint16_t n)
+void _delay_ms(uint16_t n)
 {
     // TODO: make this take tenths of a ms instead of ms,
     // for more precise timing?
     while(n-- > 0) _delay_loop_2(DELAY_TWEAK);
+}
+void _delay_s()  // because it saves a bit of ROM space to do it this way
+{
+    _delay_ms(1000);
 }
 #else
 #include <util/delay.h>
@@ -214,7 +221,11 @@ void save_state() {  // central method for writing (with wear leveling)
 
     eepos=(eepos+2)&31;  // wear leveling, use next cell
 
+#ifdef CONFIG_STARS
     eep = mode_idx | (fast_presses << 12) | (modegroup << 8);
+#else
+    eep = mode_idx | (fast_presses << 12) | (modegroup << 8) | (memory << 9);
+#endif
     eeprom_write_word((uint16_t *)(eepos), eep);      // save current state
     eeprom_write_word((uint16_t *)(oldpos), 0xffff);  // erase old state
 }
@@ -234,6 +245,9 @@ void restore_state() {
         mode_idx = eep1;
         fast_presses = (eep2 >> 4);
         modegroup = eep2 & 1;
+#ifndef CONFIG_STARS
+        memory = (eep2 >> 1) & 1;
+#endif
     }
     //else eepos=0;  // unnecessary, save_state handles wrap-around
 }
@@ -262,6 +276,7 @@ inline void prev_mode() {
 }
 #endif
 
+#ifdef CONFIG_STARS
 inline void check_stars() {
     // Configure options based on stars
     // 0 being low for soldered, 1 for pulled-up for not soldered
@@ -288,6 +303,7 @@ inline void check_stars() {
         memory = 0;  // unsolder to disable memory
     }
 }
+#endif
 
 void count_modes() {
     /*
@@ -402,7 +418,9 @@ int main(void)
     TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
 
     // Read config values and saved state
+#ifdef CONFIG_STARS
     check_stars();
+#endif
     restore_state();
     // Enable the current mode group
     count_modes();
@@ -462,15 +480,35 @@ int main(void)
     while(1) {
         output = pgm_read_byte(modesNx + mode_idx);
         if (fast_presses == 0x0f) {  // Config mode
-            _delay_ms(1000);  // wait for user to stop fast-pressing button
+            _delay_s();       // wait for user to stop fast-pressing button
             fast_presses = 0; // exit this mode after one use
             mode_idx = 0;
 
+#ifdef CONFIG_STARS
+            // Short/small version of the config mode
             // Toggle the mode group, blink, then exit
             modegroup ^= 1;
             save_state();
             count_modes();  // reconfigure without a power cycle
             blink(1);
+#else
+            // Longer/larger version of the config mode
+            // Toggle the mode group, blink, un-toggle, continue
+            modegroup ^= 1;
+            save_state();
+            blink(2);
+            modegroup ^= 1;
+
+            _delay_s();
+
+            // Toggle memory, blink, untoggle, exit
+            memory ^= 1;
+            save_state();
+            blink(2);
+            memory ^= 1;
+
+            save_state();
+#endif
         }
         else if (output == STROBE) {
             set_output(255,255);
@@ -483,7 +521,7 @@ int main(void)
             // turn off and wait one second before showing the value
             // (also, ensure voltage is measured while not under load)
             set_output(0,0);
-            _delay_ms(1000);
+            _delay_s();
             voltage = get_voltage();
             voltage = get_voltage(); // the first one is unreliable
             // division takes too much flash space
@@ -498,7 +536,7 @@ int main(void)
             // blink up to five times to show voltage
             // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
             blink(blinks);
-            _delay_ms(1000);  // wait at least 1 second between readouts
+            _delay_s();  // wait at least 1 second between readouts
         }
         else {  // Regular non-hidden solid mode
             set_mode(mode_idx);
