@@ -72,13 +72,13 @@
 // PWM levels for the big circuit (FET or Nx7135)
 #define MODESNx1            0,0,0,6,56,135,255
 // PWM levels for the small circuit (1x7135)
-#define MODES1x1            3,20,100,255,255,255,255
+#define MODES1x1            3,20,100,255,255,255,0
 // PWM speed for each mode
 #define MODES_PWM1          PHASE,FAST,FAST,FAST,FAST,FAST,PHASE
 // Mode group 2
 #define NUM_MODES2          4
 #define MODESNx2            0,0,79,255
-#define MODES1x2            20,200,255,255
+#define MODES1x2            20,200,255,0
 #define MODES_PWM2          FAST,FAST,FAST,PHASE
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
