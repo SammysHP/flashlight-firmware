@@ -67,16 +67,18 @@
 #define OFFTIM3             // Use short/med/long off-time presses
                             // instead of just short/long
 
-// PWM levels for the big circuit (FET or Nx7135)
+// Mode group 1
 #define NUM_MODES1          7
-#define NUM_MODES2          4
-#define MODESNx1            0,0,0,38,83,150,255
-#define MODESNx2            0,0,90,255
+// PWM levels for the big circuit (FET or Nx7135)
+#define MODESNx1            0,0,0,6,56,135,255
 // PWM levels for the small circuit (1x7135)
-// (if the big circuit is a FET, use 0 for high modes here instead of 255)
-#define MODES1x1            3,20,128,0,0,0,255
-#define MODES1x2            20,160,0,255
+#define MODES1x1            3,20,100,255,255,255,255
+// PWM speed for each mode
 #define MODES_PWM1          PHASE,FAST,FAST,FAST,FAST,FAST,PHASE
+// Mode group 2
+#define NUM_MODES2          4
+#define MODESNx2            0,0,79,255
+#define MODES1x2            20,200,255,255
 #define MODES_PWM2          FAST,FAST,FAST,PHASE
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
@@ -466,6 +468,7 @@ int main(void)
             // Toggle the mode group, blink, then exit
             modegroup ^= 1;
             save_state();
+            count_modes();  // reconfigure without a power cycle
             blink(1);
         }
         else if (output == STROBE) {
