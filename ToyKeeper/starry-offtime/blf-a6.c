@@ -57,10 +57,10 @@
 
 //#define FAST 0x23           // fast PWM channel 1 only
 //#define PHASE 0x21          // phase-correct PWM channel 1 only
-#define FAST 0xA3             // fast PWM both channels
-#define PHASE 0xA1            // phase-correct PWM both channels
+#define FAST 0xA3           // fast PWM both channels
+#define PHASE 0xA1          // phase-correct PWM both channels
 
-#define VOLTAGE_MON         // Comment out to disable
+#define VOLTAGE_MON         // Comment out to disable LVP
 #define OWN_DELAY           // Should we use the built-in delay or our own?
 // Adjust the timing per-driver, since the hardware has high variance
 // Higher values will run slower, lower values run faster.
@@ -68,6 +68,7 @@
 
 #define OFFTIM3             // Use short/med/long off-time presses
                             // instead of just short/long
+
 // comment out to use extended config mode instead of a solderable star
 // (controls whether mode memory is on the star or if it's a setting in config mode)
 #define CONFIG_STARS
@@ -154,7 +155,7 @@ void _delay_s()  // because it saves a bit of ROM space to do it this way
 #include <avr/sleep.h>
 //#include <avr/power.h>
 
-#define STAR2_PIN   PB0
+#define STAR2_PIN   PB0     // But note that there is no star 2.
 #define STAR3_PIN   PB4
 #define CAP_PIN     PB3
 #define CAP_CHANNEL 0x03    // MUX 03 corresponds with PB3 (Star 4)
@@ -255,7 +256,7 @@ void restore_state() {
 inline void next_mode() {
     mode_idx += 1;
     if (mode_idx >= solid_modes) {
-        // Wrap around
+        // Wrap around, skipping the hidden modes
         // (note: this also applies when going "forward" from any hidden mode)
         mode_idx = 0;
     }
@@ -270,7 +271,7 @@ inline void prev_mode() {
         // Regular mode: is between 1 and TOTAL_MODES
         mode_idx -= 1;
     } else {
-        // Otherwise, wrap around
+        // Otherwise, wrap around (this allows entering hidden modes)
         mode_idx = mode_cnt - 1;
     }
 }
@@ -303,7 +304,7 @@ inline void check_stars() {
         memory = 0;  // unsolder to disable memory
     }
 }
-#endif
+#endif  // ifdef CONFIG_STARS
 
 void count_modes() {
     /*
@@ -508,7 +509,7 @@ int main(void)
             memory ^= 1;
 
             save_state();
-#endif
+#endif  // ifdef CONFIG_STARS
         }
         else if (output == STROBE) {
             set_output(255,255);
@@ -578,7 +579,7 @@ int main(void)
                 // properly track hidden vs normal modes
                 if (i >= solid_modes) {
                     // step down from blinky modes to medium
-                    i = 3;
+                    i = 2;
                 } else if (i > 0) {
                     // step down from solid modes one at a time
                     i -= 1;
@@ -602,7 +603,7 @@ int main(void)
             ADCSRA |= (1 << ADSC);
         }
 #endif
-#endif
+#endif  // ifdef VOLTAGE_MON
         //sleep_mode();  // incompatible with blinky modes
     }
 
