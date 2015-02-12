@@ -93,6 +93,9 @@
 #define HIDDENMODES         BATTCHECK,STROBE,TURBO
 #define HIDDENMODES_PWM     PHASE,PHASE,PHASE
 
+// Uncomment to use a 2-level stutter beacon instead of a tactical strobe
+//#define BIKING_STROBE
+
 #define NON_WDT_TURBO            // enable turbo step-down without WDT
 // How many timer ticks before before dropping down.
 // Each timer tick is 500ms, so "60" would be a 30-second stepdown.
@@ -109,6 +112,16 @@
 #define ADC_0           118 // the ADC value for 0% full (3.0V resting)
 #define ADC_LOW         109 // When do we start ramping down (2.8V)
 #define ADC_CRIT        104 // When do we shut the light off (2.7V)
+// These values were copied from s7.c.
+// Your mileage may vary.
+//#define ADC_42          185 // the ADC value we expect for 4.20 volts
+//#define ADC_100         185 // the ADC value for 100% full (4.2V resting)
+//#define ADC_75          175 // the ADC value for 75% full (4.0V resting)
+//#define ADC_50          164 // the ADC value for 50% full (3.8V resting)
+//#define ADC_25          154 // the ADC value for 25% full (3.5V resting)
+//#define ADC_0           139 // the ADC value for 0% full (3.0V resting)
+//#define ADC_LOW         123 // When do we start ramping down (2.8V)
+//#define ADC_CRIT        113 // When do we shut the light off (2.7V)
 // Values for testing only:
 //#define ADC_LOW         125 // When do we start ramping down (2.8V)
 //#define ADC_CRIT        124 // When do we shut the light off (2.7V)
@@ -512,10 +525,22 @@ int main(void)
 #endif  // ifdef CONFIG_STARS
         }
         else if (output == STROBE) {
+#ifdef BIKING_STROBE
+            // 2-level stutter beacon for biking and such
+            for(i=0;i<4;i++) {
+                set_output(255,0);
+                _delay_ms(5);
+                set_output(0,255);
+                _delay_ms(65);
+            }
+            _delay_ms(720);
+#else
+            // 10Hz tactical strobe
             set_output(255,255);
             _delay_ms(50);
             set_output(0,0);
             _delay_ms(50);
+#endif  // ifdef BIKING_STROBE
         }
         else if (output == BATTCHECK) {
             uint8_t blinks = 0;
