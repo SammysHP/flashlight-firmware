@@ -1,0 +1,16 @@
+luxdrv 0.3 was my first firmware. It features short-cycle memory, ramping,
+battery monitoring (reduces brightness when batt is low, and has a battery
+level indicator).
+
+It's source code is available here(1), it's free for private and noncommercial
+use for members of BudgetLightForum.com and Taschenlampenforum.de
+
+[1] http://drjones.nerdcamp.net/luxdrv030.c
+
+-----
+
+luxdrv 0.4 is it's successor.
+Key features: Short-cycle memory, Ramping, programmable (i.e. modes are
+configurable by the user, by a number of taps), the number of modes can be
+changed, too. Has low-batt step-down (reduces brightness when battery is low)
+and battery indicator.
