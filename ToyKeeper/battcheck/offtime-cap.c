@@ -70,6 +70,9 @@ static void _delay_ms(uint16_t n)
 #define STAR2_PIN   PB0
 #define STAR3_PIN   PB4
 #define STAR4_PIN   PB3
+#define CAP_PIN     PB3
+#define CAP_CHANNEL 0x03    // MUX 03 corresponds with PB3 (Star 4)
+#define CAP_DIDR    ADC3D   // Digital input disable bit corresponding with PB3
 #define PWM_PIN     PB1
 #define VOLTAGE_PIN PB2
 #define ADC_CHANNEL 0x01    // MUX 01 corresponds with PB2
@@ -88,12 +91,20 @@ inline void ADC_off() {
     ADCSRA &= ~(1<<7); //ADC off
 }
 
-uint8_t get_voltage() {
-    // Start conversion
+uint8_t get_reading() {
+    // Start up ADC for capacitor pin
+    DIDR0 |= (1 << CAP_DIDR);                           // disable digital input on ADC pin to reduce power consumption
+    ADMUX  = (1 << REFS0) | (1 << ADLAR) | CAP_CHANNEL; // 1.1v reference, left-adjust, ADC3/PB3
+    ADCSRA = (1 << ADEN ) | (1 << ADSC ) | ADC_PRSCL;   // enable, start, prescale
+    // Wait for completion
+    while (ADCSRA & (1 << ADSC));
+#if 1
+    // Start again as datasheet says first result is unreliable
     ADCSRA |= (1 << ADSC);
     // Wait for completion
     while (ADCSRA & (1 << ADSC));
-    // See if voltage is lower than what we were looking for
+#endif
+    // just return the value
     return ADCH;
 }
 
@@ -106,13 +117,16 @@ void noblink() {
 
 void blink() {
     PWM_LVL = BLINK_PWM;
-    _delay_ms(100);
+    _delay_ms(150);
     PWM_LVL = 0;
     _delay_ms(200);
 }
 
 int main(void)
 {
+    uint16_t value;
+    uint8_t i;
+
     // Set PWM pin to output
     DDRB = (1 << PWM_PIN);
 
@@ -124,55 +138,58 @@ int main(void)
     ADC_on();
     ACSR   |=  (1<<7); //AC off
 
-    // blink once on receiving power
-    PWM_LVL = 255;
-    _delay_ms(5);
-    PWM_LVL = 0;
+    // get an average of several readings
+    /*
+    value = 0;
+    for (i=0; i<8; i++) {
+        value += get_reading();
+        _delay_ms(50);
+    }
+    value = value >> 3;
+    */
+    value = get_reading();
 
-    uint16_t voltage;
-    uint8_t i;
-    voltage = get_voltage();
+    // Turn off ADC
+    ADC_off();
+
+    // Charge up the capacitor by setting CAP_PIN to output
+    DDRB  |= (1 << CAP_PIN);    // Output
+    PORTB |= (1 << CAP_PIN);    // High
+
+
+    // blink once on receiving power
+    //PWM_LVL = 255;
+    //_delay_ms(5);
+    //PWM_LVL = 0;
+
+    // hundreds
+    while (value >= 100) {
+        value -= 100;
+        blink();
+    }
+    _delay_ms(1000);
+
+    // tens
+    if (value < 10) {
+        noblink();
+    }
+    while (value >= 10) {
+        value -= 10;
+        blink();
+    }
+    _delay_ms(1000);
+
+    // ones
+    if (value <= 0) {
+        noblink();
+    }
+    while (value > 0) {
+        value -= 1;
+        blink();
+    }
+    _delay_ms(1000);
 
     while(1) {
-        PWM_LVL = 0;
-
-        // get an average of several readings
-        voltage = 0;
-        for (i=0; i<8; i++) {
-            voltage += get_voltage();
-            _delay_ms(50);
-        }
-        voltage = voltage >> 3;
-
-        // hundreds
-        while (voltage >= 100) {
-            voltage -= 100;
-            blink();
-        }
         _delay_ms(1000);
-
-        // tens
-        if (voltage < 10) {
-            noblink();
-        }
-        while (voltage >= 10) {
-            voltage -= 10;
-            blink();
-        }
-        _delay_ms(1000);
-
-        // ones
-        if (voltage <= 0) {
-            noblink();
-        }
-        while (voltage > 0) {
-            voltage -= 1;
-            blink();
-        }
-        _delay_ms(1000);
-
-        // ... and wait a bit for next time
-        _delay_ms(3000);
-
     }
 }
