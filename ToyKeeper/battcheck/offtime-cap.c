@@ -43,7 +43,7 @@
 
 #define OWN_DELAY   // Should we use the built-in delay or our own?
 
-#define BLINK_PWM   10
+#define BLINK_PWM   20
 
 /*
  * =========================================================================
