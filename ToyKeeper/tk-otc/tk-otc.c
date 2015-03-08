@@ -1,9 +1,8 @@
 /*
- * BLF EE A6 firmware (special-edition group buy light)
- * This light uses a FET+1 style driver, with a FET on the main PWM channel
- * for the brightest high modes and a single 7135 chip on the secondary PWM
- * channel so we can get stable, efficient low / medium modes.  It also
- * includes a capacitor for measuring off time.
+ * Generic clicky-switch-with-offtime-cap firmware.
+ * Expects a FET+1 style driver, supports two independent power channels.
+ * Similar to blf-a6.c but minus the end-user config options.
+ * (expects to be configured at compile-time, not runtime)
  *
  * Copyright (C) 2015 Selene Scriven
  *
@@ -85,23 +84,14 @@
 #define OFFTIM3             // Use short/med/long off-time presses
                             // instead of just short/long
 
-// comment out to use extended config mode instead of a solderable star
-// (controls whether mode memory is on the star or if it's a setting in config mode)
-#define CONFIG_STARS
-
 // Mode group 1
-#define NUM_MODES1          7
+#define NUM_MODES           7
 // PWM levels for the big circuit (FET or Nx7135)
-#define MODESNx1            0,0,0,6,56,135,255
+#define MODESNx             0,0,0,6,56,135,255
 // PWM levels for the small circuit (1x7135)
-#define MODES1x1            3,20,100,255,255,255,0
+#define MODES1x             3,20,100,255,255,255,0
 // PWM speed for each mode
-#define MODES_PWM1          PHASE,FAST,FAST,FAST,FAST,FAST,PHASE
-// Mode group 2
-#define NUM_MODES2          4
-#define MODESNx2            0,0,79,255
-#define MODES1x2            20,200,255,0
-#define MODES_PWM2          FAST,FAST,FAST,PHASE
+#define MODES_PWM           PHASE,FAST,FAST,FAST,FAST,FAST,PHASE
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,TURBO .
@@ -206,35 +196,25 @@ void _delay_s()  // because it saves a bit of ROM space to do it this way
 // Config / state variables
 uint8_t eepos = 0;
 uint8_t memory = 0;        // mode memory, or not (set via soldered star)
-uint8_t modegroup = 0;     // which mode group (set above in #defines)
 uint8_t mode_idx = 0;      // current or last-used mode number
-uint8_t fast_presses = 0;  // counter for entering config mode
 
 // NOTE: Only '1' is known to work; -1 will probably break and is untested.
 // In other words, short press goes to the next (higher) mode,
 // medium press goes to the previous (lower) mode.
 #define mode_dir 1
 // total length of current mode group's array
-uint8_t mode_cnt;
+#define mode_cnt solid_modes+NUM_HIDDEN
 // number of regular non-hidden modes in current mode group
-uint8_t solid_modes;
+#define solid_modes NUM_MODES
 // number of hidden modes in the current mode group
 // (hardcoded because both groups have the same hidden modes)
 //uint8_t hidden_modes = NUM_HIDDEN;  // this is never used
 
 
 // Modes (gets set when the light starts up based on saved config values)
-PROGMEM const uint8_t modesNx1[] = { MODESNx1, HIDDENMODES };
-PROGMEM const uint8_t modesNx2[] = { MODESNx2, HIDDENMODES };
-const uint8_t *modesNx;  // gets pointed at whatever group is current
-
-PROGMEM const uint8_t modes1x1[] = { MODES1x1, HIDDENMODES };
-PROGMEM const uint8_t modes1x2[] = { MODES1x2, HIDDENMODES };
-const uint8_t *modes1x;
-
-PROGMEM const uint8_t modes_pwm1[] = { MODES_PWM1, HIDDENMODES_PWM };
-PROGMEM const uint8_t modes_pwm2[] = { MODES_PWM2, HIDDENMODES_PWM };
-const uint8_t *modes_pwm;
+PROGMEM const uint8_t modesNx[] = { MODESNx, HIDDENMODES };
+PROGMEM const uint8_t modes1x[] = { MODES1x, HIDDENMODES };
+PROGMEM const uint8_t modes_pwm[] = { MODES_PWM, HIDDENMODES_PWM };
 
 PROGMEM const uint8_t voltage_blinks[] = {
     ADC_0,    // 1 blink  for 0%-25%
@@ -247,37 +227,25 @@ PROGMEM const uint8_t voltage_blinks[] = {
 void save_state() {  // central method for writing (with wear leveling)
     uint8_t oldpos=eepos;
     // a single 16-bit write uses less ROM space than two 8-bit writes
-    uint16_t eep;
+    uint8_t eep;
 
-    eepos=(eepos+2)&31;  // wear leveling, use next cell
+    eepos=(eepos+1)&31;  // wear leveling, use next cell
 
-#ifdef CONFIG_STARS
-    eep = mode_idx | (fast_presses << 12) | (modegroup << 8);
-#else
-    eep = mode_idx | (fast_presses << 12) | (modegroup << 8) | (memory << 9);
-#endif
-    eeprom_write_word((uint16_t *)(eepos), eep);      // save current state
-    eeprom_write_word((uint16_t *)(oldpos), 0xffff);  // erase old state
+    eep = mode_idx;
+    eeprom_write_byte((uint8_t *)(eepos), eep);      // save current state
+    eeprom_write_byte((uint8_t *)(oldpos), 0xff);  // erase old state
 }
 
 void restore_state() {
-    // two 8-bit reads use less ROM space than a single 16-bit write
     uint8_t eep1;
-    uint8_t eep2;
     // find the config data
-    for(eepos=0; eepos<32; eepos+=2) {
+    for(eepos=0; eepos<32; eepos+=1) {
         eep1 = eeprom_read_byte((const uint8_t *)eepos);
-        eep2 = eeprom_read_byte((const uint8_t *)eepos+1);
         if (eep1 != 0xff) break;
     }
     // unpack the config data
     if (eepos < 32) {
         mode_idx = eep1;
-        fast_presses = (eep2 >> 4);
-        modegroup = eep2 & 1;
-#ifndef CONFIG_STARS
-        memory = (eep2 >> 1) & 1;
-#endif
     }
     //else eepos=0;  // unnecessary, save_state handles wrap-around
 }
@@ -306,57 +274,6 @@ inline void prev_mode() {
 }
 #endif
 
-#ifdef CONFIG_STARS
-inline void check_stars() {
-    // Configure options based on stars
-    // 0 being low for soldered, 1 for pulled-up for not soldered
-#if 0  // not implemented, STAR2_PIN is used for second PWM channel
-    // Moon
-    // enable moon mode?
-    if ((PINB & (1 << STAR2_PIN)) == 0) {
-        modes[mode_cnt++] = MODE_MOON;
-    }
-#endif
-#if 0  // Mode order not as important as mem/no-mem
-    // Mode order
-    if ((PINB & (1 << STAR3_PIN)) == 0) {
-        // High to Low
-        mode_dir = -1;
-    } else {
-        mode_dir = 1;
-    }
-#endif
-    // Memory
-    if ((PINB & (1 << STAR3_PIN)) == 0) {
-        memory = 1;  // solder to enable memory
-    } else {
-        memory = 0;  // unsolder to disable memory
-    }
-}
-#endif  // ifdef CONFIG_STARS
-
-void count_modes() {
-    /*
-     * Determine how many solid and hidden modes we have.
-     * The modes_pwm array should have several values for regular modes
-     * then some values for hidden modes.
-     *
-     * (this matters because we have more than one set of modes to choose
-     *  from, so we need to count at runtime)
-     */
-    if (modegroup == 0) {
-        solid_modes = NUM_MODES1;
-        modesNx = modesNx1;
-        modes1x = modes1x1;
-        modes_pwm = modes_pwm1;
-    } else {
-        solid_modes = NUM_MODES2;
-        modesNx = modesNx2;
-        modes1x = modes1x2;
-        modes_pwm = modes_pwm2;
-    }
-    mode_cnt = solid_modes + NUM_HIDDEN;
-}
 
 #ifdef VOLTAGE_MON
 inline void ADC_on() {
@@ -448,28 +365,20 @@ int main(void)
     TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
 
     // Read config values and saved state
-#ifdef CONFIG_STARS
-    check_stars();
-#endif
     restore_state();
-    // Enable the current mode group
-    count_modes();
 
 
     if (cap_val > CAP_SHORT) {
         // Indicates they did a short press, go to the next mode
         next_mode(); // Will handle wrap arounds
-        if (fast_presses < 15) fast_presses ++;
 #ifdef OFFTIM3
     } else if (cap_val > CAP_MED) {
         // User did a medium press, go back one mode
         prev_mode(); // Will handle "negative" modes and wrap-arounds
-        fast_presses = 0;
 #endif
     } else {
         // Long press, keep the same mode
         // ... or reset to the first mode
-        fast_presses = 0;
         if (! memory) {
             // Reset to the first mode
             mode_idx = 0;
@@ -509,38 +418,7 @@ int main(void)
 #endif
     while(1) {
         output = pgm_read_byte(modesNx + mode_idx);
-        if (fast_presses == 0x0f) {  // Config mode
-            _delay_s();       // wait for user to stop fast-pressing button
-            fast_presses = 0; // exit this mode after one use
-            mode_idx = 0;
-
-#ifdef CONFIG_STARS
-            // Short/small version of the config mode
-            // Toggle the mode group, blink, then exit
-            modegroup ^= 1;
-            save_state();
-            count_modes();  // reconfigure without a power cycle
-            blink(1);
-#else
-            // Longer/larger version of the config mode
-            // Toggle the mode group, blink, un-toggle, continue
-            modegroup ^= 1;
-            save_state();
-            blink(2);
-            modegroup ^= 1;
-
-            _delay_s();
-
-            // Toggle memory, blink, untoggle, exit
-            memory ^= 1;
-            save_state();
-            blink(2);
-            memory ^= 1;
-
-            save_state();
-#endif  // ifdef CONFIG_STARS
-        }
-        else if (output == STROBE) {
+        if (output == STROBE) {
 #ifdef BIKING_STROBE
             // 2-level stutter beacon for biking and such
             for(i=0;i<4;i++) {
@@ -598,7 +476,6 @@ int main(void)
 
             // If we got this far, the user has stopped fast-pressing.
             // So, don't enter config mode.
-            fast_presses = 0;
             save_state();
         }
 #ifdef VOLTAGE_MON
