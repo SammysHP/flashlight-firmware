@@ -1,4 +1,4 @@
-/* STAR_off_time version 1.2
+/* STAR_noinit version 1.3:1.0
  *
  * Changelog
  *
@@ -6,6 +6,7 @@
  * 1.1 Bug fix
  * 1.2 Added support for dual PWM outputs and selection of PWM mode per output level
  * 1.3 Added ability to have turbo ramp down gradually instead of step down
+ * 1.3:1.0 Changed from off-time capacitor to "noinit" memory decay trick
  *
  */
 
@@ -88,10 +89,6 @@
 #define ADC_LOW				130	// When do we start ramping
 #define ADC_CRIT			120 // When do we shut the light off
 
-#define CAP_THRESHOLD		130  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
-								 // Not sure the lowest you can go before getting bad readings, but with a value of 70 and a 1uF cap, it seemed to switch sometimes
-								 // even when waiting 10 seconds between presses.
-
 /*
  * =========================================================================
  */
@@ -107,9 +104,6 @@
 
 #define STAR2_PIN   PB0
 #define STAR3_PIN   PB4
-#define CAP_PIN     PB3
-#define CAP_CHANNEL 0x03	// MUX 03 corresponds with PB3 (Star 4)
-#define CAP_DIDR    ADC3D	// Digital input disable bit corresponding with PB3
 #define PWM_PIN     PB1
 #define VOLTAGE_PIN PB2
 #define ADC_CHANNEL 0x01	// MUX 01 corresponds with PB2
@@ -122,6 +116,9 @@
 /*
  * global variables
  */
+
+// offtime detection
+volatile uint8_t noinit_decay __attribute__ ((section (".noinit")));
 
 // Mode storage
 uint8_t eepos = 0;
@@ -294,6 +291,9 @@ ISR(WDT_vect) {
 	}
 #endif
 
+	// for some reason, it behaves like on-time mem without this here
+	// (but it shouldn't be needed)
+	noinit_decay = 0;
 }
 
 int main(void)
@@ -311,18 +311,7 @@ int main(void)
 	
 	check_stars(); // Moving down here as it might take a bit for the pull-up to turn on?
 	
-	// Start up ADC for capacitor pin
-	DIDR0 |= (1 << CAP_DIDR);							// disable digital input on ADC pin to reduce power consumption
-	ADMUX  = (1 << REFS0) | (1 << ADLAR) | CAP_CHANNEL; // 1.1v reference, left-adjust, ADC3/PB3
-	ADCSRA = (1 << ADEN ) | (1 << ADSC ) | ADC_PRSCL;   // enable, start, prescale
-	
-	// Wait for completion
-	while (ADCSRA & (1 << ADSC));
-	// Start again as datasheet says first result is unreliable
-	ADCSRA |= (1 << ADSC);
-	// Wait for completion
-	while (ADCSRA & (1 << ADSC));
-	if (ADCH > CAP_THRESHOLD) {
+	if (! noinit_decay) {
 		// Indicates they did a short press, go to the next mode
 		next_mode(); // Will handle wrap arounds
 		store_mode_idx(mode_idx);
@@ -334,13 +323,9 @@ int main(void)
 		store_mode_idx(mode_idx);
 	#endif
 	}
-	// Turn off ADC
-	ADC_off();
-	
-	// Charge up the capacitor by setting CAP_PIN to output
-	DDRB  |= (1 << CAP_PIN);	// Output
-    PORTB |= (1 << CAP_PIN);	// High
-	
+	// set noinit data for next boot
+	noinit_decay = 0;  // will decay to non-zero after being off for a while
+
     // Set PWM pin to output
     DDRB |= (1 << PWM_PIN);
 	#ifdef DUAL_PWM_START
