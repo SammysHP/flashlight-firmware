@@ -598,8 +598,10 @@ int main(void)
 
             // If we got this far, the user has stopped fast-pressing.
             // So, don't enter config mode.
-            fast_presses = 0;
-            save_state();
+            if (fast_presses) {
+                fast_presses = 0;
+                save_state();
+            }
         }
 #ifdef VOLTAGE_MON
 #if 1
