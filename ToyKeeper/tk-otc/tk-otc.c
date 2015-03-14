@@ -229,7 +229,7 @@ void save_state() {  // central method for writing (with wear leveling)
     // a single 16-bit write uses less ROM space than two 8-bit writes
     uint8_t eep;
 
-    eepos=(eepos+1)&31;  // wear leveling, use next cell
+    eepos=(eepos+1)&63;  // wear leveling, use next cell
 
     eep = mode_idx;
     eeprom_write_byte((uint8_t *)(eepos), eep);      // save current state
@@ -239,12 +239,12 @@ void save_state() {  // central method for writing (with wear leveling)
 void restore_state() {
     uint8_t eep1;
     // find the config data
-    for(eepos=0; eepos<32; eepos+=1) {
+    for(eepos=0; eepos<64; eepos+=1) {
         eep1 = eeprom_read_byte((const uint8_t *)eepos);
         if (eep1 != 0xff) break;
     }
     // unpack the config data
-    if (eepos < 32) {
+    if (eepos < 64) {
         mode_idx = eep1;
     }
     //else eepos=0;  // unnecessary, save_state handles wrap-around
@@ -473,10 +473,6 @@ int main(void)
 #endif
             // Otherwise, just sleep.
             _delay_ms(500);
-
-            // If we got this far, the user has stopped fast-pressing.
-            // So, don't enter config mode.
-            save_state();
         }
 #ifdef VOLTAGE_MON
 #if 1
