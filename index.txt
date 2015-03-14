@@ -71,10 +71,22 @@ will be noted when appropriate.
 
     Files contributed by ToyKeeper from BLF.
 
+  ToyKeeper/blf-a6/
+
+    The BLF EE A6 firmware and its derivatives.  Uses a FET+1 driver 
+    with offtime capacitor.  Includes both a full-featured version and a 
+    stripped-down version (for use as a base when adding more features).
+
   ToyKeeper/s7/
 
     ToyKeeper's custom firmware for a Convoy S-series light modded with 
     Nichia 219B and 5x7135 380mA chips for 1900mA maximum power.
+
+  ToyKeeper/STAR_noinit/
+
+    STAR_off_time 1.3 with the OTC bits replaced by memory decay / 
+    brownout detection, so it can give an offtime UI with no extra 
+    capacitor.
 
   ToyKeeper/starry-offtime/
 
