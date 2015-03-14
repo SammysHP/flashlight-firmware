@@ -249,7 +249,7 @@ void save_state() {  // central method for writing (with wear leveling)
     // a single 16-bit write uses less ROM space than two 8-bit writes
     uint16_t eep;
 
-    eepos=(eepos+2)&31;  // wear leveling, use next cell
+    eepos=(eepos+2)&63;  // wear leveling, use next cell
 
 #ifdef CONFIG_STARS
     eep = mode_idx | (fast_presses << 12) | (modegroup << 8);
@@ -265,13 +265,13 @@ void restore_state() {
     uint8_t eep1;
     uint8_t eep2;
     // find the config data
-    for(eepos=0; eepos<32; eepos+=2) {
+    for(eepos=0; eepos<64; eepos+=2) {
         eep1 = eeprom_read_byte((const uint8_t *)eepos);
         eep2 = eeprom_read_byte((const uint8_t *)eepos+1);
         if (eep1 != 0xff) break;
     }
     // unpack the config data
-    if (eepos < 32) {
+    if (eepos < 64) {
         mode_idx = eep1;
         fast_presses = (eep2 >> 4);
         modegroup = eep2 & 1;
