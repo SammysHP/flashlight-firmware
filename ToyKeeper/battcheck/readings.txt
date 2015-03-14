@@ -1,4 +1,7 @@
+Values in ()'s are estimated based on the other readings.
+
 Ferrero Rocher
+  183 - 4.17V
   177 - 4.06V
   167 - 3.83V
   157 - 3.61V
@@ -8,3 +11,41 @@ AK-47 w/ 2x7135 (350mA)
   174 - 4.00V
   166 - 3.83V
   132 - 3.09V
+
+RMM's Moonlight Special
+  (195 - 4.2V)
+  189 - 4.08V
+  (184 - 4.0V)
+  (174 - 3.8V)
+  160 - 3.48V
+  (159 - 3.5V)
+  134 - 3.01V
+  (133 - 3.0V)
+  (123 - 2.8V)
+  (118 - 2.7V)
+
+Wight A17HYBRID-S built by DBCstm:
+  (174 - 4.20V)
+  173 - 4.18V
+  169 - 4.09V
+  (165 - 4.0V)
+  (155 - 3.8V)
+  149 - 3.61V
+  (141 - 3.5V)
+  119 - 3.01V
+  (109 - 2.8V)
+  (104 - 2.7V)
+
+Notes:
+http://budgetlightforum.com/node/29150?page=32#comment-719003
+
+  (need to add info on identifying the type of driver and choosing a set 
+  of calibration values)
+
+  <ToyKeeper> On the Ferrero Rocher, I see one labelled 41. On the 
+  Moonlight Special, it's labelled E2. The ADC readings between the two 
+  differ by about 10, which is enough to make LVP and battery charge 
+  estimations not work well.
+
+  <wight> Mystery solved - that's PMEG1020EA. The lower forward voltage 
+  should improve the driver's overall drop-out by a small amount.
