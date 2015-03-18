@@ -69,29 +69,23 @@
 
 // Lumen measurements used a Nichia 219B at 1900mA in a Convoy S7 host
 #define MODE_MOON           6       // 6: 0.14 lm (6 through 9 may be useful levels)
-#define MODE_LOW            14      // 14: 7.3 lm
-#define MODE_MED            39      // 39: 42 lm
-#define MODE_HIGH           120     // 120: 155 lm
+#define MODE_LOW            30      // 14: 7.3 lm
+#define MODE_MED            120     // 120: 155 lm
 #define MODE_HIGHER         255     // 255: 342 lm
 // If you change these, you'll probably want to change the "modes" array below
-#define SOLID_MODES         5       // How many non-blinky modes will we have?
-#define DUAL_BEACON_MODES   5+3     // How many beacon modes will we have (with background light on)?
-#define SINGLE_BEACON_MODES 5+3+1   // How many beacon modes will we have (without background light on)?
-#define FIXED_STROBE_MODES  5+3+1+3 // How many constant-speed strobe modes?
-#define VARIABLE_STROBE_MODES 5+3+1+3+2 // How many variable-speed strobe modes?
-#define BATT_CHECK_MODE     5+3+1+3+2+1 // battery check mode index
+#define SOLID_MODES         4       // How many non-blinky modes will we have?
+#define SINGLE_BEACON_MODES 4+1   // How many beacon modes will we have (without background light on)?
+#define FIXED_STROBE_MODES  4+1+3 // How many constant-speed strobe modes?
+#define BATT_CHECK_MODE     4+1+3+1 // battery check mode index
 // Note: don't use more than 32 modes, or it will interfere with the mechanism used for mode memory
 #define TOTAL_MODES         BATT_CHECK_MODE
 
-//#define ADC_LOW             130     // When do we start ramping
-//#define ADC_CRIT            120     // When do we shut the light off
-
-#define ADC_42          185 // the ADC value we expect for 4.20 volts
-#define ADC_100         185 // the ADC value for 100% full (4.2V resting)
+#define ADC_42          184 // the ADC value we expect for 4.20 volts
+#define ADC_100         184 // the ADC value for 100% full (4.2V resting)
 #define ADC_75          175 // the ADC value for 75% full (4.0V resting)
-#define ADC_50          164 // the ADC value for 50% full (3.8V resting)
-#define ADC_25          154 // the ADC value for 25% full (3.6V resting)
-#define ADC_0           139 // the ADC value for 0% full (3.3V resting)
+#define ADC_50          166 // the ADC value for 50% full (3.8V resting)
+#define ADC_25          152 // the ADC value for 25% full (3.5V resting)
+#define ADC_0           129 // the ADC value for 0% full (3.0V resting)
 #define ADC_LOW         123 // When do we start ramping down
 #define ADC_CRIT        113 // When do we shut the light off
 
@@ -151,11 +145,9 @@ volatile uint8_t noinit_mode __attribute__ ((section (".noinit")));
 
 // Modes (hardcoded to save space)
 static uint8_t modes[TOTAL_MODES] = { // high enough to handle all
-    MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, MODE_HIGHER, // regular solid modes
-    MODE_MOON, MODE_LOW, MODE_MED, // dual beacon modes (this level and this level + 2)
+    MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGHER, // regular solid modes
     MODE_HIGHER, // heartbeat beacon
-    79, 41, 15, // constant-speed strobe modes (12.5 Hz, 24 Hz, 60 Hz)
-    MODE_HIGHER, MODE_HIGHER, // variable-speed strobe modes
+    240, 90, 31, // constant-speed strobe modes (4 Hz, 10 Hz, 24 Hz)
     MODE_MED, // battery check mode
 };
 volatile uint8_t mode_idx = 0;
@@ -243,7 +235,6 @@ int main(void)
     PWM_LVL = modes[mode_idx];
 
     uint8_t i = 0;
-    uint8_t j = 0;
     uint8_t strobe_len = 0;
 #ifdef VOLTAGE_MON
     uint8_t lowbatt_cnt = 0;
@@ -252,50 +243,21 @@ int main(void)
     while(1) {
         if(mode_idx < SOLID_MODES) { // Just stay on at a given brightness
             sleep_mode();
-        } else if (mode_idx < DUAL_BEACON_MODES) { // two-level fast strobe pulse at about 1 Hz
-            for(i=0; i<4; i++) {
-                PWM_LVL = modes[mode_idx-SOLID_MODES+2];
-                _delay_ms(5);
-                PWM_LVL = modes[mode_idx];
-                _delay_ms(65);
-            }
-            _delay_ms(720);
         } else if (mode_idx < SINGLE_BEACON_MODES) { // heartbeat flasher
             PWM_LVL = modes[SOLID_MODES-1];
-            _delay_ms(1);
+            _delay_ms(10);
             PWM_LVL = 0;
-            _delay_ms(249);
+            _delay_ms(240);
             PWM_LVL = modes[SOLID_MODES-1];
-            _delay_ms(1);
+            _delay_ms(10);
             PWM_LVL = 0;
-            _delay_ms(749);
+            _delay_ms(740);
         } else if (mode_idx < FIXED_STROBE_MODES) { // strobe mode, fixed-speed
-            strobe_len = 1;
-            if (modes[mode_idx] < 50) { strobe_len = 0; }
+            strobe_len = 10;
             PWM_LVL = modes[SOLID_MODES-1];
             _delay_ms(strobe_len);
             PWM_LVL = 0;
             _delay_ms(modes[mode_idx]);
-        } else if (mode_idx == VARIABLE_STROBE_MODES-2) {
-            // strobe mode, smoothly oscillating frequency ~7 Hz to ~18 Hz
-            for(j=0; j<66; j++) {
-                PWM_LVL = modes[SOLID_MODES-1];
-                _delay_ms(1);
-                PWM_LVL = 0;
-                if (j<33) { strobe_len = j; }
-                else { strobe_len = 66-j; }
-                _delay_ms(2*(strobe_len+33-6));
-            }
-        } else if (mode_idx == VARIABLE_STROBE_MODES-1) {
-            // strobe mode, smoothly oscillating frequency ~16 Hz to ~100 Hz
-            for(j=0; j<100; j++) {
-                PWM_LVL = modes[SOLID_MODES-1];
-                _delay_ms(0); // less than a millisecond
-                PWM_LVL = 0;
-                if (j<50) { strobe_len = j; }
-                else { strobe_len = 100-j; }
-                _delay_ms(strobe_len+9);
-            }
         } else if (mode_idx < BATT_CHECK_MODE) {
             uint8_t blinks = 0;
             // turn off and wait one second before showing the value
