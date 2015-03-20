@@ -1,0 +1,7 @@
+Description: TK's full-featured clicky EDC firmware
+Button-Type: clicky
+Memory: offtime, mem decay, none
+MCU: attiny13a
+Authors: ToyKeeper
+Modes: battcheck, party strobe, beacon, bike flasher, variable strobe
+Extras:
