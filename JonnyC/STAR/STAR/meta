@@ -1,0 +1,7 @@
+Description: STAR
+Authors: JonnyC
+MCU: attiny13a
+Button-Type: clicky
+Memory: ontime, star-configurable
+Modes:
+Extras: dual PWM, star-configurable moon, star-configurable mode order

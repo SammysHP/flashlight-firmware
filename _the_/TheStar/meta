@@ -1,8 +1,8 @@
 Description: _the_'s full-featured clicky EDC firmware
-Button-Type: clicky
-Memory: offtime, OTC, ontime, star-configurable
-MCU: attiny13a
 Authors: _the_
+MCU: attiny13a
+Button-Type: clicky
+Memory: offtime, OTC, ontime, short-cycle, star-configurable
 Modes: tactical strobe, beacon, distress beacon
 Extras: hidden modes, star-configurable mode order
 TODO: incomplete meta

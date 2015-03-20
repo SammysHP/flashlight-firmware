@@ -4,8 +4,8 @@ Description: E-switch firmwares designed for Helios' "Ferrero Rocher" driver:
  - Ramping_UI_table: Smooth ramping UI
  All of these firmwares support red+green indicator LEDs for battery status.
 Button-Type: momentary
-Memory: none
+Memory: none, yes
 MCU: attiny13a
 Authors: ToyKeeper
 Modes: battcheck, soft lock
-Extras: charge LEDs
+Extras: battery indicator LEDs, Baton UI, ramping UI
