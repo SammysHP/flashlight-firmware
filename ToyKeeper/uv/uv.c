@@ -46,15 +46,15 @@
 #define VOLTAGE_MON                 // Comment out to disable
 #define OWN_DELAY                   // Should we use the built-in delay or our own?
 
-// Lumen measurements used a Nichia 219B at 1900mA in a Convoy S7 host
-#define MODE_MOON           6       // 6: 0.14 lm (6 through 9 may be useful levels)
-#define MODE_LOW            30      // 14: 7.3 lm
-#define MODE_MED            120     // 120: 155 lm
-#define MODE_HIGHER         255     // 255: 342 lm
+// Calibrated for a 2x7135 AK-101 driver with unknown-model UV emitter from RMM
+#define MODE_MOON           6
+#define MODE_LOW            30
+#define MODE_MED            120
+#define MODE_HIGHER         255
 // If you change these, you'll probably want to change the "modes" array below
 #define SOLID_MODES         4       // How many non-blinky modes will we have?
-#define SINGLE_BEACON_MODES 4+1   // How many beacon modes will we have (without background light on)?
-#define FIXED_STROBE_MODES  4+1+3 // How many constant-speed strobe modes?
+#define SINGLE_BEACON_MODES 4+1     // How many beacon modes will we have (without background light on)?
+#define FIXED_STROBE_MODES  4+1+3   // How many constant-speed strobe modes?
 #define BATT_CHECK_MODE     4+1+3+1 // battery check mode index
 // Note: don't use more than 32 modes, or it will interfere with the mechanism used for mode memory
 #define TOTAL_MODES         BATT_CHECK_MODE
