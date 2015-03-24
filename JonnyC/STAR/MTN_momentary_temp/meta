@@ -1,0 +1,7 @@
+Description: STAR momentary plus temperature monitoring
+Authors: JonnyC
+MCU: attiny13a
+Button-Type: momentary
+Memory: none
+Modes: momentary
+Extras: thermal step-down
