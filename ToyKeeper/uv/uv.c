@@ -1,11 +1,13 @@
 /*
- * This is intended for use on flashlights with a clicky switch.
- * Ideally, a Nichia 219B running at 1900mA in a Convoy S-series host.
- * It's mostly based on JonnyC's STAR on-time firmware and ToyKeeper's
- * tail-light firmware.
+ * This is intended for use on UV flashlights with a clicky switch.
+ * It uses brownout detection to provide an offtime-based UI.
+ * UV 365nm LED on 16mm Noctigon from RMM
+ * Nanjg 101-AK-A1 7135*4 1.4A LED DRIVER with only 2x7135
+ * UF-602C host
  *
  * Original author: JonnyC
  * Modifications: ToyKeeper / Selene Scriven
+ * Derived from ToyKeeper/s7.c
  *
  * NANJG 105C Diagram
  *           ---
@@ -15,46 +17,23 @@
  *     GND -|   |- Star 2
  *           ---
  *
- * CPU speed is 4.8Mhz without the 8x divider when low fuse is 0x79
+ * CPU speed is 4.8Mhz without the 8x divider when low fuse is 0x75
  *
- * define F_CPU 4800000  CPU: 4.8MHz  PWM: 9.4kHz       ####### use low fuse: 0x79  #######
- * 
+ * define F_CPU 4800000  CPU: 4.8MHz  PWM: 9.4kHz       ####### use low fuse: 0x75  #######
+ *
  * Above PWM speeds are for phase-correct PWM.  This program uses Fast-PWM,
  * which when the CPU is 4.8MHz will be 18.75 kHz
  *
  * FUSES
  *      I use these fuse settings
- *      Low:  0x79
- *      High: 0xed
+ *      Low:  0x75
+ *      High: 0xfd
  *      (flash-noinit.sh has an example)
  *
  * STARS (not used)
  *
  * VOLTAGE
- *      Resistor values for voltage divider (reference BLF-VLD README for more info)
- *      Reference voltage can be anywhere from 1.0 to 1.2, so this cannot be all that accurate
- *
- *           VCC
- *            |
- *           Vd (~.25 v drop from protection diode)
- *            |
- *          1912 (R1 19,100 ohms)
- *            |
- *            |---- PB2 from MCU
- *            |
- *          4701 (R2 4,700 ohms)
- *            |
- *           GND
- *
- *      ADC = ((V_bat - V_diode) * R2   * 255) / ((R1    + R2  ) * V_ref)
- *      125 = ((3.0   - .25    ) * 4700 * 255) / ((19100 + 4700) * 1.1  )
- *      121 = ((2.9   - .25    ) * 4700 * 255) / ((19100 + 4700) * 1.1  )
- *
- *      Well 125 and 121 were too close, so it shut off right after lowering to low mode, so I went with
- *      130 and 120
- *
- *      To find out what value to use, plug in the target voltage (V) to this equation
- *          value = (V * 4700 * 255) / (23800 * 1.1)
+ *      Use ToyKeeper/battcheck.hex to measure your driver's ADC values.
  *
  */
 #define F_CPU 4800000UL
