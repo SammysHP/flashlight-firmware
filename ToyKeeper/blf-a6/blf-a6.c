@@ -211,7 +211,6 @@ void _delay_s()  // because it saves a bit of ROM space to do it this way
  * global variables
  */
 
-
 // Config / state variables
 uint8_t eepos = 0;
 uint8_t memory = 0;        // mode memory, or not (set via soldered star)
@@ -272,7 +271,6 @@ void save_state() {  // central method for writing (with wear leveling)
 }
 
 void restore_state() {
-    // two 8-bit reads use less ROM space than a single 16-bit write
     uint8_t eep;
     // find the config data
     for(eepos=0; eepos<64; eepos++) {

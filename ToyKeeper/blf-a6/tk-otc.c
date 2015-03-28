@@ -84,6 +84,10 @@
 #define OFFTIM3             // Use short/med/long off-time presses
                             // instead of just short/long
 
+// output to use for blinks on battery check mode (primary PWM level, alt PWM level)
+// Use 20,0 for a single-channel driver or 0,20 for a two-channel driver
+#define BLINK_BRIGHTNESS    0,20
+
 // Mode group 1
 #define NUM_MODES           7
 // PWM levels for the big circuit (FET or Nx7135)
@@ -95,12 +99,12 @@
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,TURBO .
-#define NUM_HIDDEN          3
-#define HIDDENMODES         BATTCHECK,STROBE,TURBO
-#define HIDDENMODES_PWM     PHASE,PHASE,PHASE
+#define NUM_HIDDEN          4
+#define HIDDENMODES         BIKING_STROBE,BATTCHECK,STROBE,TURBO
+#define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE
 
 // Uncomment to use a 2-level stutter beacon instead of a tactical strobe
-//#define BIKING_STROBE
+#define USE_BIKING_STROBE
 
 #define NON_WDT_TURBO            // enable turbo step-down without WDT
 // How many timer ticks before before dropping down.
@@ -145,10 +149,14 @@
 #define TURBO     255       // Convenience code for turbo mode
 #define STROBE    254       // Convenience code for strobe mode
 #define BATTCHECK 253       // Convenience code for battery check mode
+#define BIKING_STROBE 252   // Convenience code for biking strobe mode
 
 /*
  * =========================================================================
  */
+
+// Ignore a spurious warning, we did the cast on purpose
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 
 #ifdef OWN_DELAY
 #include <util/delay_basic.h>
@@ -225,29 +233,31 @@ PROGMEM const uint8_t voltage_blinks[] = {
 };
 
 void save_state() {  // central method for writing (with wear leveling)
-    uint8_t oldpos=eepos;
     // a single 16-bit write uses less ROM space than two 8-bit writes
     uint8_t eep;
+    uint8_t oldpos=eepos;
 
-    eepos=(eepos+1)&63;  // wear leveling, use next cell
+    eepos = (eepos+1) & 63;  // wear leveling, use next cell
 
     eep = mode_idx;
     eeprom_write_byte((uint8_t *)(eepos), eep);      // save current state
-    eeprom_write_byte((uint8_t *)(oldpos), 0xff);  // erase old state
+    eeprom_write_byte((uint8_t *)(oldpos), 0xff);    // erase old state
 }
 
 void restore_state() {
-    uint8_t eep1;
+    uint8_t eep;
     // find the config data
-    for(eepos=0; eepos<64; eepos+=1) {
-        eep1 = eeprom_read_byte((const uint8_t *)eepos);
-        if (eep1 != 0xff) break;
+    for(eepos=0; eepos<64; eepos++) {
+        eep = eeprom_read_byte((const uint8_t *)eepos);
+        if (eep != 0xff) break;
     }
     // unpack the config data
     if (eepos < 64) {
-        mode_idx = eep1;
+        mode_idx = eep;
     }
-    //else eepos=0;  // unnecessary, save_state handles wrap-around
+    // unnecessary, save_state handles wrap-around
+    // (and we don't really care about it skipping cell 0 once in a while)
+    //else eepos=0;
 }
 
 inline void next_mode() {
@@ -323,7 +333,7 @@ void blink(uint8_t val)
 {
     for (; val>0; val--)
     {
-        set_output(0,20);
+        set_output(BLINK_BRIGHTNESS);
         _delay_ms(100);
         set_output(0,0);
         _delay_ms(400);
@@ -419,7 +429,14 @@ int main(void)
     while(1) {
         output = pgm_read_byte(modesNx + mode_idx);
         if (output == STROBE) {
-#ifdef BIKING_STROBE
+            // 10Hz tactical strobe
+            set_output(255,255);
+            _delay_ms(50);
+            set_output(0,0);
+            _delay_ms(50);
+        }
+#ifdef USE_BIKING_STROBE
+        else if (output == BIKING_STROBE) {
             // 2-level stutter beacon for biking and such
             for(i=0;i<4;i++) {
                 set_output(255,0);
@@ -428,14 +445,8 @@ int main(void)
                 _delay_ms(65);
             }
             _delay_ms(720);
-#else
-            // 10Hz tactical strobe
-            set_output(255,255);
-            _delay_ms(50);
-            set_output(0,0);
-            _delay_ms(50);
-#endif  // ifdef BIKING_STROBE
         }
+#endif  // ifdef BIKING_STROBE
         else if (output == BATTCHECK) {
             uint8_t blinks = 0;
             // turn off and wait one second before showing the value
