@@ -67,6 +67,9 @@ Summary of each project
     ToyKeeper/tail-light:
         Biking tail light / head light firmware
 
+    ToyKeeper/uv:
+        S7-like code intended for use on a UV blacklight
+
     Werner/STAR_improvements:
         STAR improved by Werner
 
@@ -132,6 +135,7 @@ Authors
         ToyKeeper/s7
         ToyKeeper/starry-offtime
         ToyKeeper/tail-light
+        ToyKeeper/uv
 
     Werner:
         Werner/STAR_improvements
@@ -166,6 +170,7 @@ Button-Type
         ToyKeeper/s7
         ToyKeeper/starry-offtime
         ToyKeeper/tail-light
+        ToyKeeper/uv
         Werner/STAR_improvements
         _the_/TheStar
         alexvh/basic_off_time_driver
@@ -273,6 +278,7 @@ MCU
         ToyKeeper/s7
         ToyKeeper/starry-offtime
         ToyKeeper/tail-light
+        ToyKeeper/uv
         Werner/STAR_improvements
         Werner/candleflicker
         _the_/TheStar
@@ -296,6 +302,7 @@ Memory
     mem decay:
         ToyKeeper/STAR_noinit
         ToyKeeper/s7
+        ToyKeeper/uv
         alexvh/basic_off_time_driver
         tterev3/pic10f322-examples
 
@@ -309,6 +316,7 @@ Memory
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/cypreus
         ToyKeeper/s7
+        ToyKeeper/uv
         Werner/STAR_improvements
         alexvh/basic_off_time_driver
         dthoang
@@ -320,6 +328,7 @@ Memory
         ToyKeeper/cypreus
         ToyKeeper/s7
         ToyKeeper/starry-offtime
+        ToyKeeper/uv
         Werner/STAR_improvements
         _the_/TheStar
         alexvh/basic_off_time_driver
@@ -368,6 +377,7 @@ Modes
         ToyKeeper/s7
         ToyKeeper/starry-offtime
         ToyKeeper/tail-light
+        ToyKeeper/uv
 
     battcheck calibrator:
         ToyKeeper/battcheck
@@ -376,6 +386,7 @@ Modes
         ToyKeeper/cypreus
         ToyKeeper/s7
         ToyKeeper/tail-light
+        ToyKeeper/uv
         _the_/TheStar
         tterev3/power_cycle_light
 
@@ -402,6 +413,7 @@ Modes
     party strobe:
         ToyKeeper/cypreus
         ToyKeeper/s7
+        ToyKeeper/uv
 
     ramp:
         DrJones/luxdrv
