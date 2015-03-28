@@ -32,7 +32,7 @@
  * FUSES
  *      I use these fuse settings
  *      Low:  0x75  (4.8MHz CPU without 8x divider, 9.4kHz phase-correct PWM or 18.75kHz fast-PWM)
- *      High: 0xff
+ *      High: 0xfd  (to enable brownout detection)
  *
  *      For more details on these settings, visit http://github.com/JCapSolutions/blf-firmware/wiki/PWM-Frequency
  *
@@ -89,6 +89,10 @@
 // (controls whether mode memory is on the star or if it's a setting in config mode)
 #define CONFIG_STARS
 
+// output to use for blinks on battery check mode (primary PWM level, alt PWM level)
+// Use 20,0 for a single-channel driver or 0,20 for a two-channel driver
+#define BLINK_BRIGHTNESS    0,20
+
 // Mode group 1
 #define NUM_MODES1          7
 // PWM levels for the big circuit (FET or Nx7135)
@@ -105,12 +109,12 @@
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,TURBO .
-#define NUM_HIDDEN          3
-#define HIDDENMODES         BATTCHECK,STROBE,TURBO
-#define HIDDENMODES_PWM     PHASE,PHASE,PHASE
+#define NUM_HIDDEN          4
+#define HIDDENMODES         BIKING_STROBE,BATTCHECK,STROBE,TURBO
+#define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE
 
 // Uncomment to use a 2-level stutter beacon instead of a tactical strobe
-//#define BIKING_STROBE
+#define USE_BIKING_STROBE
 
 #define NON_WDT_TURBO            // enable turbo step-down without WDT
 // How many timer ticks before before dropping down.
@@ -155,10 +159,14 @@
 #define TURBO     255       // Convenience code for turbo mode
 #define STROBE    254       // Convenience code for strobe mode
 #define BATTCHECK 253       // Convenience code for battery check mode
+#define BIKING_STROBE 252   // Convenience code for biking strobe mode
 
 /*
  * =========================================================================
  */
+
+// Ignore a spurious warning, we did the cast on purpose
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 
 #ifdef OWN_DELAY
 #include <util/delay_basic.h>
@@ -208,7 +216,9 @@ uint8_t eepos = 0;
 uint8_t memory = 0;        // mode memory, or not (set via soldered star)
 uint8_t modegroup = 0;     // which mode group (set above in #defines)
 uint8_t mode_idx = 0;      // current or last-used mode number
-uint8_t fast_presses = 0;  // counter for entering config mode
+// counter for entering config mode
+// (needs to be remembered while off, but only for up to half a second)
+uint8_t fast_presses __attribute__ ((section (".noinit")));
 
 // NOTE: Only '1' is known to work; -1 will probably break and is untested.
 // In other words, short press goes to the next (higher) mode,
@@ -245,41 +255,39 @@ PROGMEM const uint8_t voltage_blinks[] = {
 };
 
 void save_state() {  // central method for writing (with wear leveling)
-    uint8_t oldpos=eepos;
     // a single 16-bit write uses less ROM space than two 8-bit writes
-    uint16_t eep;
+    uint8_t eep;
+    uint8_t oldpos=eepos;
 
-    eepos=(eepos+2)&63;  // wear leveling, use next cell
+    eepos = (eepos+1) & 63;  // wear leveling, use next cell
 
 #ifdef CONFIG_STARS
-    eep = mode_idx | (fast_presses << 12) | (modegroup << 8);
+    eep = mode_idx | (modegroup << 5);
 #else
-    eep = mode_idx | (fast_presses << 12) | (modegroup << 8) | (memory << 9);
+    eep = mode_idx | (modegroup << 5) | (memory << 6);
 #endif
-    eeprom_write_word((uint16_t *)(eepos), eep);      // save current state
-    eeprom_write_word((uint16_t *)(oldpos), 0xffff);  // erase old state
+    eeprom_write_byte((uint8_t *)(eepos), eep);      // save current state
+    eeprom_write_byte((uint8_t *)(oldpos), 0xff);    // erase old state
 }
 
 void restore_state() {
-    // two 8-bit reads use less ROM space than a single 16-bit write
-    uint8_t eep1;
-    uint8_t eep2;
+    uint8_t eep;
     // find the config data
-    for(eepos=0; eepos<64; eepos+=2) {
-        eep1 = eeprom_read_byte((const uint8_t *)eepos);
-        eep2 = eeprom_read_byte((const uint8_t *)eepos+1);
-        if (eep1 != 0xff) break;
+    for(eepos=0; eepos<64; eepos++) {
+        eep = eeprom_read_byte((const uint8_t *)eepos);
+        if (eep != 0xff) break;
     }
     // unpack the config data
     if (eepos < 64) {
-        mode_idx = eep1;
-        fast_presses = (eep2 >> 4);
-        modegroup = eep2 & 1;
+        mode_idx = eep & 0x0f;
+        modegroup = (eep >> 5) & 1;
 #ifndef CONFIG_STARS
-        memory = (eep2 >> 1) & 1;
+        memory = (eep >> 6) & 1;
 #endif
     }
-    //else eepos=0;  // unnecessary, save_state handles wrap-around
+    // unnecessary, save_state handles wrap-around
+    // (and we don't really care about it skipping cell 0 once in a while)
+    //else eepos=0;
 }
 
 inline void next_mode() {
@@ -406,7 +414,7 @@ void blink(uint8_t val)
 {
     for (; val>0; val--)
     {
-        set_output(0,20);
+        set_output(BLINK_BRIGHTNESS);
         _delay_ms(100);
         set_output(0,0);
         _delay_ms(400);
@@ -456,20 +464,25 @@ int main(void)
     count_modes();
 
 
+    // memory decayed, reset it
+    // (should happen on med/long press)
+    if (fast_presses > 0x20) { fast_presses = 0; }
+
     if (cap_val > CAP_SHORT) {
         // Indicates they did a short press, go to the next mode
         next_mode(); // Will handle wrap arounds
-        if (fast_presses < 15) fast_presses ++;
+        // We don't care what the value is as long as it's over 15
+        fast_presses = (fast_presses+1) & 0x1f;
 #ifdef OFFTIM3
     } else if (cap_val > CAP_MED) {
         // User did a medium press, go back one mode
         prev_mode(); // Will handle "negative" modes and wrap-arounds
-        fast_presses = 0;
+        //fast_presses = 0;
 #endif
     } else {
         // Long press, keep the same mode
         // ... or reset to the first mode
-        fast_presses = 0;
+        //fast_presses = 0;
         if (! memory) {
             // Reset to the first mode
             mode_idx = 0;
@@ -509,7 +522,7 @@ int main(void)
 #endif
     while(1) {
         output = pgm_read_byte(modesNx + mode_idx);
-        if (fast_presses == 0x0f) {  // Config mode
+        if (fast_presses > 0x0f) {  // Config mode
             _delay_s();       // wait for user to stop fast-pressing button
             fast_presses = 0; // exit this mode after one use
             mode_idx = 0;
@@ -541,7 +554,14 @@ int main(void)
 #endif  // ifdef CONFIG_STARS
         }
         else if (output == STROBE) {
-#ifdef BIKING_STROBE
+            // 10Hz tactical strobe
+            set_output(255,255);
+            _delay_ms(50);
+            set_output(0,0);
+            _delay_ms(50);
+        }
+#ifdef USE_BIKING_STROBE
+        else if (output == BIKING_STROBE) {
             // 2-level stutter beacon for biking and such
             for(i=0;i<4;i++) {
                 set_output(255,0);
@@ -550,14 +570,8 @@ int main(void)
                 _delay_ms(65);
             }
             _delay_ms(720);
-#else
-            // 10Hz tactical strobe
-            set_output(255,255);
-            _delay_ms(50);
-            set_output(0,0);
-            _delay_ms(50);
-#endif  // ifdef BIKING_STROBE
         }
+#endif  // ifdef BIKING_STROBE
         else if (output == BATTCHECK) {
             uint8_t blinks = 0;
             // turn off and wait one second before showing the value
@@ -598,10 +612,7 @@ int main(void)
 
             // If we got this far, the user has stopped fast-pressing.
             // So, don't enter config mode.
-            if (fast_presses) {
-                fast_presses = 0;
-                save_state();
-            }
+            fast_presses = 0;
         }
 #ifdef VOLTAGE_MON
 #if 1
@@ -648,6 +659,10 @@ int main(void)
 #endif
 #endif  // ifdef VOLTAGE_MON
         //sleep_mode();  // incompatible with blinky modes
+
+        // If we got this far, the user has stopped fast-pressing.
+        // So, don't enter config mode.
+        //fast_presses = 0;  // doesn't interact well with strobe, too fast
     }
 
     //return 0; // Standard Return Code

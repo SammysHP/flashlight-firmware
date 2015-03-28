@@ -3,5 +3,5 @@ Button-Type: clicky
 Memory: offtime, OTC, star-configurable
 MCU: attiny13a
 Authors: ToyKeeper
-Modes: battcheck, tactical strobe
+Modes: battcheck, tactical strobe, bike flasher
 Extras: dual PWM, offtime-3, hidden modes, mode groups
