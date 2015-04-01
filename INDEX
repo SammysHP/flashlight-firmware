@@ -46,6 +46,9 @@ Summary of each project
     ToyKeeper/Ferrero_Rocher:
         E-switch firmwares designed for Helios' "Ferrero Rocher" driver:
 
+    ToyKeeper/STAR_1mode:
+        1-mode version of STAR (100% only with turbo and LVP step-down)
+
     ToyKeeper/STAR_noinit:
         STAR noinit (STAR_off_time with mem-decay instead of OTC)
 
@@ -117,6 +120,7 @@ Authors
         JonnyC/STAR/STAR_momentary
         JonnyC/STAR/STAR_off_time
         Tom_E
+        ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
         ToyKeeper/starry-offtime
         ToyKeeper/tail-light
@@ -128,6 +132,7 @@ Authors
 
     ToyKeeper:
         ToyKeeper/Ferrero_Rocher
+        ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
         ToyKeeper/battcheck
         ToyKeeper/blf-a6
@@ -164,6 +169,7 @@ Button-Type
         JonnyC/STAR/STAR
         JonnyC/STAR/STAR_dual_switch
         JonnyC/STAR/STAR_off_time
+        ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
         ToyKeeper/blf-a6
         ToyKeeper/cypreus
@@ -202,6 +208,7 @@ Extras
         JonnyC/STAR/STAR
         JonnyC/STAR/STAR_momentary
         JonnyC/STAR/STAR_off_time
+        ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
         ToyKeeper/blf-a6
         ToyKeeper/starry-offtime
@@ -271,6 +278,7 @@ MCU
         JonnyC/STAR/STAR_off_time
         Tom_E
         ToyKeeper/Ferrero_Rocher
+        ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
         ToyKeeper/battcheck
         ToyKeeper/blf-a6
@@ -314,6 +322,7 @@ Memory
         JonnyC/STAR/STAR_momentary
         Tom_E
         ToyKeeper/Ferrero_Rocher
+        ToyKeeper/STAR_1mode
         ToyKeeper/cypreus
         ToyKeeper/s7
         ToyKeeper/uv
@@ -362,6 +371,9 @@ Memory
         ToyKeeper/Ferrero_Rocher
 
 Modes
+
+    100% only:
+        ToyKeeper/STAR_1mode
 
     5-minute timer:
         DrJones/luxdrv
