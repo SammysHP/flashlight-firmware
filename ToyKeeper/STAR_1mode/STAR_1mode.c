@@ -311,6 +311,7 @@ int main(void)
 	#ifdef MODE_TURBO
 	modes[mode_cnt++] = MODE_TURBO;
 	#endif
+#if 0  // stars are irrelevant for just one mode
 	if ((PINB & (1 << STAR3_PIN)) == 0) {
 		// High to Low
 		mode_dir = -1;
@@ -319,12 +320,14 @@ int main(void)
 	}
 	// Not soldered (1) should enable memory
 	memory = ((PINB & (1 << STAR4_PIN)) > 0) ? 1 : 0;
+#endif
 	
 	// Enable sleep mode set to Idle that will be triggered by the sleep_mode() command.
 	// Will allow us to go idle between WDT interrupts
 	set_sleep_mode(SLEEP_MODE_IDLE);
 	
 	// Determine what mode we should fire up
+#if 0 // memory is irrelevant with only one mode
 	// Read the last mode that was saved
 	read_mode_idx();
 	if (mode_idx&0x10) {
@@ -337,6 +340,7 @@ int main(void)
 	}
 	// Store mode with short press indicator
 	store_mode_idx(mode_idx|0x10);
+#endif
 	
 	WDT_on();
 	
@@ -366,7 +370,7 @@ int main(void)
 	#ifdef VOLTAGE_MON
 		if (low_voltage(ADC_LOW)) {
 			// We need to go to a lower level
-			if (mode_idx == 0 && ALT_PWM_LVL <= LVP_MIN) {
+			if ((mode_idx == 0) && (ALT_PWM_LVL <= LVP_MIN)) {
 				// Can't go any lower than the lowest mode
 				// Wait until we hit the critical level before flashing 10 times and turning off
 				while (!low_voltage(ADC_CRIT));
@@ -396,8 +400,10 @@ int main(void)
 				}
 				// Lower the mode by half, but don't go below LVP_MIN
 				if ((ALT_PWM_LVL >> 1) > LVP_MIN) {
-					set_output(ALT_PWM_LVL >> LVP_MIN);
-				}					
+					set_output(ALT_PWM_LVL >> 1);
+				} else {
+					set_output(LVP_MIN);
+				}
 				// See if we should change the current mode level if we've gone under the current mode.
 				if ((mode_idx > 0)  &&  (ALT_PWM_LVL < modes[mode_idx])) {
 					// Lower our recorded mode
