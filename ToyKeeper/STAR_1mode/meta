@@ -1,7 +1,7 @@
-Description: STAR
-Authors: JonnyC
+Description: 1-mode version of STAR (100% only with turbo and LVP step-down)
+Authors: ToyKeeper, JonnyC
 MCU: attiny13a
 Button-Type: clicky
-Memory: ontime, star-configurable
-Modes:
-Extras: dual PWM, star-configurable moon, star-configurable mode order
+Memory: none
+Modes: 100% only
+Extras: dual PWM

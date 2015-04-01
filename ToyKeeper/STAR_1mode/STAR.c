@@ -69,9 +69,10 @@
 //#define TICKS_250MS		// If enabled, ticks are every 250 ms. If disabled, ticks are every 500 ms
 							// Affects mode saving and turbo timeout/rampdown timing
 
-#define MODE_MOON			3	// Can comment out to remove mode, but should be set through soldering stars
-#define MODE_LOW			14  // Can comment out to remove mode
-#define MODE_MED			39	// Can comment out to remove mode
+#define LVP_MIN				7	// Lowest level the LVP will step down to
+//#define MODE_MOON			3	// Can comment out to remove mode, but should be set through soldering stars
+//#define MODE_LOW			14  // Can comment out to remove mode
+//#define MODE_MED			39	// Can comment out to remove mode
 //#define MODE_HIGH			255	// Can comment out to remove mode
 #define MODE_TURBO			255	// Can comment out to remove mode
 #define MODE_TURBO_LOW		140	// Level turbo ramps down to if turbo enabled
@@ -365,7 +366,7 @@ int main(void)
 	#ifdef VOLTAGE_MON
 		if (low_voltage(ADC_LOW)) {
 			// We need to go to a lower level
-			if (mode_idx == 0 && ALT_PWM_LVL <= modes[mode_idx]) {
+			if (mode_idx == 0 && ALT_PWM_LVL <= LVP_MIN) {
 				// Can't go any lower than the lowest mode
 				// Wait until we hit the critical level before flashing 10 times and turning off
 				while (!low_voltage(ADC_CRIT));
@@ -373,7 +374,7 @@ int main(void)
 				while (i++<10) {
 					set_output(0);
 					_delay_ms(250);
-					set_output(modes[0]);
+					set_output(LVP_MIN);
 					_delay_ms(500);
 				}
 				// Turn off the light
@@ -393,15 +394,12 @@ int main(void)
 					set_output(hold_pwm);
 					_delay_ms(500);
 				}
-				// Lower the mode by half, but don't go below lowest level
-				if ((ALT_PWM_LVL >> 1) < modes[0]) {
-					set_output(modes[0]);
-					mode_idx = 0;
-				} else {
-					set_output(ALT_PWM_LVL >> 1);
+				// Lower the mode by half, but don't go below LVP_MIN
+				if ((ALT_PWM_LVL >> 1) > LVP_MIN) {
+					set_output(ALT_PWM_LVL >> LVP_MIN);
 				}					
 				// See if we should change the current mode level if we've gone under the current mode.
-				if (ALT_PWM_LVL < modes[mode_idx]) {
+				if ((mode_idx > 0)  &&  (ALT_PWM_LVL < modes[mode_idx])) {
 					// Lower our recorded mode
 					mode_idx--;
 				}
