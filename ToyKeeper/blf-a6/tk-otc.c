@@ -102,6 +102,8 @@
 #define NUM_HIDDEN          4
 #define HIDDENMODES         BIKING_STROBE,BATTCHECK,STROBE,TURBO
 #define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE
+#define HIDDENMODES_ALT     0,0,0,0   // Zeroes, same length as NUM_HIDDEN
+
 
 // Uncomment to use a 2-level stutter beacon instead of a tactical strobe
 #define USE_BIKING_STROBE
@@ -221,7 +223,7 @@ uint8_t mode_idx = 0;      // current or last-used mode number
 
 // Modes (gets set when the light starts up based on saved config values)
 PROGMEM const uint8_t modesNx[] = { MODESNx, HIDDENMODES };
-PROGMEM const uint8_t modes1x[] = { MODES1x, HIDDENMODES };
+PROGMEM const uint8_t modes1x[] = { MODES1x, HIDDENMODES_ALT };
 PROGMEM const uint8_t modes_pwm[] = { MODES_PWM, HIDDENMODES_PWM };
 
 PROGMEM const uint8_t voltage_blinks[] = {

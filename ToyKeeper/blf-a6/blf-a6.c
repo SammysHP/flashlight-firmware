@@ -112,6 +112,7 @@
 #define NUM_HIDDEN          4
 #define HIDDENMODES         BIKING_STROBE,BATTCHECK,STROBE,TURBO
 #define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE
+#define HIDDENMODES_ALT     0,0,0,0   // Zeroes, same length as NUM_HIDDEN
 
 // Uncomment to use a 2-level stutter beacon instead of a tactical strobe
 #define USE_BIKING_STROBE
@@ -238,8 +239,8 @@ PROGMEM const uint8_t modesNx1[] = { MODESNx1, HIDDENMODES };
 PROGMEM const uint8_t modesNx2[] = { MODESNx2, HIDDENMODES };
 const uint8_t *modesNx;  // gets pointed at whatever group is current
 
-PROGMEM const uint8_t modes1x1[] = { MODES1x1, HIDDENMODES };
-PROGMEM const uint8_t modes1x2[] = { MODES1x2, HIDDENMODES };
+PROGMEM const uint8_t modes1x1[] = { MODES1x1, HIDDENMODES_ALT };
+PROGMEM const uint8_t modes1x2[] = { MODES1x2, HIDDENMODES_ALT };
 const uint8_t *modes1x;
 
 PROGMEM const uint8_t modes_pwm1[] = { MODES_PWM1, HIDDENMODES_PWM };
