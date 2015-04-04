@@ -148,13 +148,14 @@
 //#define ADC_CRIT        124 // When do we shut the light off (2.7V)
 
 // the BLF EE A6 driver may have different offtime cap values than most other drivers
+// Values are between 1 and 255, and can be measured with offtime-cap.c
+// These #defines are the edge boundaries, not the center of the target.
 #ifdef OFFTIM3
-#define CAP_SHORT           250  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
-#define CAP_MED             190  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
+#define CAP_SHORT           250  // Anything higher than this is a short press
+#define CAP_MED             190  // Between CAP_MED and CAP_SHORT is a medium press
+                                 // Below CAP_MED is a long press
 #else
-#define CAP_SHORT           190  // Value between 1 and 255 corresponding with cap voltage (0 - 1.1v) where we consider it a short press to move to the next mode
-                                 // Not sure the lowest you can go before getting bad readings, but with a value of 70 and a 1uF cap, it seemed to switch sometimes
-                                 // even when waiting 10 seconds between presses.
+#define CAP_SHORT           190  // Anything higher than this is a short press, lower is a long press
 #endif
 
 #define TURBO     255       // Convenience code for turbo mode
