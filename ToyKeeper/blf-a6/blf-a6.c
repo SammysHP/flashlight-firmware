@@ -127,12 +127,12 @@
 // Your mileage may vary.
 #define ADC_42          174 // the ADC value we expect for 4.20 volts
 #define ADC_100         174 // the ADC value for 100% full (4.2V resting)
-#define ADC_75          165 // the ADC value for 75% full (4.0V resting)
-#define ADC_50          155 // the ADC value for 50% full (3.8V resting)
-#define ADC_25          141 // the ADC value for 25% full (3.5V resting)
-#define ADC_0           118 // the ADC value for 0% full (3.0V resting)
-#define ADC_LOW         109 // When do we start ramping down (2.8V)
-#define ADC_CRIT        104 // When do we shut the light off (2.7V)
+#define ADC_75          166 // the ADC value for 75% full (4.0V resting)
+#define ADC_50          158 // the ADC value for 50% full (3.8V resting)
+#define ADC_25          145 // the ADC value for 25% full (3.5V resting)
+#define ADC_0           124 // the ADC value for 0% full (3.0V resting)
+#define ADC_LOW         116 // When do we start ramping down (2.8V)
+#define ADC_CRIT        112 // When do we shut the light off (2.7V)
 // These values were copied from s7.c.
 // Your mileage may vary.
 //#define ADC_42          185 // the ADC value we expect for 4.20 volts

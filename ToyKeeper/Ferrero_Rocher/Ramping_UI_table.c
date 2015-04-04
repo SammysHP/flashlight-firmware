@@ -24,7 +24,7 @@
 #define VOLTAGE_MON         // Comment out to disable all voltage-related functions:
                             // (including ramp down and eventual shutoff when battery is low)
 #define REDGREEN_INDICATORS // comment out to disable red/green power indicator LEDs
-#define LOWPASS_VOLTAGE     // Average the last 4 voltage readings for smoother results
+//#define LOWPASS_VOLTAGE     // Average the last 4 voltage readings for smoother results
                             // (comment out to use only one value, saves space)
 
 // Switch handling
@@ -53,43 +53,48 @@
 //   - cubic: visually linear
 //   - quadratic: somewhat between, but closer to cubic
 // --------------------------------------------------------------------------
-#define PWM_MODE   FAST   // PWM mode/speed: PHASE (9 kHz) or FAST (18 kHz)
+#define PWM_MODE   PHASE  // PWM mode/speed: PHASE (9 kHz) or FAST (18 kHz)
                           // (FAST has side effects when PWM=0, can't
                           //  shut off light without putting the MCU to sleep)
                           // (PHASE might make audible whining sounds)
 #define USE_PFM           // comment out to disable pulse frequency modulation
                           // (makes bottom few modes ramp smoother)
-#define TICKS_PER_RAMP    3 // How many WDT ticks per step in the ramp (lower == faster ramp)
+#define TICKS_PER_RAMP    2 // How many WDT ticks per step in the ramp (lower == faster ramp)
 // PWM levels / ramp shape / ramp size:
 // Must be low to high (the lowest values are highly device-dependent)
 // Choose a ramp style and number of steps
 // A: 64 steps, PHASE, logarithmic
-//#define MODES           0,1,1,1,1,1,1,1,1,2,2,2,2,2,3,3,3,4,4,5,5,6,6,7,7,8,9,10,11,12,13,14,16,17,19,21,23,25,27,30,33,36,39,43,47,52,56,62,68,74,81,89,97,106,116,127,139,153,167,183,200,219,239,255
+#define MODES           0,1,1,1,1,1,1,1,1,2,2,2,2,2,3,3,3,4,4,5,5,6,6,7,7,8,9,10,11,12,13,14,16,17,19,21,23,25,27,30,33,36,39,43,47,52,56,62,68,74,81,89,97,106,116,127,139,153,167,183,200,219,239,255
 // B: 40 steps, PHASE, logarithmic
 //#define MODES           0,1,1,1,1,1,2,2,2,3,3,4,5,5,6,7,9,10,12,14,16,19,22,26,30,35,40,47,55,63,74,85,99,115,134,155,180,209,242,255
 // C: 40 steps, FAST, logarithmic
-#define MODES           0,0,0,0,0,0,1,1,1,2,2,3,4,4,5,6,8,9,11,13,15,18,21,25,29,34,39,46,54,62,73,84,98,114,133,154,179,208,241,255
+//#define MODES           0,0,0,0,0,0,1,1,1,2,2,3,4,4,5,6,8,9,11,13,15,18,21,25,29,34,39,46,54,62,73,84,98,114,133,154,179,208,241,255
 // D: 40 steps, PHASE, quadratic
 //#define MODES           0,1,1,1,2,3,4,5,6,7,8,10,12,14,16,19,23,28,34,41,49,58,68,79,91,103,116,130,145,161,178,196,215,235,255
 // E: 64 steps, FAST, cubic
 //#define MODES           0,0,1,1,1,1,1,2,2,2,2,3,3,4,5,6,7,8,9,11,12,14,16,18,20,22,24,26,29,32,35,38,41,45,48,52,56,60,65,69,74,79,85,90,96,102,108,114,121,128,135,143,151,159,167,175,184,194,203,213,223,233,244,255
 // (only for PFM) counter at which the PWM will loop (variable frequency PWM) (HIGHLY DEVICE-DEPENDENT *AND* VOLTAGE-DEPENDENT!)
 // A: 64 steps, PHASE, logarithmic
-//#define CEILINGS        255,255,208,187,169,154,139,125,111,230,200,181,164,149,215,193,176,223,200,243,212,246,215,234,212,222,230,235,237,237,235,232,245,237,243,247,247,246,243,247,249,248,246,248,248,252,248,251,252,251,251,252,251,251,251,252,252,254,253,253,253,254,253,255
+#define CEILINGS        255,255,208,187,169,154,139,125,111,230,200,181,164,149,215,193,176,223,200,243,212,246,215,234,212,222,230,235,237,237,235,232,245,237,243,247,247,246,243,247,249,248,246,248,248,252,248,251,252,251,251,252,251,251,251,252,252,254,253,253,253,254,253,255
 // B: 40 steps, PHASE, logarithmic
 //#define CEILINGS        255,255,193,165,140,117,220,182,155,210,178,210,234,198,207,210,236,226,235,238,235,242,242,248,247,249,246,249,255,249,255,250,252,252,255,253,253,254,253,255
 // C: 40 steps, FAST, logarithmic
-#define CEILINGS        255,255,146,95,51,10,203,147,106,193,150,196,229,183,195,200,232,221,232,235,233,240,241,248,246,249,245,249,255,249,255,250,251,252,255,253,253,254,253,255
+//#define CEILINGS        255,255,146,95,51,10,203,147,106,193,150,196,229,183,195,200,232,221,232,235,233,240,241,248,246,249,245,249,255,249,255,250,251,252,255,253,253,254,253,255
 
 // NOTE: Voltage values are calibrated for the Ferrero Rocher F6-DD driver
 // (may need different values for nanjg/qlite drivers, but only a little different)
-#define ADC_42          185 // the ADC value we expect for 4.20 volts
-#define VOLTAGE_FULL    169 // 3.9 V, 4 blinks
-#define VOLTAGE_GREEN   154 // 3.6 V, 3 blinks
-#define VOLTAGE_YELLOW  139 // 3.3 V, 2 blinks
-#define VOLTAGE_RED     124 // 3.0 V, 1 blink
-#define ADC_LOW         123 // When do we start ramping down
-#define ADC_CRIT        113 // When do we shut the light off
+#define ADC_42          184 // the ADC value we expect for 4.20 volts
+#define ADC_100         184 // the ADC value for 100% full (4.2V resting)
+#define ADC_75          175 // the ADC value for 75% full (4.0V resting)
+#define ADC_50          165 // the ADC value for 50% full (3.8V resting)
+#define ADC_25          151 // the ADC value for 25% full (3.5V resting)
+#define ADC_0           128 // the ADC value for 0% full (3.0V resting)
+#define VOLTAGE_FULL    170 // 3.9 V under load
+#define VOLTAGE_GREEN   156 // 3.6 V under load
+#define VOLTAGE_YELLOW  142 // 3.3 V under load
+#define VOLTAGE_RED     128 // 3.0 V under load
+#define ADC_LOW         124 // When do we start ramping down (2.9V)
+#define ADC_CRIT        114 // When do we shut the light off (2.7V)
 // these two are just for testing low-batt behavior w/ a CR123 cell
 //#define ADC_LOW         139 // When do we start ramping down
 //#define ADC_CRIT        138 // When do we shut the light off

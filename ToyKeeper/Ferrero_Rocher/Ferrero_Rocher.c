@@ -59,18 +59,18 @@
                         // 90  = 5625
                         // 120 = 7500
 
-#define ADC_42          185 // the ADC value we expect for 4.20 volts
-#define ADC_100         185 // the ADC value for 100% full (4.2V resting)
+#define ADC_42          184 // the ADC value we expect for 4.20 volts
+#define ADC_100         184 // the ADC value for 100% full (4.2V resting)
 #define ADC_75          175 // the ADC value for 75% full (4.0V resting)
-#define ADC_50          164 // the ADC value for 50% full (3.8V resting)
-#define ADC_25          154 // the ADC value for 25% full (3.6V resting)
-#define ADC_0           139 // the ADC value for 0% full (3.3V resting)
-#define VOLTAGE_FULL    169 // 3.9 V under load
-#define VOLTAGE_GREEN   154 // 3.6 V under load
-#define VOLTAGE_YELLOW  139 // 3.3 V under load
-#define VOLTAGE_RED     124 // 3.0 V under load
-#define ADC_LOW         123 // When do we start ramping down
-#define ADC_CRIT        113 // When do we shut the light off
+#define ADC_50          165 // the ADC value for 50% full (3.8V resting)
+#define ADC_25          151 // the ADC value for 25% full (3.5V resting)
+#define ADC_0           128 // the ADC value for 0% full (3.0V resting)
+#define VOLTAGE_FULL    170 // 3.9 V under load
+#define VOLTAGE_GREEN   156 // 3.6 V under load
+#define VOLTAGE_YELLOW  142 // 3.3 V under load
+#define VOLTAGE_RED     128 // 3.0 V under load
+#define ADC_LOW         124 // When do we start ramping down (2.9V)
+#define ADC_CRIT        114 // When do we shut the light off (2.7V)
 // these two are just for testing low-batt behavior w/ a CR123 cell
 //#define ADC_LOW         139 // When do we start ramping down
 //#define ADC_CRIT        138 // When do we shut the light off

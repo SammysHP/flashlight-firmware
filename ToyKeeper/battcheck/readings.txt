@@ -1,11 +1,17 @@
 Values in ()'s are estimated based on the other readings.
 
 Ferrero Rocher
-  183 - 4.17V
-  177 - 4.06V
-  167 - 3.83V
-  157 - 3.61V
-  132 - 3.09V
+  184 - 4.20V
+  175 - 4.00V
+  170 - 3.90V
+  165 - 3.80V
+  156 - 3.60V
+  151 - 3.50V
+  142 - 3.30V
+  128 - 3.00V
+  124 - 2.90V
+  119 - 2.80V
+  114 - 2.70V
 
 AK-47 w/ 2x7135 (350mA)
   174 - 4.00V
@@ -24,17 +30,15 @@ RMM's Moonlight Special
   (123 - 2.8V)
   (118 - 2.7V)
 
-Wight A17HYBRID-S built by DBCstm:
-  (174 - 4.20V)
-  173 - 4.18V
-  169 - 4.09V
-  (165 - 4.0V)
-  (155 - 3.8V)
-  149 - 3.61V
-  (141 - 3.5V)
-  119 - 3.01V
-  (109 - 2.8V)
-  (104 - 2.7V)
+Wight A17HYBRID-S built by DBCstm:  (measured with bench supply and DMM)
+  174 - 4.20V
+  166 - 4.00V
+  158 - 3.80V
+  145 - 3.50V
+  124 - 3.00V
+  120 - 2.90V
+  116 - 2.80V
+  112 - 2.70V
 
 Notes:
 http://budgetlightforum.com/node/29150?page=32#comment-719003
