@@ -37,6 +37,9 @@ Summary of each project
     JonnyC/STAR/STAR_off_time:
         STAR off-time
 
+    Tamagotchi/7135x8v2:
+        Very flexible clicky firmware with hidden modes, from fonarevka.ru
+
     Tom_E:
         STAR-momentary plus strobe and 1-click off
 
@@ -106,6 +109,9 @@ Summary of each project
 
 Authors
 
+    DooMmen:
+        Tamagotchi/7135x8v2
+
     DrJones:
         DrJones/MiniDrv
         DrJones/MiniMo
@@ -126,6 +132,9 @@ Authors
         ToyKeeper/tail-light
         Werner/STAR_improvements
         dthoang
+
+    Tamagotchi:
+        Tamagotchi/7135x8v2
 
     Tom E:
         Tom_E
@@ -160,6 +169,9 @@ Authors
         tterev3/pic10f322-examples
         tterev3/power_cycle_light
 
+    vdavid:
+        Tamagotchi/7135x8v2
+
 Button-Type
 
     clicky:
@@ -169,6 +181,7 @@ Button-Type
         JonnyC/STAR/STAR
         JonnyC/STAR/STAR_dual_switch
         JonnyC/STAR/STAR_off_time
+        Tamagotchi/7135x8v2
         ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
         ToyKeeper/blf-a6
@@ -197,9 +210,15 @@ Button-Type
 
 Extras
 
+    4 power channels?:
+        Tamagotchi/7135x8v2
+
     Baton UI:
         ToyKeeper/Ferrero_Rocher
         dthoang
+
+    LVP:
+        Tamagotchi/7135x8v2
 
     battery indicator LEDs:
         ToyKeeper/Ferrero_Rocher
@@ -212,6 +231,9 @@ Extras
         ToyKeeper/STAR_noinit
         ToyKeeper/blf-a6
         ToyKeeper/starry-offtime
+
+    dual PWM?:
+        Tamagotchi/7135x8v2
 
     hidden modes:
         JonnyC/STAR/STAR_momentary
@@ -231,6 +253,9 @@ Extras
         DrJones/luxdrv
         alexvh/basic_off_time_driver
         tterev3/power_cycle_light
+
+    programmable modes?:
+        Tamagotchi/7135x8v2
 
     ramping UI:
         ToyKeeper/Ferrero_Rocher
@@ -259,6 +284,7 @@ Extras
 
     thermal step-down:
         JonnyC/STAR/MTN_momentary_temp
+        Tamagotchi/7135x8v2
 
 MCU
 
@@ -276,6 +302,7 @@ MCU
         JonnyC/STAR/STAR_dual_switch
         JonnyC/STAR/STAR_momentary
         JonnyC/STAR/STAR_off_time
+        Tamagotchi/7135x8v2
         Tom_E
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/STAR_1mode
@@ -320,6 +347,7 @@ Memory
         DrJones/luxdrv
         JonnyC/STAR/MTN_momentary_temp
         JonnyC/STAR/STAR_momentary
+        Tamagotchi/7135x8v2
         Tom_E
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/STAR_1mode
@@ -348,6 +376,7 @@ Memory
         DrJones/NLITE
         DrJones/luxdrv
         JonnyC/STAR/STAR
+        Tamagotchi/7135x8v2
         ToyKeeper/tail-light
         _the_/TheStar
         tterev3/power_cycle_light
@@ -381,8 +410,12 @@ Modes
     OTC calibrator:
         ToyKeeper/battcheck
 
+    SOS:
+        Tamagotchi/7135x8v2
+
     battcheck:
         DrJones/luxdrv
+        Tamagotchi/7135x8v2
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/blf-a6
         ToyKeeper/cypreus
@@ -403,6 +436,7 @@ Modes
         tterev3/power_cycle_light
 
     bike flasher:
+        Tamagotchi/7135x8v2
         ToyKeeper/blf-a6
         ToyKeeper/cypreus
         ToyKeeper/s7
@@ -416,7 +450,11 @@ Modes
         tterev3/power_cycle_light
 
     distress beacon:
+        Tamagotchi/7135x8v2
         _the_/TheStar
+
+    hidden moon:
+        Tamagotchi/7135x8v2
 
     momentary:
         JonnyC/STAR/MTN_momentary_temp
@@ -427,12 +465,19 @@ Modes
         ToyKeeper/s7
         ToyKeeper/uv
 
+    police flasher:
+        Tamagotchi/7135x8v2
+
     ramp:
         DrJones/luxdrv
+        Tamagotchi/7135x8v2
         alexvh/basic_off_time_driver
 
     soft lock:
         ToyKeeper/Ferrero_Rocher
+
+    strobe:
+        Tamagotchi/7135x8v2
 
     tactical strobe:
         DrJones/luxdrv
@@ -452,4 +497,8 @@ Modes
 TODO
 
     incomplete meta:
+        Tamagotchi/7135x8v2
         _the_/TheStar
+
+    needs documentation:
+        Tamagotchi/7135x8v2
