@@ -3,7 +3,7 @@
 //
 // 808 bytes with ramping
 //
-// License: Free for private and noncommercial use for members of BudgetLightForum.com and Taschenlampenforum.de
+// License: CC-BY-NC-SA (non-commercial use only, derivative works must be under the same license)
 //
 // changes:
 // 0.1  first version: levels,strobe,beacon,timer(136)   (638bytes)
