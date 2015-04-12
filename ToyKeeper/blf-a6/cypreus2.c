@@ -90,37 +90,36 @@
 // Mode group 1
 // number of regular non-hidden modes
 #define SOLID_MODES         6
-#define NUM_MODES           16
 // PWM levels for the big circuit (FET or Nx7135)
-#define MODESNx             0,0,1,36,112,255,BIKING_STROBE1,BIKING_STROBE2,BIKING_STROBE,HEART_BEACON,STROBE1,STROBE2,STROBE3,VAR_STROBE1,VAR_STROBE2,BATTCHECK
+#define MODESNx             0,0,1,36,112,255
 // PWM levels for the small circuit (1x7135)
-#define MODES1x             3,18,255,255,255,0,0,0,0,0,0,0,0,0,0,0
+#define MODES1x             3,18,255,255,255,0
 // PWM speed for each mode
-#define MODES_PWM           PHASE,FAST,FAST,FAST,FAST,PHASE,PHASE,FAST,FAST,PHASE,PHASE,PHASE,PHASE,PHASE,PHASE,PHASE
+#define MODES_PWM           PHASE,FAST,FAST,FAST,FAST,PHASE
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,TURBO .
-// TODO: change these to the index of the mode in the regular list
 #define NUM_HIDDEN          4
-#define HIDDENMODES         BIKING_STROBE,BATTCHECK,STROBE2,TURBO
+#define HIDDENMODES         BIKING_STROBE,STROBE2,BATTCHECK,TURBO
 #define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE
-#define HIDDENMODES_ALT     6,9,10,0   // short-press goes to this mode index
+#define HIDDENMODES_ALT     12,7,6,0   // short-press goes to this mode index
 
+// Secondary hidden modes are technically between regular and hidden modes.
+// Specify them in their normal forward order.
+#define NUM_HIDDEN2         10
+#define HIDDEN2             HEART_BEACON,STROBE1,STROBE2,STROBE3,VAR_STROBE1,VAR_STROBE2,BIKING_STROBE1,BIKING_STROBE2,BIKING_STROBE,BATTCHECK
+// The last one tells it where to go on shor press
+#define HIDDEN2_NEXT        0,0,0,0,0,0,0,0,0,SOLID_MODES
+// You probably want PHASE for each of these
+#define HIDDEN2_PWM         PHASE,PHASE,PHASE,PHASE,PHASE,PHASE,PHASE,PHASE,PHASE,PHASE
 
-// Uncomment to use a 2-level stutter beacon instead of a tactical strobe
-#define USE_BIKING_STROBE
-
-
-
-// TODO
-#define TURBO_MODES         2    // Treat top N modes as "turbo" modes with timed step-down
-                                 // (1 for just highest, 2 for two highest, etc)
-
-#define NON_WDT_TURBO            // enable turbo step-down without WDT
+#define ENABLE_TURBO       // enable turbo step-down without WDT
+// Any primary-channel PWM level above this will be treated as "turbo"
+#define TURBO_LEVEL        100
 // How many timer ticks before before dropping down.
 // Each timer tick is 500ms, so "60" would be a 30-second stepdown.
 // Max value of 255 unless you change "ticks"
-#define TURBO_TIMEOUT       40
+#define TURBO_TIMEOUT       30
 
 // These values were measured using wight's "A17HYBRID-S" driver built by DBCstm.
 // Your mileage may vary.
@@ -149,7 +148,6 @@
 // the BLF EE A6 driver may have different offtime cap values than most other drivers
 // Values are between 1 and 255, and can be measured with offtime-cap.c
 // These #defines are the edge boundaries, not the center of the target.
-// TODO: use memory decay to detect short presses, since the OTC on this driver sucks
 #ifdef OFFTIM3
 #define CAP_SHORT           250  // Anything higher than this is a short press
 #define CAP_MED             190  // Between CAP_MED and CAP_SHORT is a medium press
@@ -159,8 +157,10 @@
 #endif
 
 #define TURBO     255       // Convenience code for turbo mode
-#define STROBE    254       // Convenience code for strobe mode
-#define BATTCHECK 253       // Convenience code for battery check mode
+// Comment out the following when not used, to save space
+// Also, make sure each enabled item has a different value
+//#define STROBE    254       // Tactical strobe
+#define BATTCHECK 253       // Battery check mode
 #define BIKING_STROBE1 252  // Dim biking strobe
 #define BIKING_STROBE2 251  // Medium biking strobe
 #define BIKING_STROBE  250  // Full-bright biking strobe
@@ -226,6 +226,8 @@ uint8_t mode_idx = 0;      // current or last-used mode number
 
 // number of regular non-blinky non-hidden modes
 #define solid_modes SOLID_MODES
+// Number of solid and secondary hidden modes
+#define NUM_MODES SOLID_MODES+NUM_HIDDEN2
 // total length of current mode group's array
 #define mode_cnt NUM_MODES+NUM_HIDDEN
 // number of hidden modes in the current mode group
@@ -234,9 +236,9 @@ uint8_t mode_idx = 0;      // current or last-used mode number
 
 
 // Modes (gets set when the light starts up based on saved config values)
-PROGMEM const uint8_t modesNx[] = { MODESNx, HIDDENMODES };
-PROGMEM const uint8_t modes1x[] = { MODES1x, HIDDENMODES_ALT };
-PROGMEM const uint8_t modes_pwm[] = { MODES_PWM, HIDDENMODES_PWM };
+PROGMEM const uint8_t modesNx[] = { MODESNx, HIDDEN2, HIDDENMODES };
+PROGMEM const uint8_t modes1x[] = { MODES1x, HIDDEN2_NEXT, HIDDENMODES_ALT };
+PROGMEM const uint8_t modes_pwm[] = { MODES_PWM, HIDDEN2_PWM, HIDDENMODES_PWM };
 
 PROGMEM const uint8_t voltage_blinks[] = {
     ADC_0,    // 1 blink  for 0%-25%
@@ -290,14 +292,13 @@ inline void next_mode() {
 
 #ifdef OFFTIM3
 inline void prev_mode() {
-    if (mode_idx == NUM_MODES) {
-        // If we hit the end of the hidden modes, go back to moon
-        mode_idx = 0;
-    } else if (mode_idx > 0) {
-        // Regular mode: is between 1 and TOTAL_MODES
-        mode_idx -= 1;
-    } else {
-        // Otherwise, wrap around (this allows entering hidden modes)
+    if (mode_idx == NUM_MODES) { // hit the end of primary hidden modes
+        mode_idx = 0; // back to moon
+    } else if (mode_idx == SOLID_MODES) { // hit the end of secondary hidden modes
+        mode_idx = NUM_MODES - 1; // loop secondary hidden modes
+    } else if (mode_idx > 0) { // Regular non-moon mode
+        mode_idx --; // go dimmer
+    } else { // Moon goes back into the primary hidden modes
         mode_idx = mode_cnt - 1;
     }
 }
@@ -411,7 +412,7 @@ int main(void)
     restore_state();
 
 
-    // TODO: use memory decay instead of OTC for short / med press threshold
+    // idea for later: use memory decay instead of OTC for short / med press threshold?
     if (cap_val > CAP_SHORT) {
         // Indicates they did a short press, go to the next mode
         next_mode(); // Will handle wrap arounds
@@ -450,7 +451,7 @@ int main(void)
     //set_sleep_mode(SLEEP_MODE_IDLE);  // not used due to blinky modes
 
     uint8_t output;
-#ifdef NON_WDT_TURBO
+#ifdef ENABLE_TURBO
     uint8_t ticks = 0;
 #endif
 #ifdef VOLTAGE_MON
@@ -489,7 +490,7 @@ int main(void)
                 break;
 #endif
 #ifdef BIKING_STROBE
-            case BIKING_STROBE: // med biking strobe
+            case BIKING_STROBE: // max biking strobe
                 bike_flash(255);
                 break;
 #endif
@@ -501,8 +502,8 @@ int main(void)
                 break;
 #endif
 #ifdef VAR_STROBE1
-            case VAR_STROBE1: // variable-speed strobe
-                // strobe mode, smoothly oscillating frequency ~7 Hz to ~18 Hz
+            case VAR_STROBE1: // slow variable-speed strobe
+                // smoothly oscillating frequency ~7 Hz to ~18 Hz
                 {
                     uint8_t j, speed;
                     for(j=0; j<66; j++) {
@@ -514,8 +515,8 @@ int main(void)
                 break;
 #endif
 #ifdef VAR_STROBE2
-            case VAR_STROBE2: // variable-speed strobe
-                // strobe mode, smoothly oscillating frequency ~16 Hz to ~100 Hz
+            case VAR_STROBE2: // fast variable-speed strobe
+                // smoothly oscillating frequency ~16 Hz to ~100 Hz
                 {
                     uint8_t j, speed;
                     for(j=0; j<100; j++) {
@@ -536,16 +537,14 @@ int main(void)
                     _delay_s();
                     voltage = get_voltage();
                     voltage = get_voltage(); // the first one is unreliable
-                    // division takes too much flash space
-                    //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
-                    // a table uses less space than 5 logic clauses
+                    // one blink per voltage range
                     for (i=0; i<sizeof(voltage_blinks); i++) {
                         if (voltage > pgm_read_byte(voltage_blinks + i)) {
                             blinks ++;
                         }
                     }
 
-                    // blink up to five times to show voltage
+                    // blink zero to five times to show voltage
                     // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
                     blink(blinks);
                     _delay_s();  // wait at least 1 second between readouts
@@ -555,13 +554,17 @@ int main(void)
             default: // Regular non-hidden solid mode
                 set_mode(mode_idx);
                 // This part of the code will mostly replace the WDT tick code.
-#ifdef NON_WDT_TURBO
+#ifdef ENABLE_TURBO
                 // Do some magic here to handle turbo step-down
                 if (ticks < 255) ticks++;
-                // TODO: implement more than one level of turbo
                 if ((ticks > TURBO_TIMEOUT) 
-                        && (output == TURBO)) {
-                    mode_idx = mode_idx - 1; // step down one level
+                        && (output >= TURBO_LEVEL)) {
+                    if (mode_idx >= SOLID_MODES) { // handle step-down from hidden turbo
+                        mode_idx = SOLID_MODES - 2;
+                    } else { // step-down from non-hidden turbo(s)
+                        mode_idx = mode_idx - 1; // step down one level
+                    }
+                    ticks = 0; // in case we need to step down again
                     set_mode(mode_idx);
                     save_state();
                 }
