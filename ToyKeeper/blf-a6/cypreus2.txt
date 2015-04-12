@@ -1,0 +1,90 @@
+Firmware for a Sinner Cypreus Tri-EDC with a FET+1 driver with 
+triple XP-L emitters and a capacitor to enable off-time memory.
+
+Interface:
+
+  - A short press (0.5s or less) moves the mode forward by one.
+  - A medium press (~0.5s to 1.5s) moves the mode backward by one.
+  - A long press (more than 1.5s) resets to the first mode.  So, after 
+    being off for a while it always starts at the first mode.
+  - Going "backward" from the first mode will take you to hidden 
+    modes.
+  - A short press from any hidden mode has various effects.
+
+Solid modes:
+
+   1. Moon.
+   2. Low.
+   3. Medium.
+   4. High.
+   5. Higher.
+   6. Turbo. (will step down after ~30s)
+
+Hidden modes:
+
+   -1. Turbo.
+       Short press -> Moon.
+   -2. 24 Hz strobe.
+       Short press -> 12 Hz strobe.
+   -3. Battcheck mode.
+       Short press -> Heartbeat beacon.
+   -4. Bike flasher (bright).
+       Short press -> Dim bike flasher.
+   -5. Goes back to non-hidden moon mode.
+
+Auxiliary hidden modes:
+
+   7. Dim bike flasher.
+   8. Medium bike flasher.
+   9. Bright bike flasher.
+  10. 1Hz Heartbeat beacon.  Blinks twice, waits, repeats.
+  11. 12Hz motion-freezing strobe.  (not tactical, more like a party strobe)
+  12. 24Hz motion-freezing strobe.
+  13. 60Hz motion-freezing strobe.
+  14. Self-ramping 7Hz to 18Hz motion-freezing strobe.  Point it 
+      at a ceiling fan or something, it looks neat.
+  15. Self-ramping 16Hz to 100Hz motion-freezing strobe.
+  16. Battery check mode.  Measures, blinks 0 to 5 times, waits, repeats:
+      - 0 blinks: < 3.0V
+      - 1 blink : 3.0-3.5V
+      - 2 blinks: 3.5-3.8V
+      - 3 blinks: 3.8-4.0V
+      - 4 blinks: 4.0-4.2V
+      - 5 blinks: > 4.2V
+
+Mode changes:
+
+  Normal solid modes loop when going forward.
+
+  Backward from moon enters primary hidden modes.
+
+  Forward from primary hidden modes can take you to secondary hidden 
+  modes.
+
+  After entering secondary (positive) hidden modes, short/med 
+  presses go forward/back the same as it would with solid modes.
+
+
+  Short press:
+    1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 1
+    -1 (Turbo)        ->  1 (Moon)
+    -2 (24 Hz strobe) -> 11 (12 Hz strobe)
+    -3 (Battcheck)    -> 10 (Heartbeat beacon)
+    -4 (Bike flasher) ->  7 (Dim bike flasher)
+    16 (Battcheck)    ->  1 (Moon)
+
+  Medium press:
+    1 -> -1 -> -2 -> -3 -> -4 -> 1
+    Positive hidden mode -> one mode lower
+
+  Long press:
+    * -> 1 (Moon)
+
+When the battery voltage gets low, the light will step down and 
+eventually turn off.  If on a blinky mode, it'll "step down" to 
+the "Med" mode first, then low, then off.  If on a regular/solid 
+mode, it will step down one level each time until it's at "moon", 
+then turn off.
+
+Lumen outputs above "medium" are estimated, not actually measured.  
+My light box has difficulties with this light for some reason.

@@ -120,7 +120,7 @@
 // How many timer ticks before before dropping down.
 // Each timer tick is 500ms, so "60" would be a 30-second stepdown.
 // Max value of 255 unless you change "ticks"
-#define TURBO_TIMEOUT       60
+#define TURBO_TIMEOUT       40
 
 // These values were measured using wight's "A17HYBRID-S" driver built by DBCstm.
 // Your mileage may vary.
