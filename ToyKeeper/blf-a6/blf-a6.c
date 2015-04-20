@@ -593,6 +593,7 @@ int main(void)
 #endif
         }
 #endif  // ifdef BIKING_STROBE
+#ifdef BATTCHECK
         else if (output == BATTCHECK) {
             // turn off and wait one second before showing the value
             // (also, ensure voltage is measured while not under load)
@@ -610,6 +611,7 @@ int main(void)
             blink(i);
             //_delay_s();  // wait at least 1 second between readouts
         }
+#endif // ifdef BATTCHECK
         else {  // Regular non-hidden solid mode
             set_mode(mode_idx);
             // This part of the code will mostly replace the WDT tick code.
