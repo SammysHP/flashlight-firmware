@@ -83,10 +83,6 @@
 #define OFFTIM3             // Use short/med/long off-time presses
                             // instead of just short/long
 
-// output to use for blinks on battery check mode (primary PWM level, alt PWM level)
-// Use 20,0 for a single-channel driver or 0,20 for a two-channel driver
-#define BLINK_BRIGHTNESS    0,20
-
 // Mode group 1
 // number of regular non-hidden modes
 #define SOLID_MODES         6
@@ -98,20 +94,35 @@
 #define MODES_PWM           PHASE,FAST,FAST,FAST,FAST,PHASE
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
-// battcheck, use BATTCHECK,STROBE,TURBO .
+// battcheck, use BATTCHECK,STROBE1,TURBO .
 #define NUM_HIDDEN          4
-#define HIDDENMODES         BIKING_STROBE,STROBE2,BATTCHECK,TURBO
+#define HIDDENMODES         BIKING_STROBE3,STROBE2,BATTCHECK,TURBO
 #define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE
 #define HIDDENMODES_ALT     12,7,6,0   // short-press goes to this mode index
 
 // Secondary hidden modes are technically between regular and hidden modes.
 // Specify them in their normal forward order.
 #define NUM_HIDDEN2         10
-#define HIDDEN2             HEART_BEACON,STROBE1,STROBE2,STROBE3,VAR_STROBE1,VAR_STROBE2,BIKING_STROBE1,BIKING_STROBE2,BIKING_STROBE,BATTCHECK
+#define HIDDEN2             HEART_BEACON,STROBE1,STROBE2,STROBE3,VAR_STROBE1,VAR_STROBE2,BIKING_STROBE1,BIKING_STROBE2,BIKING_STROBE3,BATTCHECK
 // The last one tells it where to go on shor press
 #define HIDDEN2_NEXT        0,0,0,0,0,0,0,0,0,SOLID_MODES
 // You probably want PHASE for each of these
 #define HIDDEN2_PWM         PHASE,PHASE,PHASE,PHASE,PHASE,PHASE,PHASE,PHASE,PHASE,PHASE
+
+// Configure options for hidden modes
+// output to use for blinks on battery check mode (primary PWM level, alt PWM level)
+// Use 20,0 for a single-channel driver or 0,20 for a two-channel driver
+#define BLINK_BRIGHTNESS    0,20
+// The values here will be used for both FET and 7135 channels
+// (the relative brightness of the blink will be the difference between channels)
+#define BIKING_STROBE1_LVL   3 // Dim biking strobe
+#define BIKING_STROBE2_LVL  25 // Med biking strobe
+#define BIKING_STROBE3_LVL 255 // Bright biking strobe
+// Strobe speeds are ontime,offtime in ms (or 0 for a third of a ms)
+//#define STROBE1_SPEED  50,50 // 10 Hz tactical strobe
+#define STROBE1_SPEED  1,79 // 12.5 Hz party strobe
+#define STROBE2_SPEED  0,41 // 24 Hz party strobe
+#define STROBE3_SPEED  0,15 // 60 Hz party strobe
 
 #define ENABLE_TURBO       // enable turbo step-down without WDT
 // Any primary-channel PWM level above this will be treated as "turbo"
@@ -159,21 +170,16 @@
 #define TURBO     255       // Convenience code for turbo mode
 // Comment out the following when not used, to save space
 // Also, make sure each enabled item has a different value
-//#define STROBE    254       // Tactical strobe
-#define BATTCHECK 253       // Battery check mode
-#define BIKING_STROBE1 252  // Dim biking strobe
-#define BIKING_STROBE2 251  // Medium biking strobe
-#define BIKING_STROBE  250  // Full-bright biking strobe
-#define STROBE1        249  // Party strobe 1
-//#define STROBE1_SPEED  50,50 // 10 Hz tactical strobe
-#define STROBE1_SPEED  1,79 // 12.5 Hz party strobe
-#define STROBE2        248  // Party strobe 2
-#define STROBE2_SPEED  0,41 // 24 Hz party strobe
-#define STROBE3        247  // Party strobe 3
-#define STROBE3_SPEED  0,15 // 60 Hz party strobe
-#define HEART_BEACON   246  // Heartbeat beacon
-#define VAR_STROBE1    245  // Variable-speed strobe
-#define VAR_STROBE2    244  // Variable-speed strobe
+#define BATTCHECK 254       // Battery check mode
+#define BIKING_STROBE1 253  // Dim biking strobe
+#define BIKING_STROBE2 252  // Medium biking strobe
+#define BIKING_STROBE3 251  // Full-bright biking strobe
+#define STROBE1        250  // Party strobe 1
+#define STROBE2        249  // Party strobe 2
+#define STROBE3        248  // Party strobe 3
+#define HEART_BEACON   247  // Heartbeat beacon
+#define VAR_STROBE1    246  // Variable-speed strobe
+#define VAR_STROBE2    245  // Variable-speed strobe
 
 /*
  * =========================================================================
@@ -371,7 +377,7 @@ void bike_flash(uint8_t lvl)
     uint8_t i;
     // 2-level stutter beacon for biking and such
     for(i=0;i<4;i++) {
-        set_output(lvl,0);
+        set_output(lvl, 0);
         _delay_ms(5);
         set_output(0, lvl);
         _delay_ms(65);
@@ -485,18 +491,18 @@ int main(void)
                 break;
 #endif
 #ifdef BIKING_STROBE1
-            case BIKING_STROBE1: // dim biking strobe
-                bike_flash(3);
+            case BIKING_STROBE1: // dim biking flasher
+                bike_flash(BIKING_STROBE1_LVL);
                 break;
 #endif
 #ifdef BIKING_STROBE2
-            case BIKING_STROBE2: // med biking strobe
-                bike_flash(25);
+            case BIKING_STROBE2: // med biking flasher
+                bike_flash(BIKING_STROBE2_LVL);
                 break;
 #endif
-#ifdef BIKING_STROBE
-            case BIKING_STROBE: // max biking strobe
-                bike_flash(255);
+#ifdef BIKING_STROBE3
+            case BIKING_STROBE3: // max biking flasher
+                bike_flash(BIKING_STROBE3_LVL);
                 break;
 #endif
 #ifdef HEART_BEACON
