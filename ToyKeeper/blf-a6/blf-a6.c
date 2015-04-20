@@ -114,8 +114,12 @@
 #define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE
 #define HIDDENMODES_ALT     0,0,0,0   // Zeroes, same length as NUM_HIDDEN
 
-// Uncomment to use a 2-level stutter beacon instead of a tactical strobe
-#define USE_BIKING_STROBE
+#define TURBO     255       // Convenience code for turbo mode
+#define BATTCHECK 254       // Convenience code for battery check mode
+// Uncomment to enable tactical strobe mode
+#define STROBE    253       // Convenience code for strobe mode
+// Uncomment to unable a 2-level stutter beacon instead of a tactical strobe
+#define BIKING_STROBE 252   // Convenience code for biking strobe mode
 
 #define NON_WDT_TURBO            // enable turbo step-down without WDT
 // How many timer ticks before before dropping down.
@@ -157,11 +161,6 @@
 #else
 #define CAP_SHORT           190  // Anything higher than this is a short press, lower is a long press
 #endif
-
-#define TURBO     255       // Convenience code for turbo mode
-#define STROBE    254       // Convenience code for strobe mode
-#define BATTCHECK 253       // Convenience code for battery check mode
-#define BIKING_STROBE 252   // Convenience code for biking strobe mode
 
 /*
  * =========================================================================
@@ -555,6 +554,7 @@ int main(void)
             save_state();
 #endif  // ifdef CONFIG_STARS
         }
+#ifdef STROBE
         else if (output == STROBE) {
             // 10Hz tactical strobe
             set_output(255,255);
@@ -562,7 +562,8 @@ int main(void)
             set_output(0,0);
             _delay_ms(50);
         }
-#ifdef USE_BIKING_STROBE
+#endif // ifdef STROBE
+#ifdef BIKING_STROBE
         else if (output == BIKING_STROBE) {
             // 2-level stutter beacon for biking and such
             for(i=0;i<4;i++) {
