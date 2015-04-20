@@ -87,7 +87,7 @@
 
 // comment out to use extended config mode instead of a solderable star
 // (controls whether mode memory is on the star or if it's a setting in config mode)
-#define CONFIG_STARS
+//#define CONFIG_STARS
 
 // output to use for blinks on battery check mode (primary PWM level, alt PWM level)
 // Use 20,0 for a single-channel driver or 0,20 for a two-channel driver
