@@ -165,8 +165,12 @@
 #define BIKING_STROBE2 251  // Medium biking strobe
 #define BIKING_STROBE  250  // Full-bright biking strobe
 #define STROBE1        249  // Party strobe 1
+//#define STROBE1_SPEED  50,50 // 10 Hz tactical strobe
+#define STROBE1_SPEED  1,79 // 12.5 Hz party strobe
 #define STROBE2        248  // Party strobe 2
+#define STROBE2_SPEED  0,41 // 24 Hz party strobe
 #define STROBE3        247  // Party strobe 3
+#define STROBE3_SPEED  0,15 // 60 Hz party strobe
 #define HEART_BEACON   246  // Heartbeat beacon
 #define VAR_STROBE1    245  // Variable-speed strobe
 #define VAR_STROBE2    244  // Variable-speed strobe
@@ -246,10 +250,11 @@ PROGMEM const uint8_t voltage_blinks[] = {
     ADC_50,   // 3 blinks for 50%-75%
     ADC_75,   // 4 blinks for 75%-100%
     ADC_100,  // 5 blinks for >100%
+    255,      // Ceiling, don't remove
 };
 
 void save_state() {  // central method for writing (with wear leveling)
-    // a single 16-bit write uses less ROM space than two 8-bit writes
+    // Only save the current mode number
     uint8_t eep;
     uint8_t oldpos=eepos;
 
@@ -260,7 +265,7 @@ void save_state() {  // central method for writing (with wear leveling)
     eeprom_write_byte((uint8_t *)(oldpos), 0xff);    // erase old state
 }
 
-void restore_state() {
+inline void restore_state() {
     uint8_t eep;
     // find the config data
     for(eepos=0; eepos<64; eepos++) {
@@ -342,7 +347,7 @@ uint8_t get_voltage() {
 }
 #endif
 
-void blink(uint8_t val)
+inline void blink(uint8_t val)
 {
     for (; val>0; val--)
     {
@@ -355,7 +360,7 @@ void blink(uint8_t val)
 
 void strobe(uint8_t ontime, uint8_t offtime)
 {
-    set_output(255,255);
+    set_output(255,0);
     _delay_ms(ontime);
     set_output(0,0);
     _delay_ms(offtime);
@@ -466,17 +471,17 @@ int main(void)
         switch(output) {
 #ifdef STROBE1
             case STROBE1: // 12.5 Hz party strobe
-                strobe(1,79);
+                strobe(STROBE1_SPEED);
                 break;
 #endif
 #ifdef STROBE2
             case STROBE2: // 24 Hz party strobe
-                strobe(0,41);
+                strobe(STROBE2_SPEED);
                 break;
 #endif
 #ifdef STROBE3
             case STROBE3: // 60 Hz party strobe
-                strobe(0,15);
+                strobe(STROBE3_SPEED);
                 break;
 #endif
 #ifdef BIKING_STROBE1
@@ -530,24 +535,22 @@ int main(void)
 #ifdef BATTCHECK
             case BATTCHECK: // battery check mode
                 {
-                    uint8_t blinks = 0;
                     // turn off and wait one second before showing the value
                     // (also, ensure voltage is measured while not under load)
                     set_output(0,0);
                     _delay_s();
                     voltage = get_voltage();
-                    voltage = get_voltage(); // the first one is unreliable
+                    //voltage = get_voltage(); // the first one is unreliable
                     // one blink per voltage range
-                    for (i=0; i<sizeof(voltage_blinks); i++) {
-                        if (voltage > pgm_read_byte(voltage_blinks + i)) {
-                            blinks ++;
-                        }
-                    }
+                    for (i=0;
+                            voltage > pgm_read_byte(voltage_blinks + i);
+                            i ++) {}
+
 
                     // blink zero to five times to show voltage
                     // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
-                    blink(blinks);
-                    _delay_s();  // wait at least 1 second between readouts
+                    blink(i);
+                    //_delay_s();  // wait at least 1 second between readouts
                 }
                 break;
 #endif
@@ -556,7 +559,8 @@ int main(void)
                 // This part of the code will mostly replace the WDT tick code.
 #ifdef ENABLE_TURBO
                 // Do some magic here to handle turbo step-down
-                if (ticks < 255) ticks++;
+                //if (ticks < 255) ticks++;  // don't roll over
+                ticks ++;  // actually, we don't care about roll-over prevention
                 if ((ticks > TURBO_TIMEOUT) 
                         && (output >= TURBO_LEVEL)) {
                     if (mode_idx >= SOLID_MODES) { // handle step-down from hidden turbo
