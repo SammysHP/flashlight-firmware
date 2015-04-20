@@ -104,9 +104,14 @@
 #define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE
 #define HIDDENMODES_ALT     0,0,0,0   // Zeroes, same length as NUM_HIDDEN
 
-
-// Uncomment to use a 2-level stutter beacon instead of a tactical strobe
-#define USE_BIKING_STROBE
+#define TURBO     255       // Convenience code for turbo mode
+#define BATTCHECK 254       // Convenience code for battery check mode
+// Uncomment to enable tactical strobe mode
+#define STROBE    253       // Convenience code for strobe mode
+// Uncomment to unable a 2-level stutter beacon instead of a tactical strobe
+#define BIKING_STROBE 252   // Convenience code for biking strobe mode
+// comment out to use minimal version instead (smaller)
+#define FULL_BIKING_STROBE
 
 #define NON_WDT_TURBO            // enable turbo step-down without WDT
 // How many timer ticks before before dropping down.
@@ -148,11 +153,6 @@
 #else
 #define CAP_SHORT           190  // Anything higher than this is a short press, lower is a long press
 #endif
-
-#define TURBO     255       // Convenience code for turbo mode
-#define STROBE    254       // Convenience code for strobe mode
-#define BATTCHECK 253       // Convenience code for battery check mode
-#define BIKING_STROBE 252   // Convenience code for biking strobe mode
 
 /*
  * =========================================================================
@@ -233,6 +233,7 @@ PROGMEM const uint8_t voltage_blinks[] = {
     ADC_50,   // 3 blinks for 50%-75%
     ADC_75,   // 4 blinks for 75%-100%
     ADC_100,  // 5 blinks for >100%
+    255,      // Ceiling, don't remove
 };
 
 void save_state() {  // central method for writing (with wear leveling)
@@ -309,7 +310,7 @@ void set_output(uint8_t pwm1, uint8_t pwm2) {
     ALT_PWM_LVL = pwm2;
 }
 
-void set_mode(mode) {
+void set_mode(uint8_t mode) {
     TCCR0A = pgm_read_byte(modes_pwm + mode);
     set_output(pgm_read_byte(modesNx + mode), pgm_read_byte(modes1x + mode));
     /*
@@ -431,16 +432,22 @@ int main(void)
 #endif
     while(1) {
         output = pgm_read_byte(modesNx + mode_idx);
-        if (output == STROBE) {
+        // placeholder in case strobe isn't defined, should get compiled out by -Os
+        if (0) {}
+#ifdef STROBE
+        else if (output == STROBE) {
             // 10Hz tactical strobe
-            set_output(255,255);
+            set_output(255,0);
             _delay_ms(50);
             set_output(0,0);
             _delay_ms(50);
         }
-#ifdef USE_BIKING_STROBE
+#endif // ifdef STROBE
+#ifdef BIKING_STROBE
         else if (output == BIKING_STROBE) {
             // 2-level stutter beacon for biking and such
+#ifdef FULL_BIKING_STROBE
+            // normal version
             for(i=0;i<4;i++) {
                 set_output(255,0);
                 _delay_ms(5);
@@ -448,36 +455,39 @@ int main(void)
                 _delay_ms(65);
             }
             _delay_ms(720);
+#else
+            // small/minimal version
+            set_output(255,0);
+            _delay_ms(10);
+            set_output(0,255);
+            _delay_s();
+#endif
         }
 #endif  // ifdef BIKING_STROBE
         else if (output == BATTCHECK) {
-            uint8_t blinks = 0;
             // turn off and wait one second before showing the value
             // (also, ensure voltage is measured while not under load)
             set_output(0,0);
             _delay_s();
             voltage = get_voltage();
-            voltage = get_voltage(); // the first one is unreliable
-            // division takes too much flash space
-            //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
-            // a table uses less space than 5 logic clauses
-            for (i=0; i<sizeof(voltage_blinks); i++) {
-                if (voltage > pgm_read_byte(voltage_blinks + i)) {
-                    blinks ++;
-                }
-            }
+            //voltage = get_voltage(); // the first one is unreliable
+            // figure out how many times to blink
+            for (i=0;
+                    voltage > pgm_read_byte(voltage_blinks + i);
+                    i ++) {}
 
             // blink up to five times to show voltage
             // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
-            blink(blinks);
-            _delay_s();  // wait at least 1 second between readouts
+            blink(i);
+            //_delay_s();  // wait at least 1 second between readouts
         }
         else {  // Regular non-hidden solid mode
             set_mode(mode_idx);
             // This part of the code will mostly replace the WDT tick code.
 #ifdef NON_WDT_TURBO
             // Do some magic here to handle turbo step-down
-            if (ticks < 255) ticks++;
+            //if (ticks < 255) ticks++;  // don't roll over
+            ticks ++;  // actually, we don't care about roll-over prevention
             if ((ticks > TURBO_TIMEOUT) 
                     && (output == TURBO)) {
                 mode_idx = solid_modes - 2; // step down to second-highest mode
