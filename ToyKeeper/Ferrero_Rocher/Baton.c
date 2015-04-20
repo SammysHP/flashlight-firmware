@@ -174,7 +174,7 @@ void ramp() {
     }
 }
 
-inline void prev_mode() {
+void prev_mode() {
     // only used for turbo step-down and low-voltage step-down...
     // if we were already at the lowest mode, shut off.
     if (mode_idx >= 1) { mode_idx -= 1; }
