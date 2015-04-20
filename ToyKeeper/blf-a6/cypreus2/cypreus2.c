@@ -104,7 +104,8 @@
 // Specify them in their normal forward order.
 #define NUM_HIDDEN2         10
 #define HIDDEN2             HEART_BEACON,STROBE1,STROBE2,STROBE3,VAR_STROBE1,VAR_STROBE2,BIKING_STROBE1,BIKING_STROBE2,BIKING_STROBE3,BATTCHECK
-// The last one tells it where to go on shor press
+// The last one tells it where to go on short press from final hidden2 mode
+// (by default, battcheck loops back around to heart beacon)
 #define HIDDEN2_NEXT        0,0,0,0,0,0,0,0,0,SOLID_MODES
 // You probably want PHASE for each of these
 #define HIDDEN2_PWM         PHASE,PHASE,PHASE,PHASE,PHASE,PHASE,PHASE,PHASE,PHASE,PHASE
@@ -142,19 +143,6 @@
 #define ADC_0           124 // the ADC value for 0% full (3.0V resting)
 #define ADC_LOW         116 // When do we start ramping down (2.8V)
 #define ADC_CRIT        112 // When do we shut the light off (2.7V)
-// These values were copied from s7.c.
-// Your mileage may vary.
-//#define ADC_42          185 // the ADC value we expect for 4.20 volts
-//#define ADC_100         185 // the ADC value for 100% full (4.2V resting)
-//#define ADC_75          175 // the ADC value for 75% full (4.0V resting)
-//#define ADC_50          164 // the ADC value for 50% full (3.8V resting)
-//#define ADC_25          154 // the ADC value for 25% full (3.5V resting)
-//#define ADC_0           139 // the ADC value for 0% full (3.0V resting)
-//#define ADC_LOW         123 // When do we start ramping down (2.8V)
-//#define ADC_CRIT        113 // When do we shut the light off (2.7V)
-// Values for testing only:
-//#define ADC_LOW         125 // When do we start ramping down (2.8V)
-//#define ADC_CRIT        124 // When do we shut the light off (2.7V)
 
 // the BLF EE A6 driver may have different offtime cap values than most other drivers
 // Values are between 1 and 255, and can be measured with offtime-cap.c
@@ -167,10 +155,10 @@
 #define CAP_SHORT           190  // Anything higher than this is a short press, lower is a long press
 #endif
 
-#define TURBO     255       // Convenience code for turbo mode
-// Comment out the following when not used, to save space
+#define TURBO          255  // Convenience code for max turbo mode, must be 255
+// Comment out each of the following when not used, to save space
 // Also, make sure each enabled item has a different value
-#define BATTCHECK 254       // Battery check mode
+#define BATTCHECK      254  // Battery check mode
 #define BIKING_STROBE1 253  // Dim biking strobe
 #define BIKING_STROBE2 252  // Medium biking strobe
 #define BIKING_STROBE3 251  // Full-bright biking strobe
@@ -240,12 +228,8 @@ uint8_t mode_idx = 0;      // current or last-used mode number
 #define NUM_MODES SOLID_MODES+NUM_HIDDEN2
 // total length of current mode group's array
 #define mode_cnt NUM_MODES+NUM_HIDDEN
-// number of hidden modes in the current mode group
-// (hardcoded because both groups have the same hidden modes)
-//uint8_t hidden_modes = NUM_HIDDEN;  // this is never used
 
-
-// Modes (gets set when the light starts up based on saved config values)
+// Modes (hardcoded at compile time)
 PROGMEM const uint8_t modesNx[] = { MODESNx, HIDDEN2, HIDDENMODES };
 PROGMEM const uint8_t modes1x[] = { MODES1x, HIDDEN2_NEXT, HIDDENMODES_ALT };
 PROGMEM const uint8_t modes_pwm[] = { MODES_PWM, HIDDEN2_PWM, HIDDENMODES_PWM };
@@ -433,17 +417,11 @@ int main(void)
         prev_mode(); // Will handle "negative" modes and wrap-arounds
 #endif
     } else {
-        // Long press, keep the same mode
-        // ... or reset to the first mode
-        //if (! memory) {
-            // Reset to the first mode
-            mode_idx = 0;
-        //}
+        // Long press, reset to the first mode
+        // (this UI is incompatible with mode memory)
+        mode_idx = 0;
     }
     save_state();
-
-    // Turn off ADC
-    //ADC_off();
 
     // Charge up the capacitor by setting CAP_PIN to output
     DDRB  |= (1 << CAP_PIN);    // Output
@@ -456,10 +434,6 @@ int main(void)
     ADC_off();
     #endif
     //ACSR   |=  (1<<7); //AC off
-
-    // Enable sleep mode set to Idle that will be triggered by the sleep_mode() command.
-    // Will allow us to go idle between WDT interrupts
-    //set_sleep_mode(SLEEP_MODE_IDLE);  // not used due to blinky modes
 
     uint8_t output;
 #ifdef ENABLE_TURBO
