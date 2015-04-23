@@ -84,12 +84,13 @@
                             // instead of just short/long
 
 // Mode group 1
+// xp-g2 triple: moon (3) + ./level_calc.py 5 1 10 1950 y 20 8 140
 // number of regular non-hidden modes
 #define SOLID_MODES         6
 // PWM levels for the big circuit (FET or Nx7135)
-#define MODESNx             0,0,1,36,112,255
+#define MODESNx             0,0,0,33,110,255
 // PWM levels for the small circuit (1x7135)
-#define MODES1x             3,18,255,255,255,0
+#define MODES1x             3,20,205,255,255,0
 // PWM speed for each mode
 #define MODES_PWM           PHASE,FAST,FAST,FAST,FAST,PHASE
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
@@ -135,8 +136,8 @@
 
 // These values were measured using wight's "A17HYBRID-S" driver built by DBCstm.
 // Your mileage may vary.
-#define ADC_42          174 // the ADC value we expect for 4.20 volts
-#define ADC_100         174 // the ADC value for 100% full (4.2V resting)
+#define ADC_42          176 // the ADC value we expect for 4.20 volts
+#define ADC_100         176 // the ADC value for 100% full (4.2V resting)
 #define ADC_75          166 // the ADC value for 75% full (4.0V resting)
 #define ADC_50          158 // the ADC value for 50% full (3.8V resting)
 #define ADC_25          145 // the ADC value for 25% full (3.5V resting)
