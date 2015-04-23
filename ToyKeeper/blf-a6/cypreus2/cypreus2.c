@@ -88,9 +88,9 @@
 // number of regular non-hidden modes
 #define SOLID_MODES         6
 // PWM levels for the big circuit (FET or Nx7135)
-#define MODESNx             0,0,0,33,110,255
+#define MODESNx             0,0,3,33,110,255
 // PWM levels for the small circuit (1x7135)
-#define MODES1x             3,20,205,255,255,0
+#define MODES1x             3,20,150,255,255,0
 // PWM speed for each mode
 #define MODES_PWM           PHASE,FAST,FAST,FAST,FAST,PHASE
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
@@ -117,7 +117,7 @@
 #define BLINK_BRIGHTNESS    0,20
 // The values here will be used for both FET and 7135 channels
 // (the relative brightness of the blink will be the difference between channels)
-#define BIKING_STROBE1_LVL   3 // Dim biking strobe
+#define BIKING_STROBE1_LVL   4 // Dim biking strobe
 #define BIKING_STROBE2_LVL  25 // Med biking strobe
 #define BIKING_STROBE3_LVL 255 // Bright biking strobe
 // Strobe speeds are ontime,offtime in ms (or 0 for a third of a ms)
