@@ -97,14 +97,16 @@
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE1,TURBO .
 #define NUM_HIDDEN          4
-#define HIDDENMODES         BIKING_STROBE3,STROBE2,BATTCHECK,TURBO
+#define HIDDENMODES         BATTCHECK,STROBE2,BIKING_STROBE3,TURBO
 #define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE
-#define HIDDENMODES_ALT     12,7,6,0   // short-press goes to this mode index
+#define HIDDENMODES_ALT     10,11,6,0   // short-press goes to this mode index
+//#define HIDDENMODES_ALT     6,7,12,0   // short-press goes to this mode index
 
 // Secondary hidden modes are technically between regular and hidden modes.
 // Specify them in their normal forward order.
 #define NUM_HIDDEN2         10
-#define HIDDEN2             HEART_BEACON,STROBE1,STROBE2,STROBE3,VAR_STROBE1,VAR_STROBE2,BIKING_STROBE1,BIKING_STROBE2,BIKING_STROBE3,BATTCHECK
+#define HIDDEN2             BIKING_STROBE1,BIKING_STROBE2,BIKING_STROBE3,BATTCHECK,HEART_BEACON,STROBE1,STROBE2,STROBE3,VAR_STROBE1,VAR_STROBE2
+//#define HIDDEN2             HEART_BEACON,STROBE1,STROBE2,STROBE3,VAR_STROBE1,VAR_STROBE2,BIKING_STROBE1,BIKING_STROBE2,BIKING_STROBE3,BATTCHECK
 // The last one tells it where to go on short press from final hidden2 mode
 // (by default, battcheck loops back around to heart beacon)
 #define HIDDEN2_NEXT        0,0,0,0,0,0,0,0,0,SOLID_MODES

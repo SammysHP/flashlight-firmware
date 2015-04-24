@@ -27,32 +27,32 @@ Primary / intermediate hidden modes:
 
    -1. Max Turbo.
        Short press -> Moon.
-   -2. Battcheck mode.
-       Short press -> Heartbeat beacon.
+   -2. Bike flasher (bright).
+       Short press -> Dim bike flasher.
    -3. 24 Hz strobe.
        Short press -> 12 Hz strobe.
-   -4. Bike flasher (bright).
-       Short press -> Dim bike flasher.
+   -4. Battcheck mode.
+       Short press -> Heartbeat beacon.
 
 Full / secondary hidden modes:
 
-   7. 1Hz Heartbeat beacon.  Blinks twice, waits, repeats.
-   8. 12Hz motion-freezing strobe.  (not tactical, more like a party strobe)
-   9. 24Hz motion-freezing strobe.
-  10. 60Hz motion-freezing strobe.
-  11. Self-ramping 7Hz to 18Hz motion-freezing strobe.  Point it 
-      at a ceiling fan or something, it looks neat.
-  12. Self-ramping 16Hz to 100Hz motion-freezing strobe.
-  13. Dim bike flasher.
-  14. Medium bike flasher.
-  15. Bright bike flasher.
-  16. Battery check mode.  Measures, blinks 0 to 5 times, waits, repeats:
+   7. Dim bike flasher.
+   8. Medium bike flasher.
+   9. Bright bike flasher.
+  10. Battery check mode.  Measures, blinks 0 to 5 times, waits, repeats:
       - 0 blinks: < 3.0V
       - 1 blink : 3.0-3.5V
       - 2 blinks: 3.5-3.8V
       - 3 blinks: 3.8-4.0V
       - 4 blinks: 4.0-4.2V
       - 5 blinks: > 4.2V
+  11. 1Hz Heartbeat beacon.  Blinks twice, waits, repeats.
+  12. 12Hz motion-freezing strobe.  (not tactical, more like a party strobe)
+  13. 24Hz motion-freezing strobe.
+  14. 60Hz motion-freezing strobe.
+  15. Self-ramping 7Hz to 18Hz motion-freezing strobe.  Point it 
+      at a ceiling fan or something, it looks neat.
+  12. Self-ramping 16Hz to 100Hz motion-freezing strobe.
 
 Mode changes:
 
@@ -72,5 +72,3 @@ eventually turn off.  If on a blinky mode, it'll "step down" to the
 it will step down one level each time until it's at "moon", then 
 turn off.
 
-Lumen outputs above "medium" are estimated, not actually measured.  
-My light box has difficulties with this light for some reason.
