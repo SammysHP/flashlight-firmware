@@ -61,6 +61,9 @@ Summary of each project
     ToyKeeper/blf-a6:
         BLF EE A6 special edition (FET+1) firmware and derivatives
 
+    ToyKeeper/blf-a6/cypreus2:
+        FET+1 code with an extended hidden blinky mode group
+
     ToyKeeper/cypreus:
         TK's Sinner Cypreus full-featured clicky firmware
 
@@ -145,6 +148,7 @@ Authors
         ToyKeeper/STAR_noinit
         ToyKeeper/battcheck
         ToyKeeper/blf-a6
+        ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
         ToyKeeper/s7
         ToyKeeper/starry-offtime
@@ -185,6 +189,7 @@ Button-Type
         ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
         ToyKeeper/blf-a6
+        ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
         ToyKeeper/s7
         ToyKeeper/starry-offtime
@@ -230,14 +235,19 @@ Extras
         ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
         ToyKeeper/blf-a6
+        ToyKeeper/blf-a6/cypreus2
         ToyKeeper/starry-offtime
 
     dual PWM?:
         Tamagotchi/7135x8v2
 
+    hidden mode groups:
+        ToyKeeper/blf-a6/cypreus2
+
     hidden modes:
         JonnyC/STAR/STAR_momentary
         ToyKeeper/blf-a6
+        ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
         _the_/TheStar
 
@@ -246,6 +256,7 @@ Extras
 
     offtime-3:
         ToyKeeper/blf-a6
+        ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
         ToyKeeper/starry-offtime
 
@@ -286,6 +297,11 @@ Extras
         JonnyC/STAR/MTN_momentary_temp
         Tamagotchi/7135x8v2
 
+License
+
+    GPLv3:
+        ToyKeeper/blf-a6/cypreus2
+
 MCU
 
     attiny10:
@@ -309,6 +325,7 @@ MCU
         ToyKeeper/STAR_noinit
         ToyKeeper/battcheck
         ToyKeeper/blf-a6
+        ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
         ToyKeeper/s7
         ToyKeeper/starry-offtime
@@ -329,6 +346,7 @@ Memory
     OTC:
         JonnyC/STAR/STAR_off_time
         ToyKeeper/blf-a6
+        ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
         ToyKeeper/starry-offtime
         Werner/STAR_improvements
@@ -351,6 +369,7 @@ Memory
         Tom_E
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/STAR_1mode
+        ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
         ToyKeeper/s7
         ToyKeeper/uv
@@ -362,6 +381,7 @@ Memory
         JonnyC/STAR/STAR_off_time
         ToyKeeper/STAR_noinit
         ToyKeeper/blf-a6
+        ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
         ToyKeeper/s7
         ToyKeeper/starry-offtime
@@ -418,6 +438,7 @@ Modes
         Tamagotchi/7135x8v2
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/blf-a6
+        ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
         ToyKeeper/s7
         ToyKeeper/starry-offtime
@@ -438,6 +459,7 @@ Modes
     bike flasher:
         Tamagotchi/7135x8v2
         ToyKeeper/blf-a6
+        ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
         ToyKeeper/s7
         ToyKeeper/tail-light
@@ -461,6 +483,7 @@ Modes
         JonnyC/STAR/STAR_momentary
 
     party strobe:
+        ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
         ToyKeeper/s7
         ToyKeeper/uv
@@ -491,6 +514,7 @@ Modes
         DrJones/heartbeat
 
     variable strobe:
+        ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
         ToyKeeper/s7
 

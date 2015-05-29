@@ -177,14 +177,14 @@ int is_pressed()
     return (buffer & DB_REL_DUR);
 }
 
-inline void next_mode() {
+void next_mode() {
     if (++mode_idx >= sizeof(modes)) {
         // Wrap around
         mode_idx = 0;
     }
 }
 
-inline void prev_mode() {
+void prev_mode() {
     if (mode_idx == 0) {
         // Wrap around
         mode_idx = sizeof(modes) - 1;

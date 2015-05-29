@@ -112,6 +112,7 @@
                                  // even when waiting 10 seconds between presses.
 #endif
 
+// Comment these out to disable the mode and save space
 #define STROBE    254       // Convenience code for strobe mode
 #define BATTCHECK 253       // Convenience code for battery check mode
 
@@ -304,7 +305,7 @@ void set_output(uint8_t pwm1, uint8_t pwm2) {
     ALT_PWM_LVL = pwm2;
 }
 
-void set_mode(mode) {
+void set_mode(uint8_t mode) {
     TCCR0A = pgm_read_byte(modes_pwm + mode);
     // Only set output for solid modes
     uint8_t out = pgm_read_byte(modesNx + mode);
@@ -451,16 +452,22 @@ int main(void)
 #ifdef VOLTAGE_MON
     uint8_t i = 0;
     uint8_t hold_pwm;
+#ifdef BATTCHECK
     uint8_t voltage;
+#endif
 #endif
     while(1) {
         output = pgm_read_byte(modesNx + mode_idx);
-        if (output == STROBE) {
+        if (0) {}  // placeholder in case STROBE isn't defined
+#ifdef STROBE
+        else if (output == STROBE) {
             set_output(255,255);
             _delay_ms(50);
             set_output(0,0);
             _delay_ms(50);
         }
+#endif
+#ifdef BATTCHECK
         else if (output == BATTCHECK) {
             uint8_t blinks = 0;
             // turn off and wait one second before showing the value
@@ -489,6 +496,7 @@ int main(void)
 
             _delay_ms(1000);  // wait at least 1 second between readouts
         }
+#endif
     #ifdef VOLTAGE_MON
         if (low_voltage(ADC_LOW)) {
             // We need to go to a lower level
