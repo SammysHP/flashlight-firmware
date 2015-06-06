@@ -100,6 +100,9 @@ Summary of each project
     hello_world:
         quick example to help test if flashing hardware works
 
+    pilotdog68/xintd-x3:
+        XinTD X3 FET+1 firmware supporting both Li-Ion and 3xAA batteries
+
     tterev3/attiny10_starter_code:
         attiny10 starter example
 
@@ -154,6 +157,7 @@ Authors
         ToyKeeper/starry-offtime
         ToyKeeper/tail-light
         ToyKeeper/uv
+        pilotdog68/xintd-x3
 
     Werner:
         Werner/STAR_improvements
@@ -167,6 +171,9 @@ Authors
 
     dthoang:
         dthoang
+
+    pilotdog68:
+        pilotdog68/xintd-x3
 
     tterev3:
         tterev3/attiny10_starter_code
@@ -198,6 +205,7 @@ Button-Type
         Werner/STAR_improvements
         _the_/TheStar
         alexvh/basic_off_time_driver
+        pilotdog68/xintd-x3
         tterev3/pic10f322-examples
         tterev3/power_cycle_light
 
@@ -237,6 +245,7 @@ Extras
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
         ToyKeeper/starry-offtime
+        pilotdog68/xintd-x3
 
     dual PWM?:
         Tamagotchi/7135x8v2
@@ -253,6 +262,7 @@ Extras
 
     mode groups:
         ToyKeeper/blf-a6
+        pilotdog68/xintd-x3
 
     offtime-3:
         ToyKeeper/blf-a6
@@ -336,6 +346,7 @@ MCU
         _the_/TheStar
         alexvh/basic_off_time_driver
         dthoang
+        pilotdog68/xintd-x3
 
     pic10f322:
         tterev3/pic10f322-examples
@@ -351,6 +362,7 @@ Memory
         ToyKeeper/starry-offtime
         Werner/STAR_improvements
         _the_/TheStar
+        pilotdog68/xintd-x3
 
     mem decay:
         ToyKeeper/STAR_noinit
@@ -389,6 +401,7 @@ Memory
         Werner/STAR_improvements
         _the_/TheStar
         alexvh/basic_off_time_driver
+        pilotdog68/xintd-x3
         tterev3/pic10f322-examples
 
     ontime:
@@ -469,6 +482,8 @@ Modes
 
     config:
         DrJones/luxdrv
+        ToyKeeper/blf-a6
+        pilotdog68/xintd-x3
         tterev3/power_cycle_light
 
     distress beacon:
