@@ -463,15 +463,15 @@
      borderopacity="1.0"
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.98994949"
+     inkscape:zoom="1.4"
      inkscape:cx="253.55602"
-     inkscape:cy="431.59864"
+     inkscape:cy="375.89157"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
      showguides="false"
      gridtolerance="1"
-     inkscape:window-width="954"
+     inkscape:window-width="1908"
      inkscape:window-height="1175"
      inkscape:window-x="0"
      inkscape:window-y="0"
@@ -502,7 +502,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -592,24 +592,24 @@
        xml:space="preserve"
        style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:DejaVu Sans;-inkscape-font-specification:Sans"
        x="172.65511"
-       y="787.08026"
+       y="857.79095"
        id="text3013"
        sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
          id="tspan3015"
          x="172.65511"
-         y="787.08026">Bike Flasher</tspan></text>
+         y="857.79095">Bike Flasher</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:DejaVu Sans;-inkscape-font-specification:Sans"
        x="199.439"
-       y="857.94641"
+       y="787.23572"
        id="text3017"
        sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
          id="tspan3019"
          x="199.439"
-         y="857.94641">Battcheck</tspan></text>
+         y="787.23572">Battcheck</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:DejaVu Sans;-inkscape-font-specification:Sans"
@@ -687,7 +687,7 @@
        inkscape:connector-curvature="0" />
     <path
        style="fill:none;stroke:#000000;stroke-width:2;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:4, 4;stroke-dashoffset:0;marker-end:url(#Arrow1Mend)"
-       d="M 195.22894,848.99591 C 77.534473,709.45912 142.90672,656.03234 259.31219,581.54224"
+       d="M 168.4599,848.99591 C 95.212143,675.11393 142.90672,656.03234 259.31219,581.54224"
        id="path6515"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cc" />

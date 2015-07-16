@@ -32,8 +32,6 @@ The interface is as follows:
 
       - Tactical strobe (10 Hz)
 
-      - Biking flasher (2-level stutter beacon, 1 Hz)
-
       - Battery check / beacon mode
         (each blink represents about 25% of a full charge)
         0 blinks: < 1% full        (< 3.0V)
@@ -42,6 +40,8 @@ The interface is as follows:
         3 blinks: 50% to 75% full  (3.8V to 4.0V)
         4 blinks: 75% to 100% full (4.0V to 4.2V)
         5 blinks: > 100% full      (> 4.2V)
+
+      - Biking flasher (2-level stutter beacon, 1 Hz)
 
   Configuration options:
 
