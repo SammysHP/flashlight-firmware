@@ -96,21 +96,24 @@
 // Mode group 1
 #define NUM_MODES1          7
 // PWM levels for the big circuit (FET or Nx7135)
-#define MODESNx1            0,0,0,6,56,135,255
+#define MODESNx1            0,0,0,7,56,137,255
 // PWM levels for the small circuit (1x7135)
-#define MODES1x1            3,20,100,255,255,255,0
+#define MODES1x1            2,20,110,255,255,255,0
+// My sample:     6=0..6,  7=2..11,  8=8..21(15..32)
+// Krono sample:  6=5..21, 7=17..32, 8=33..96(50..78)
+// Manker2:       2=21, 3=39, 4=47, ... 6?=68
 // PWM speed for each mode
 #define MODES_PWM1          PHASE,FAST,FAST,FAST,FAST,FAST,PHASE
 // Mode group 2
 #define NUM_MODES2          4
-#define MODESNx2            0,0,79,255
-#define MODES1x2            20,200,255,0
+#define MODESNx2            0,0,90,255
+#define MODES1x2            20,230,255,0
 #define MODES_PWM2          FAST,FAST,FAST,PHASE
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,TURBO .
 #define NUM_HIDDEN          4
-#define HIDDENMODES         BATTCHECK,BIKING_STROBE,STROBE,TURBO
+#define HIDDENMODES         BIKING_STROBE,BATTCHECK,STROBE,TURBO
 #define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE
 #define HIDDENMODES_ALT     0,0,0,0   // Zeroes, same length as NUM_HIDDEN
 
@@ -127,17 +130,17 @@
 // How many timer ticks before before dropping down.
 // Each timer tick is 500ms, so "60" would be a 30-second stepdown.
 // Max value of 255 unless you change "ticks"
-#define TURBO_TIMEOUT       60
+#define TURBO_TIMEOUT       90
 
 // These values were measured using wight's "A17HYBRID-S" driver built by DBCstm.
 // Your mileage may vary.
-#define ADC_42          174 // the ADC value we expect for 4.20 volts
-#define ADC_100         174 // the ADC value for 100% full (4.2V resting)
-#define ADC_75          166 // the ADC value for 75% full (4.0V resting)
-#define ADC_50          158 // the ADC value for 50% full (3.8V resting)
-#define ADC_25          145 // the ADC value for 25% full (3.5V resting)
-#define ADC_0           124 // the ADC value for 0% full (3.0V resting)
-#define ADC_LOW         116 // When do we start ramping down (2.8V)
+#define ADC_42          175 // the ADC value we expect for 4.20 volts
+#define ADC_100         175 // the ADC value for 100% full (4.2V resting)
+#define ADC_75          167 // the ADC value for 75% full (4.0V resting)
+#define ADC_50          159 // the ADC value for 50% full (3.8V resting)
+#define ADC_25          146 // the ADC value for 25% full (3.5V resting)
+#define ADC_0           125 // the ADC value for 0% full (3.0V resting)
+#define ADC_LOW         117 // When do we start ramping down (2.8V)
 #define ADC_CRIT        112 // When do we shut the light off (2.7V)
 // These values were copied from s7.c.
 // Your mileage may vary.
@@ -157,11 +160,11 @@
 // Values are between 1 and 255, and can be measured with offtime-cap.c
 // These #defines are the edge boundaries, not the center of the target.
 #ifdef OFFTIM3
-#define CAP_SHORT           250  // Anything higher than this is a short press
-#define CAP_MED             190  // Between CAP_MED and CAP_SHORT is a medium press
+#define CAP_SHORT           225  // Anything higher than this is a short press
+#define CAP_MED             130  // Between CAP_MED and CAP_SHORT is a medium press
                                  // Below CAP_MED is a long press
 #else
-#define CAP_SHORT           190  // Anything higher than this is a short press, lower is a long press
+#define CAP_SHORT           130  // Anything higher than this is a short press, lower is a long press
 #endif
 
 /*
