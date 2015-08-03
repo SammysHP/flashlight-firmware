@@ -70,9 +70,10 @@ The interface is as follows:
   Other details to note:
 
     - Low-voltage protection will progressively step down the output at 
-      about 2.8V, and the light will shut itself off when it gets below 2.7V.
+      about 2.8V, and the light will shut itself off when even the 
+      lowest level gets below 2.8V.
 
-    - The default turbo step-down is 30 seconds.
+    - The default turbo step-down is 45 seconds.
 
     - When turbo steps down to high, a short tap will push it back up to 
       turbo or a medium tap will step down further, even if you got to 
