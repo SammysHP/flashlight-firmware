@@ -160,11 +160,11 @@
 // Values are between 1 and 255, and can be measured with offtime-cap.c
 // These #defines are the edge boundaries, not the center of the target.
 #ifdef OFFTIM3
-#define CAP_SHORT           225  // Anything higher than this is a short press
-#define CAP_MED             130  // Between CAP_MED and CAP_SHORT is a medium press
+#define CAP_SHORT           245  // Anything higher than this is a short press
+#define CAP_MED             180  // Between CAP_MED and CAP_SHORT is a medium press
                                  // Below CAP_MED is a long press
 #else
-#define CAP_SHORT           130  // Anything higher than this is a short press, lower is a long press
+#define CAP_SHORT           180  // Anything higher than this is a short press, lower is a long press
 #endif
 
 /*
