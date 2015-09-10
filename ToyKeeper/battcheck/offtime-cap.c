@@ -34,7 +34,20 @@
  * STARS (not used)
  *
  */
+// set some hardware-specific values...
+// (while configuring this firmware, skip this section)
+#if (ATTINY == 13)
 #define F_CPU 4800000UL
+#define EEPLEN 64
+#define DELAY_TWEAK 950
+#elif (ATTINY == 25)
+#define F_CPU 8000000UL
+#define EEPLEN 128
+#define DELAY_TWEAK 2400
+#else
+Hey, you need to define ATTINY.
+#endif
+
 
 /*
  * =========================================================================
@@ -55,7 +68,7 @@
 static void _delay_ms(uint16_t n)
 {
     while(n-- > 0)
-        _delay_loop_2(950);
+        _delay_loop_2(DELAY_TWEAK);
 }
 #else
 #include <util/delay.h>
@@ -82,7 +95,11 @@ static void _delay_ms(uint16_t n)
 #define PWM_LVL     OCR0B   // OCR0B is the output compare register for PB1
 
 inline void ADC_on() {
+#if (ATTINY == 13)
     ADMUX  = (1 << REFS0) | (1 << ADLAR) | ADC_CHANNEL; // 1.1v reference, left-adjust, ADC1/PB2
+#elif (ATTINY == 25)
+    ADMUX  = (1 << REFS1) | (1 << ADLAR) | ADC_CHANNEL; // 1.1v reference, left-adjust, ADC1/PB2
+#endif
     DIDR0 |= (1 << ADC_DIDR);                           // disable digital input on ADC pin to reduce power consumption
     ADCSRA = (1 << ADEN ) | (1 << ADSC ) | ADC_PRSCL;   // enable, start, prescale
 }
@@ -94,7 +111,11 @@ inline void ADC_off() {
 uint8_t get_reading() {
     // Start up ADC for capacitor pin
     DIDR0 |= (1 << CAP_DIDR);                           // disable digital input on ADC pin to reduce power consumption
+#if (ATTINY == 13)
     ADMUX  = (1 << REFS0) | (1 << ADLAR) | CAP_CHANNEL; // 1.1v reference, left-adjust, ADC3/PB3
+#elif (ATTINY == 25)
+    ADMUX  = (1 << REFS1) | (1 << ADLAR) | CAP_CHANNEL; // 1.1v reference, left-adjust, ADC3/PB3
+#endif
     ADCSRA = (1 << ADEN ) | (1 << ADSC ) | ADC_PRSCL;   // enable, start, prescale
     // Wait for completion
     while (ADCSRA & (1 << ADSC));
@@ -125,7 +146,6 @@ void blink() {
 int main(void)
 {
     uint16_t value;
-    uint8_t i;
 
     // Set PWM pin to output
     DDRB = (1 << PWM_PIN);
@@ -140,6 +160,7 @@ int main(void)
 
     // get an average of several readings
     /*
+    uint8_t i;
     value = 0;
     for (i=0; i<8; i++) {
         value += get_reading();
