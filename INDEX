@@ -358,6 +358,10 @@ MCU
         odd/MGdriver
         pilotdog68/xintd-x3
 
+    attiny25:
+        ToyKeeper/battcheck
+        ToyKeeper/blf-a6
+
     pic10f322:
         tterev3/pic10f322-examples
         tterev3/power_cycle_light

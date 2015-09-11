@@ -1,7 +1,7 @@
 Description: BLF EE A6 special edition (FET+1) firmware and derivatives
 Button-Type: clicky
 Memory: offtime, OTC, star-configurable
-MCU: attiny13a
+MCU: attiny13a, attiny25
 Authors: ToyKeeper
 Modes: battcheck, tactical strobe, bike flasher, config
 Extras: dual PWM, offtime-3, hidden modes, mode groups
