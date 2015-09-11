@@ -43,7 +43,7 @@
 #elif (ATTINY == 25)
 #define F_CPU 8000000UL
 #define EEPLEN 128
-#define DELAY_TWEAK 2400
+#define DELAY_TWEAK 2000
 #else
 Hey, you need to define ATTINY.
 #endif
