@@ -89,8 +89,22 @@ is set up. See below for an explanation on how to calculate this value.
 For most variants of the NANJG-101-AK, a threshold value of 130 will
 trigger at around 3V.
 
-LOWBAT_LVL:
-PWM level to fall back to if a low battery situation is detected.
+LOWBAT_RAMPDOWN:
+Enable gradual lowering of the light level. If the driver detects a low battery
+level, it starts halving the output level every five seconds until the voltage
+stabilizes or LOWBAT_MIN_LVL is reached. If not defined, light will switch to
+LOWBAT_MIN_LVL immediately.
+
+LOWBAT_MIN_LVL:
+PWM level to fall back to if a low battery situation is detected. If 
+LOWBAT_RAMPDOWN is not defined, LOWBAT_MIN_LVL is compared to the current
+PWM level and the smaller one is set. If LOWBAT_RAMPDOWN is defined, the ramping 
+down will not go below this level.
+
+LOWBAT_MAX_LVL:
+If LOWBAT_RAMPDOWN is defined, the light will lower the PWM level to
+LOWBAT_MAX_LVL (if current PWM level is higher) and start ramping down until
+the battery's voltage stabilizes.
 
 ADC_MUX:
 ADC channel to use, depending on which pin of the ATtiny13 is connected.
@@ -165,3 +179,40 @@ Example 2 (newer version):
     
     val = ((3.0V - 0.2V) * 4.7kOhm * 255) / ((18kOhm + 4.7kOhm) * 1.1V) = 134
 
+In conclusion, a value of 130 is usually a good compromise for PCBs with usable
+components.
+
+
+Mode Switching
+==============
+
+There are two types of mode switching. The standard one uses only the
+resources available in the MCU and works by measuring how long the light
+has been switched on to determine if the mode should be changed on start up.
+If the light is switched off within two seconds after being turned on, it will
+switch mode the next time it is started. As this way does not depend an any 
+external hardware, it will work with every driver PCB.
+
+The second method samples an I/O pin on startup and switches modes if it is
+in a certain state (high or low). Some PCBs connect a capacitor to an I/O pin,
+which will keep it above a certain voltage level for some time after the power
+has been cut. This way, the MCU can read the pin on start up and determine,
+if the power was off for only a short time (usually less than 2 seconds). In
+this case, the light switches to the next mode.
+
+Pin state based mode switching may be enabled and configured via the following
+defines:
+
+PINSWITCH:
+Enable pin state mode switching.
+
+PS_PIN:
+Define the pin to query, e.g. PB4.
+
+PS_HIGH:
+If defined, a high level indicates mode switch, otherwise a low level is used.
+
+PS_CHARGE:
+If defined, the pin is set to high or low (depending on PS_HIGH) while the 
+light is switched on. This way, a capacitor connected to the pin can be
+charged or discharged.

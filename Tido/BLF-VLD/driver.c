@@ -1,6 +1,6 @@
 /*
  * Versatile driver for ATtiny controlled flashlights
- * Copyright (C) 2010 Tido Klaassen
+ * Copyright (C) 2010-2011 Tido Klaassen
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@
 #define NUM_MODES 3         // how many modes should the flashlight have (1-5)
 #define NUM_EXT_CLICKS 6    // how many clicks to enter programming mode
 #define EXTENDED_MODES      // enable to make all mode lines available
-//#define PROGRAMMABLE        // user can re-program the mode slots
+#define PROGRAMMABLE        // user can re-program the mode slots
 #define PROGHELPER          // indicate programming timing by short flashes
 //#define NOMEMORY            // #define to disable mode memory
 #define FUNC_STROBE         // #define to compile in strobe mode
@@ -48,9 +48,11 @@
 //#define FUNC_FADE           // #define to compile in fade in-out mode
 
 // Config for battery monitoring
-#define MONITOR_BAT       // enable battery monitoring
+//#define MONITOR_BAT       // enable battery monitoring
 #define LOWBAT_TRIG 130     // trigger level for low battery, see README
-#define LOWBAT_LVL 0x04     // PWM level to use in low battery situation
+#define LOWBAT_RAMPDOWN     // decrease output gradually when battery fails
+#define LOWBAT_MIN_LVL 0x04 // minimal PWM level to use in low battery situation
+#define LOWBAT_MAX_LVL 0x40 // maximum PWM level to start ramping down from
 #define ADC_MUX 0x01        // ADC channel to use, see README
 #define ADC_DIDR ADC1D      // digital input to disable, see README
 #define ADC_PRSCL 0x06      // ADC prescaler of 64
@@ -70,14 +72,26 @@
                             // use this to scale down PWM frequency if needed
 
 /*
+ * Configure mode switching based on the state of an I/O pin on start up
+ */
+//#define PINSWITCH       // enable pin state based mode switching
+#define PS_PIN PB4      // pin to query
+#define PS_HIGH         // high level indicates mode switch
+#define PS_CHARGE       // pull the pin high/low during runtime to (dis)charge
+                        // a capacitor connected to the pin
+
+
+/*
  * override #defines set above if called with build profiles from the IDE
  */
+
 #ifdef BUILD_PROGRAMMABLE
 #undef PROGRAMMABLE
 #undef EXTENDED_MODES
 #undef PROGHELPER
 #undef NOMEMORY
 #undef MONITOR_BAT
+#undef PINSWITCH
 #undef FUNC_SOS
 #undef FUNC_ALPINE
 #undef FUNC_FADE
@@ -92,13 +106,13 @@
 #undef EXTENDED_MODES
 #undef PROGHELPER
 #undef NOMEMORY
+#undef PINSWITCH
 #undef MONITOR_BAT
 #undef FUNC_SOS
 #undef FUNC_ALPINE
 #undef FUNC_FADE
 #define EXTENDED_MODES
 #define FUNC_STROBE
-#define FUNC_SOS
 #endif
 
 #ifdef BUILD_SIMPLE
@@ -107,11 +121,11 @@
 #undef PROGHELPER
 #undef NOMEMORY
 #undef MONITOR_BAT
+#undef PINSWITCH
 #undef FUNC_SOS
 #undef FUNC_ALPINE
 #undef FUNC_FADE
 #define FUNC_STROBE
-#define FUNC_SOS
 #endif
 
 
@@ -173,7 +187,7 @@ const uint8_t EEMEM eeprom[64] =
 {   0x00, 0xFF, 0xFF, 0x00,
     0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00,
-    // initial mode programming, indices to modelines in the following array
+    // initial mode programming, indices to mode lines in the following array
     0x03, 0x06, 0x08, 0x00, 0x00,
     // mode configuration starts here. Format is:
     // offset in mode_func_arr, func data1, func data2, func data3
@@ -212,6 +226,10 @@ void alpine(uint8_t offset);
 #ifdef FUNC_FADE
 void fade(uint8_t offset);
 #endif
+
+// useful macros
+#define MIN(a, b) ((a) < (b)) ? (a) : (b)
+#define MAX(a, b) ((a) > (b)) ? (a) : (b)
 
 /*
  * prototype for mode function pointers
@@ -328,42 +346,78 @@ typedef struct
  */
 uint8_t ticks;  // how many times the watchdog timer has been triggered
 State_t state;  // struct holding a partial copy of the EEPROM
-                // (should be volatile, but eats too much memory)
+                // (should be volatile, but eats too much memory. After start
+                // up it's only modified inside the ISR anyway)
+
 volatile uint8_t gl_flags;  // global flags used for signalling certain events
 #define GF_LOWBAT 0x01      // flag indicating low battery voltage
 
 
 /*
- * The watchdog timer is called every 250ms and this way we keep track of
- * whether the light has been turned on for less than a second (up to 4 ticks)
- * or less than 2 seconds (8 ticks). If PROGHELPER is defined, we also give
- * hints on when to switch off to follow the programming sequence
- * If built with battery monitoring, check battery voltage and set a flag
- * if it drops below a given threshold
+ * The watchdog timer is called every 250ms.
+ *
+ * Function depends on the build configuration. If built with EEPROM base mode
+ * switching (default), we keep track of whether the light has been turned on
+ * for less than 2 seconds (8 ticks). After this time has elapsed, the
+ * last_click cell is written over with tap_none. During mode programming, the
+ * function will overwrite the last_click cell after one second with
+ * tap_long. If PROGHELPER is defined, we also give hints on when to switch
+ * off to follow the acknowledging sequence.
+ *
+ * If PINSWITCH is defined and the light is in programming state, this function
+ * resets prog_stage after two seconds runtime, aborting the acknowledging
+ * sequence.
+ *
+ * If built with battery monitoring, the battery level is checked four times
+ * a second, after the light has been running for two seconds. This gives
+ * the user a chance to get into a special mode, e.g. SOS or beacon, before
+ * the battery protection kicks in and forces the light into the special
+ * battery saving mode. The battery low flag is set when four consecutive
+ * samplings have found the voltage to be below the given threshold.
+ *
+ * I know that this is a lot of stuff to put into an ISR, but there is nothing
+ * else going on that might suffer from a long running interrupt routine. The
+ * PWM runs independently, so constant light modes can not be effected in any
+ * way. Strobe functions may be affected, but I guess nobody will notice if
+ * a pulse gets delayed by a millisecond or two.
+ *
  */
 ISR(WDT_vect)
 {
-    uint8_t *click_cell;
 #ifdef MONITOR_BAT
     static uint8_t lbat_cnt = 0;
 #endif
 
     if(ticks < 8){
 
+#ifndef PINSWITCH
+        uint8_t *click_cell;
         click_cell = (uint8_t *) EE_LAST_CLICK + state.click_cell;
+#endif
 
         ++ticks;
 
         switch(ticks){
-        /* last_click is initialised to tap_short in main() on startup. By the
-         * time we reach four ticks, we change it to tap_long (more than a
-         * second). After eight ticks (two seconds) we clear last_click.
+        /* With memory based mode switching, last_click is initialised to
+         * tap_short in main() on startup. By the time we reach four ticks,
+         * we change it to tap_long (more than a second). After eight ticks
+         * (two seconds) we clear last_click.
+         *
+         * With pin state based switching, we just have to clear prog stage
+         * after two seconds.
          */
         case 8:
+#ifdef PINSWITCH
+            // abort mode programming if light stays on for more than two seconds
+            if(state.prog_stage != prog_undef)
+                eeprom_write_byte((uint8_t *) EE_PROGSTAGE, prog_undef);
+#else
+            // two seconds elapsed, reset click type to tap_none
             eeprom_write_byte(click_cell, tap_none);
+#endif
             break;
 
-#ifdef PROGRAMMABLE
+#if defined(PROGRAMMABLE) && !defined(PINSWITCH)
         case 4:
             eeprom_write_byte(click_cell, tap_long);
 
@@ -378,9 +432,7 @@ ISR(WDT_vect)
                 _delay_ms(100);
                 PWM_LVL ^= (uint8_t) 0x80;
             }
-#endif
             break;
-#ifdef PROGHELPER
         case 1:
             if(state.prog_stage == prog_1
                     || state.prog_stage == prog_2
@@ -390,9 +442,9 @@ ISR(WDT_vect)
                 _delay_ms(100);
                 PWM_LVL ^= (uint8_t) 0x80;
             }
+#endif      // PROGHELPER
             break;
-#endif		// PROGHELPER
-#endif		// PROGRAMMABLE
+#endif		// PROGRAMMABLE && !PINSWITCH
         default:
             break;
         }
@@ -410,13 +462,17 @@ ISR(WDT_vect)
                 lbat_cnt = 0;
         }
 
-        // we keep restarting the ADC until we have detected a low battery
-        // voltage four times in a row. Then we set the GF_LOWBAT flag.
+        /* set the GF_LOWBAT flag if we have detected a low battery
+         * voltage four times in a row. Reset lbat_cnt so we can trigger again.
+         * Needed for the ramping down functionality.
+         */
         if(lbat_cnt == 4){
             gl_flags |= GF_LOWBAT;
-        }else{
-            ADCSRA |= _BV(ADSC);
+            lbat_cnt = 0;
         }
+
+        // restart ADC
+        ADCSRA |= _BV(ADSC);
     }
 #endif
 }
@@ -458,12 +514,62 @@ inline void start_adc()
     // internal 1.1V, left adjusted, use configured mux
     ADMUX = _BV(REFS0) | _BV(ADLAR) | (uint8_t) ADC_MUX;
 
+    // make sure pin is not set to output
+    DDRB &= (uint8_t) ~(_BV(ADC_DIDR));
+
     // disable digital input on ADC pin
-    DIDR0 |= (uint8_t) ADC_DIDR;
+    DIDR0 |= _BV(ADC_DIDR);
 
     // enable ADC, start conversion, set prescaler
     ADCSRA = _BV(ADEN) | _BV(ADSC) | (uint8_t) ADC_PRSCL;
 
+}
+
+
+/*
+ * special mode to call when battery voltage is low.
+ */
+static inline void lowbat_mode()
+{
+    uint8_t pwm;
+
+    // set PWM level to the configured low battery level, unless it is already
+    // lower than that
+#ifdef LOWBAT_RAMPDOWN
+    if(PWM_LVL > 0){
+        pwm = MIN(PWM_LVL, LOWBAT_MAX_LVL);
+    }else{
+        pwm = LOWBAT_MAX_LVL;
+
+        // clear low battery flag, so detection can trigger again
+        gl_flags &= ~GF_LOWBAT;
+    }
+#else
+    if(PWM_LVL > 0){
+        pwm = MIN(PWM_LVL, LOWBAT_MIN_LVL);
+    }else{
+        pwm = LOWBAT_MIN_LVL;
+    }
+#endif // LOWBAT_RAMPDOWN
+
+    while(1){
+        // give a short blink every five seconds
+        PWM_LVL = pwm;
+        _delay_ms(5000);
+        PWM_LVL = 0;
+        _delay_ms(100);
+#ifdef LOWBAT_RAMPDOWN
+        // if battery warning is triggered again, halve current PWM level and
+        // clear GF_LOWBAT flag.
+        // Do this on each triggering, until LOWBAT_MIN_LVL is reached
+        if(gl_flags & GF_LOWBAT){
+            pwm >>= 1;
+            pwm = MAX(pwm, LOWBAT_MIN_LVL);
+
+            gl_flags &= ~GF_LOWBAT;
+        }
+#endif // LOWBAT_RAMPDOWN
+    }
 }
 #endif
 
@@ -491,23 +597,6 @@ static void inline sleep_sec(uint16_t sec)
         --sec;
     }
 }
-
-#ifdef EXTENDED_MODES
-
-/*
- * give a short blink to indicate entering or leaving extended mode
- */
-static inline void ext_signal()
-{
-    // Only called from main at PWM_LVL 0. Give short flash
-    _delay_ms(50);
-    // blink one time
-    for(uint8_t i = 0; i < 2; ++i){
-        PWM_LVL = ~PWM_LVL;
-        _delay_ms(50);
-    }
-}
-#endif
 
 /*
  * Constant light level
@@ -623,7 +712,7 @@ void alpine(uint8_t offset)
 
     pwm = 255;
     while(1){
-        for(i = 0; i < 6; i++){
+        for(i = 0; i < 6; ++i){
             PWM_LVL = pwm;
             _delay_ms(200);
             PWM_LVL = 0;
@@ -700,33 +789,133 @@ void nullmode(uint8_t offset)
     return;
 }
 
+#ifdef PROGRAMMABLE
+static inline void do_program(const uint8_t last_click)
+{
+    /*
+     * mode programming. We have the mode slot to be programmed saved in
+     * state.target_mode, the mode to store in state.chosen_mode. User needs
+     * to acknowledge by following a tapping pattern of short-short-long-short.
+     */
+    switch(state.prog_stage){
+    case prog_init:
+        state.prog_stage = prog_1;
+        break;
+    case prog_1:
+    case prog_2:
+        if(last_click == tap_short)
+            ++state.prog_stage;
+        else
+            state.prog_stage = prog_nak;
+        break;
+    case prog_3:
+        if(last_click == tap_long)
+            ++state.prog_stage;
+        else
+            state.prog_stage = prog_nak;
+        break;
+    case prog_4:
+        if(last_click == tap_short){
+            // sequence completed, update mode_arr and eeprom
+            state.mode_arr[state.target_mode] = state.chosen_mode;
+            eeprom_write_byte((uint8_t *)EE_MODES_BASE + state.target_mode,
+                    state.chosen_mode);
+        }
+        // fall through
+    case prog_nak:
+    default:
+        // clean up when leaving programming mode
+        state.prog_stage = prog_undef;
+        state.target_mode = EMPTY_MODE;
+        state.chosen_mode = EMPTY_MODE;
+        break;
+    }
+
+    state.clicks = 0;
+}
+#endif
+
+#ifdef PINSWITCH
+/*
+ * Mode switching / programming based on the state of an I/O pin.
+ */
+static inline uint8_t get_last_click()
+{
+    uint8_t last_click;
+
+    // if the pin is still high (or low), the light has only been turned off
+    // for a short time. We register this as a tap_short
+#ifdef PS_HIGH
+    if(PINB & _BV(PS_PIN))
+#else
+    if(!(PINB & _BV(PS_PIN)))
+#endif
+    {
+        last_click = tap_short;
+    }else{
+        // if the light has been turned off for a longer time, we register this
+        // as either a tap_long or a tap_none, depending on whether we are
+        // in programming mode or not
+        if(state.prog_stage != prog_undef)
+            last_click = tap_long;
+        else
+            last_click = tap_none;
+    }
+
+
+#ifdef PS_CHARGE
+    // charge or discharge a capacitor connected to the I/O pin by setting
+    // it to high or low.
+    DDRB |= _BV(PS_PIN);
+#ifdef PS_HIGH
+    PORTB |= _BV(PS_PIN);
+#else
+    PORTB &= (uint8_t) ~_BV(PS_PIN);
+#endif // PS_HIGH
+#endif // PS_CHARGE
+
+    return last_click;
+}
+#else
+
+/*
+ * Mode switching based on previous run time.
+ * On start up we write tap_short into a memory cell. After one second this cell
+ * will be overwritten with tap_long by the timer ISR. After two seconds the
+ * cell will be overwritten with tap_none.
+ */
+static inline uint8_t get_last_click()
+{
+    uint8_t last_click, next_cell;
+
+    // make sure we cycle through the memory cells in the last_click array
+    // to spread the wear on the eeprom a bit
+    last_click = state.last_click[state.click_cell];
+
+    // initialise click type for next start up
+    next_cell = state.click_cell;
+    ++next_cell;
+    if(next_cell >= CLICK_CELLS)
+        next_cell = 0;
+
+    state.last_click[next_cell] = tap_short;
+    state.click_cell = next_cell;
+
+    return last_click;
+}
+#endif
+
 int main(void)
 {
-    uint8_t offset, mode_idx = 0, func_idx, last_click, next_cell;
+    uint8_t offset, mode_idx = 0, func_idx, last_click;
 #ifdef EXTENDED_MODES
     uint8_t signal = 0;
 #endif
 
-    // set whole PORTB initially to output
-    DDRB = 0xff;
-    // PORTB = 0x00; // initialised to 0 anyway
-
-    // Initialise PWM on output pin and set level to zero
-    TCCR0A = PWM_TCR;
-    TCCR0B = PWM_SCL;
-    // PWM_LVL = 0; // initialised to 0 anyway
-
     // read the state data at the start of the eeprom into a struct
     eeprom_read_block(&state, 0, sizeof(State_t));
 
-    last_click = state.last_click[state.click_cell];
-
-    // make sure we cycle through the memory cells in the last_click array
-    // to spread the wear on the eeprom a bit
-
-    next_cell = state.click_cell + 1;
-    if(next_cell >= CLICK_CELLS)
-        next_cell = 0;
+    last_click = get_last_click();
 
 #ifdef EXTENDED_MODES
     // if we are in standard mode and got NUM_EXT_CLICKS in a row, change to
@@ -767,50 +956,13 @@ int main(void)
     }
 
 #ifdef PROGRAMMABLE
-    /*
-     * mode programming. We have the mode slot to be programmed saved in
-     * state.target_mode, the mode to store in state.chosen_mode. User needs
-     * to acknowledge by following a tapping pattern of short-short-long-short.
-     */
     if(state.prog_stage >= prog_init){
-
-        switch(state.prog_stage){
-            case prog_init:
-                state.prog_stage = prog_1;
-                break;
-            case prog_1:
-            case prog_2:
-                if(last_click == tap_short)
-                    ++state.prog_stage;
-                else
-                    state.prog_stage = prog_nak;
-                break;
-            case prog_3:
-                if(last_click == tap_long)
-                    ++state.prog_stage;
-                else
-                    state.prog_stage = prog_nak;
-                break;
-            case prog_4:
-                if(last_click == tap_short){
-                    // sequence completed, update mode_arr and eeprom
-                    state.mode_arr[state.target_mode] = state.chosen_mode;
-                    eeprom_write_byte((uint8_t *)EE_MODES_BASE + state.target_mode,
-                                        state.chosen_mode);
-                }
-                // fall through
-            case prog_nak:
-            default:
-                // clean up when leaving programming mode
-                state.prog_stage = prog_undef;
-                state.target_mode = EMPTY_MODE;
-                state.chosen_mode = EMPTY_MODE;
-                break;
-        }
-
-        state.clicks = 0;
+        do_program(last_click);
     }
 #endif	// PROGRAMMABLE
+#else   // EXTENDED_MODES
+    state.extended = 0; // make sure we don't get stuck in extended modes
+                        // if the EEPROM gets corrupted. (found by sixty545)
 #endif	// EXTENDED_MODES
 
     // standard mode operation
@@ -849,19 +1001,36 @@ int main(void)
         mode_idx = state.mode_arr[state.mode];
     }
 
-    // initialise click type for next start up
-    state.last_click[next_cell] = tap_short;
-    state.click_cell = next_cell;
-
     // write back state to eeprom but omit the mode configuration.
     // Minimises risk of corruption. Everything else will right itself
     // eventually, but modes will stay broken until reprogrammed.
     eeprom_write_block(&state, 0, sizeof(State_t) - sizeof(state.mode_arr));
 
+    // set up PWM
+    // set PWM pin to output
+    DDRB |= _BV(PWM_PIN);
+    // PORTB = 0x00; // initialised to 0 anyway
+
+    // Initialise PWM on output pin and set level to zero
+    TCCR0A = PWM_TCR;
+    TCCR0B = PWM_SCL;
+    // PWM_LVL = 0; // initialised to 0 anyway
+
+
 #ifdef EXTENDED_MODES
-    // signal entering or leaving extended mode
-    if(signal)
-        ext_signal();
+    //give a short blink to indicate entering or leaving extended mode
+    if(signal){
+        // some people (including me) get twitchy during mode programming and
+        // switch off at the first flash. Small delay to make sure the EEPROM
+        // has settled down
+        _delay_ms(50);
+
+        // blink one time
+        for(uint8_t i = 0; i < 2; ++i){
+            PWM_LVL = ~PWM_LVL;
+            _delay_ms(50);
+        }
+    }
 #endif
 
     // sanity check in case of corrupted eeprom
@@ -883,25 +1052,10 @@ int main(void)
     // call mode func
     (*mode_func_arr[func_idx])(offset);
 
-
+    // if we reach this, the mode function has returned. This only happens if
+    // the battery alarm has been triggered
 #ifdef MONITOR_BAT
-    uint8_t pwm;
-
-    /*
-     * if we reach this, one of the mode funcs has caught the low battery flag
-     * and returned. Set PWM to a low level and signal every five seconds.
-     */
-    if(PWM_LVL > 0 && PWM_LVL < LOWBAT_LVL)
-        pwm = PWM_LVL;
-    else
-        pwm = LOWBAT_LVL;
-
-    while(1){
-       PWM_LVL = pwm;
-       _delay_ms(5000);
-       PWM_LVL = 0;
-       _delay_ms(100);
-    }
+    lowbat_mode();
 #else
     while(1)
         ;
