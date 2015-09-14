@@ -1,0 +1,112 @@
+Prologue
+========
+For some time now, flashaholics have had access to cheap budget flashlights 
+from Hong Kong through sites like DX, KD and many more. Although there where 
+many lights with good build quality, given the price, none of them was
+entirely satisfactory: either the low mode was not quite low enough, or the 
+strobes where too stroby, or the mode memory showed signs of having 
+Alzheimer's disease. 
+
+Much lamenting was heard in the august halls of places like the Budget Light 
+Forum (http://budgetlightforum.cz.cc/) and related sites. Even at 
+The Other Place That Shall Not Be Named, unsuspecting newbies could be heard 
+bemoaning this cruel twist of fate (usually followed up by a moderator 
+posting "That's what you get for not buying  American, now shut up or you 
+will be banned. All glory to the mighty SureFire!"). 
+
+After much suffering, one man finally decided not to take it an longer, to
+stand up to fate, technology and Chinese mass manufacturers, who where deaf
+to their customers pleas, to build the one, true mode driver to please 
+everybody. After toiling away for long days on end (well, more afternoons
+and evenings, but that doesn't sound as epic, does it?) his labour took on
+form and was named after the place which inspired its creation, the
+
+                Budget Light Forum Versatile LED Driver
+
+
+Release Notes
+=============
+Okay, now let's get on on a more serious note. First of all, this is my
+first micro controller project, so please don't expect perfect code. Hints
+on where I went wrong and how to do things right are always welcome. Please
+send all constructive criticism, questions, feature suggestions, patches,
+fan mail, hate mail, legal threats etc. to tido@4gh.eu 
+
+This is the first alpha release of the BLF-VLD. It can be built in two 
+configurations, namely fixed and programmable modes. In fixed mode, number
+and ordering of the modes are determined at compile time and can not be 
+changed later by the user. Look at the code and change the #defines at the
+top to your liking. 
+
+In programmable mode, only the number of mode slots is determined at compile
+time. Default light levels can be defined, but these can later be changed by
+the user. The programming logic takes up a lot of space in the ATtiny's 
+tiny (1k) flash, so there are no strobe, SOS, fader etc. modes available,
+just constant light at tunable levels.
+
+
+What to do with the source
+==========================
+
+To build the driver, you will need the gcc-avr tool-chain (gcc, binutils, 
+avr-libc) plus other standard development tools. Since this program is
+entirely useless to anyone without the necessary hardware to flash it 
+into the ATtiny and anyone in possession of said hardware can reasonably
+be expected to be knowledgeable enough on where to get and how to use this
+tools, I will not go into details on how to build and install. Just look
+at the source and you will know what to do. I have developed and tested 
+this on an ATtiny13, running off the internal oscillator at 4.8MHz.
+
+The archive contains an Eclipse C/C++ AVR project and can be imported as such.
+
+The driver can also be built from the command line, just cd into one of the 
+configuration dirs ("Default", "Fixed Modes", "Programmable") and type  'make'. 
+If your tool chain is set up correctly, this should build, among other things, 
+the files BLF-VLD.hex and BLF-VLD.eep, which are the flash and eeprom
+images that need to be flashed into the ATtiny. 
+
+The Archive contains prepared images in each configuration directory. "Default" 
+is a 10 mode driver meant for demonstrating the possible modes, "Fixed Modes"
+is a four mode "low - medium - high - very low" driver, "Programmable" is a
+three mode programmable driver.
+
+
+How to program the modes
+========================
+
+To enter programming mode, change modes for NUM_PROG_CLICKS (default 6) times
+in a row. The light will strobe for 1 second, indicating that it is about to 
+enter programming mode. If it is turned off while strobing, programming is 
+aborted. 
+
+After entering programming mode, the user has to choose the mode slot to
+program. The light will cycle through all slots, indicating the slot number by
+blinking n times and waiting 2 seconds, then move on to the next slot. A slot
+is chosen by switching off the light after it has been indicated. (e.g., you
+want to re-program slot 2. Enter programming mode, wait for the strobe signal 
+to end. Light blinks once. Do nothing. After 2 seconds, light blinks twice.
+Now switch off the light.) If the light has cycled through all slots without
+any one being chosen, it will strobe for 1 second and leave programming mode.
+ 
+If a slot has been chosen, level programming starts when the light is 
+switched on again. The light will stay one second at the lowest possible level,
+then start ramping up. At half way, it will give a very short blink and stay
+for one second, then continue to ramp up until full level is reached. At this
+point the light gives a short blink again and stays at this level for 1 second.
+After that the whole cycle starts over again. To choose a level, switch off 
+the light. Be careful not to let the light run through too many of these 
+cycles, as they wear out the EEPROM very quick. Each slot may run through 
+about 400 complete level cycles before the guaranteed write count of 100000 
+writes to its memory cell is reached.
+
+When the light is switched on again after selecting a level, it will strobe
+for one second, during which the user can discard the chosen level by, you
+guessed it, switching off the light. In this case, level selection starts 
+over.
+
+After strobing, the user has two seconds to acknowledge the chosen level
+(by switching off). The new level is now programmed into the slot. If the new
+level is not acknowledged, programming is aborted and the old level restored.
+This is indicated by a single blink and the light returning to normal 
+operation.
+
