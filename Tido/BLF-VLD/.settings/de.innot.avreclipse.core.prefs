@@ -1,4 +1,4 @@
-#Sat Nov 13 20:30:34 CET 2010
+#Sun Dec 12 09:36:17 CET 2010
 avrtarget/ClockFrequency=4800000
 avrtarget/ExtRAMSize=0
 avrtarget/ExtendedRAM=false
@@ -11,7 +11,7 @@ avrtarget/avrdude/EEPROMFile=
 avrtarget/avrdude/EEPROMFromConfig=true
 avrtarget/avrdude/FlashFile=
 avrtarget/avrdude/FlashFromConfig=true
-avrtarget/avrdude/Fuses/ByteValues=121\:239
+avrtarget/avrdude/Fuses/ByteValues=121\:237
 avrtarget/avrdude/Fuses/FileName=
 avrtarget/avrdude/Fuses/MCUid=attiny13
 avrtarget/avrdude/Fuses/UseFile=false
@@ -21,7 +21,7 @@ avrtarget/avrdude/NoSigCheck=false
 avrtarget/avrdude/NoVerify=false
 avrtarget/avrdude/NoWrite=false
 avrtarget/avrdude/OtherOptions=
-avrtarget/avrdude/ProgrammerID=programmerconfig.3
+avrtarget/avrdude/ProgrammerID=programmerconfig.5
 avrtarget/avrdude/UseCounter=false
 avrtarget/avrdude/WriteEEPROM=true
 avrtarget/avrdude/WriteFlash=true

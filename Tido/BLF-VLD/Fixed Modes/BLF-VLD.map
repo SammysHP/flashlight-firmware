@@ -18,8 +18,9 @@ Archive member included because of file (symbol)
 Allocating common symbols
 Common symbol       size              file
 
-state               0xb               ./driver.o
+state               0xe               ./driver.o
 ticks               0x1               ./driver.o
+gl_flags            0x1               ./driver.o
 
 Memory Configuration
 
@@ -130,7 +131,7 @@ LOAD /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a
 .rela.plt
  *(.rela.plt)
 
-.text           0x0000000000000000      0x2f8
+.text           0x0000000000000000      0x368
  *(.vectors)
  .vectors       0x0000000000000000       0x14 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/crttn13.o
                 0x0000000000000000                __vectors
@@ -195,44 +196,45 @@ LOAD /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a
                 0x0000000000000046                __vector_4
                 0x0000000000000046                __vector_9
                 0x0000000000000046                __vector_2
- .text          0x0000000000000048      0x252 ./driver.o
+ .text          0x0000000000000048      0x2c2 ./driver.o
                 0x0000000000000048                clock_prescale_set
-                0x0000000000000056                ext_signal
-                0x0000000000000092                main
-                0x0000000000000198                strobe
-                0x000000000000022e                const_level
-                0x000000000000023c                __vector_8
- .text          0x000000000000029a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_exit.o)
- .text          0x000000000000029a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_copy_data.o)
- .text          0x000000000000029a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_clear_bss.o)
- .text          0x000000000000029a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_block_attiny13.o)
- .text          0x000000000000029a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_byte_attiny13.o)
- .text          0x000000000000029a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_block_attiny13.o)
- .text          0x000000000000029a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_byte_attiny13.o)
-                0x000000000000029a                . = ALIGN (0x2)
+                0x0000000000000056                sos
+                0x00000000000000c2                nullmode
+                0x00000000000000c4                main
+                0x000000000000020a                strobe
+                0x000000000000029c                const_level
+                0x00000000000002a6                __vector_8
+ .text          0x000000000000030a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_exit.o)
+ .text          0x000000000000030a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_copy_data.o)
+ .text          0x000000000000030a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_clear_bss.o)
+ .text          0x000000000000030a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_block_attiny13.o)
+ .text          0x000000000000030a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_byte_attiny13.o)
+ .text          0x000000000000030a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_block_attiny13.o)
+ .text          0x000000000000030a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_byte_attiny13.o)
+                0x000000000000030a                . = ALIGN (0x2)
  *(.text.*)
- .text.libgcc   0x000000000000029a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_exit.o)
- .text.libgcc   0x000000000000029a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_copy_data.o)
- .text.libgcc   0x000000000000029a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_clear_bss.o)
+ .text.libgcc   0x000000000000030a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_exit.o)
+ .text.libgcc   0x000000000000030a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_copy_data.o)
+ .text.libgcc   0x000000000000030a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_clear_bss.o)
  .text.avr-libc
-                0x000000000000029a       0x1e /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_block_attiny13.o)
-                0x000000000000029a                __eerd_block_tn13
-                0x000000000000029e                __eerd_blraw_tn13
+                0x000000000000030a       0x1e /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_block_attiny13.o)
+                0x000000000000030a                __eerd_block_tn13
+                0x000000000000030e                __eerd_blraw_tn13
  .text.avr-libc
-                0x00000000000002b8       0x10 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_byte_attiny13.o)
-                0x00000000000002b8                __eerd_byte_tn13
+                0x0000000000000328       0x10 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_byte_attiny13.o)
+                0x0000000000000328                __eerd_byte_tn13
  .text.avr-libc
-                0x00000000000002c8       0x10 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_block_attiny13.o)
-                0x00000000000002c8                __eewr_block_tn13
+                0x0000000000000338       0x10 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_block_attiny13.o)
+                0x0000000000000338                __eewr_block_tn13
  .text.avr-libc
-                0x00000000000002d8       0x1c /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_byte_attiny13.o)
-                0x00000000000002d8                __eewr_byte_tn13
-                0x00000000000002da                __eewr_r18_tn13
-                0x00000000000002f4                . = ALIGN (0x2)
+                0x0000000000000348       0x1c /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_byte_attiny13.o)
+                0x0000000000000348                __eewr_byte_tn13
+                0x000000000000034a                __eewr_r18_tn13
+                0x0000000000000364                . = ALIGN (0x2)
  *(.fini9)
- .fini9         0x00000000000002f4        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_exit.o)
-                0x00000000000002f4                exit
-                0x00000000000002f4                _exit
+ .fini9         0x0000000000000364        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_exit.o)
+                0x0000000000000364                exit
+                0x0000000000000364                _exit
  *(.fini9)
  *(.fini8)
  *(.fini8)
@@ -251,58 +253,59 @@ LOAD /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a
  *(.fini1)
  *(.fini1)
  *(.fini0)
- .fini0         0x00000000000002f4        0x4 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_exit.o)
+ .fini0         0x0000000000000364        0x4 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_exit.o)
  *(.fini0)
-                0x00000000000002f8                _etext = .
+                0x0000000000000368                _etext = .
 
-.data           0x0000000000800060        0x4 load address 0x00000000000002f8
+.data           0x0000000000800060        0xa load address 0x0000000000000368
                 0x0000000000800060                PROVIDE (__data_start, .)
  *(.data)
  .data          0x0000000000800060        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/crttn13.o
- .data          0x0000000000800060        0x4 ./driver.o
+ .data          0x0000000000800060        0xa ./driver.o
                 0x0000000000800060                mode_func_arr
- .data          0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_exit.o)
- .data          0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_copy_data.o)
- .data          0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_clear_bss.o)
- .data          0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_block_attiny13.o)
- .data          0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_byte_attiny13.o)
- .data          0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_block_attiny13.o)
- .data          0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_byte_attiny13.o)
+ .data          0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_exit.o)
+ .data          0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_copy_data.o)
+ .data          0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_clear_bss.o)
+ .data          0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_block_attiny13.o)
+ .data          0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_byte_attiny13.o)
+ .data          0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_block_attiny13.o)
+ .data          0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_byte_attiny13.o)
  *(.data*)
  *(.rodata)
  *(.rodata*)
  *(.gnu.linkonce.d*)
-                0x0000000000800064                . = ALIGN (0x2)
-                0x0000000000800064                _edata = .
-                0x0000000000800064                PROVIDE (__data_end, .)
+                0x000000000080006a                . = ALIGN (0x2)
+                0x000000000080006a                _edata = .
+                0x000000000080006a                PROVIDE (__data_end, .)
 
-.bss            0x0000000000800064        0xc
-                0x0000000000800064                PROVIDE (__bss_start, .)
+.bss            0x000000000080006a       0x10
+                0x000000000080006a                PROVIDE (__bss_start, .)
  *(.bss)
- .bss           0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/crttn13.o
- .bss           0x0000000000800064        0x0 ./driver.o
- .bss           0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_exit.o)
- .bss           0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_copy_data.o)
- .bss           0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_clear_bss.o)
- .bss           0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_block_attiny13.o)
- .bss           0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_byte_attiny13.o)
- .bss           0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_block_attiny13.o)
- .bss           0x0000000000800064        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_byte_attiny13.o)
+ .bss           0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/crttn13.o
+ .bss           0x000000000080006a        0x0 ./driver.o
+ .bss           0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_exit.o)
+ .bss           0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_copy_data.o)
+ .bss           0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/avr25/libgcc.a(_clear_bss.o)
+ .bss           0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_block_attiny13.o)
+ .bss           0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eerd_byte_attiny13.o)
+ .bss           0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_block_attiny13.o)
+ .bss           0x000000000080006a        0x0 /usr/lib/gcc/avr/4.3.5/../../../avr/lib/avr25/libc.a(eewr_byte_attiny13.o)
  *(.bss*)
  *(COMMON)
- COMMON         0x0000000000800064        0xc ./driver.o
-                0x0000000000800064                state
-                0x000000000080006f                ticks
-                0x0000000000800070                PROVIDE (__bss_end, .)
-                0x00000000000002f8                __data_load_start = LOADADDR (.data)
-                0x00000000000002fc                __data_load_end = (__data_load_start + SIZEOF (.data))
+ COMMON         0x000000000080006a       0x10 ./driver.o
+                0x000000000080006a                state
+                0x0000000000800078                ticks
+                0x0000000000800079                gl_flags
+                0x000000000080007a                PROVIDE (__bss_end, .)
+                0x0000000000000368                __data_load_start = LOADADDR (.data)
+                0x0000000000000372                __data_load_end = (__data_load_start + SIZEOF (.data))
 
-.noinit         0x0000000000800070        0x0
-                0x0000000000800070                PROVIDE (__noinit_start, .)
+.noinit         0x000000000080007a        0x0
+                0x000000000080007a                PROVIDE (__noinit_start, .)
  *(.noinit*)
-                0x0000000000800070                PROVIDE (__noinit_end, .)
-                0x0000000000800070                _end = .
-                0x0000000000800070                PROVIDE (__heap_start, .)
+                0x000000000080007a                PROVIDE (__noinit_end, .)
+                0x000000000080007a                _end = .
+                0x000000000080007a                PROVIDE (__heap_start, .)
 
 .eeprom         0x0000000000810000       0x40
  *(.eeprom*)
