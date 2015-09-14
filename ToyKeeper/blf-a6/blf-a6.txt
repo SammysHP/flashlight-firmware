@@ -32,8 +32,6 @@ The interface is as follows:
 
       - Tactical strobe (10 Hz)
 
-      - Biking flasher (2-level stutter beacon, 1 Hz)
-
       - Battery check / beacon mode
         (each blink represents about 25% of a full charge)
         0 blinks: < 1% full        (< 3.0V)
@@ -42,6 +40,8 @@ The interface is as follows:
         3 blinks: 50% to 75% full  (3.8V to 4.0V)
         4 blinks: 75% to 100% full (4.0V to 4.2V)
         5 blinks: > 100% full      (> 4.2V)
+
+      - Biking flasher (2-level stutter beacon, 1 Hz)
 
   Configuration options:
 
@@ -70,9 +70,10 @@ The interface is as follows:
   Other details to note:
 
     - Low-voltage protection will progressively step down the output at 
-      about 2.8V, and the light will shut itself off when it gets below 2.7V.
+      about 2.8V, and the light will shut itself off when even the 
+      lowest level gets below 2.8V.
 
-    - The default turbo step-down is 30 seconds.
+    - The default turbo step-down is 45 seconds.
 
     - When turbo steps down to high, a short tap will push it back up to 
       turbo or a medium tap will step down further, even if you got to 

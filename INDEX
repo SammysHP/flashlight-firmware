@@ -100,8 +100,11 @@ Summary of each project
     hello_world:
         quick example to help test if flashing hardware works
 
+    odd/MGdriver:
+        Off-time multigroup driver by odd, based on luxdrv030 by DrJones
+
     pilotdog68/xintd-x3:
-        XinTD X3 FET+1 firmware supporting both Li-Ion and 3xAA batteries
+        XinTD X3 FET+1 firmware supporting both li-ion and 3xAA batteries
 
     tterev3/attiny10_starter_code:
         attiny10 starter example
@@ -124,6 +127,7 @@ Authors
         DrJones/NLITE
         DrJones/heartbeat
         DrJones/luxdrv
+        odd/MGdriver
 
     JonnyC:
         JonnyC/STAR/MTN_momentary_temp
@@ -172,6 +176,9 @@ Authors
     dthoang:
         dthoang
 
+    odd:
+        odd/MGdriver
+
     pilotdog68:
         pilotdog68/xintd-x3
 
@@ -205,6 +212,7 @@ Button-Type
         Werner/STAR_improvements
         _the_/TheStar
         alexvh/basic_off_time_driver
+        odd/MGdriver
         pilotdog68/xintd-x3
         tterev3/pic10f322-examples
         tterev3/power_cycle_light
@@ -262,6 +270,7 @@ Extras
 
     mode groups:
         ToyKeeper/blf-a6
+        odd/MGdriver
         pilotdog68/xintd-x3
 
     offtime-3:
@@ -346,7 +355,12 @@ MCU
         _the_/TheStar
         alexvh/basic_off_time_driver
         dthoang
+        odd/MGdriver
         pilotdog68/xintd-x3
+
+    attiny25:
+        ToyKeeper/battcheck
+        ToyKeeper/blf-a6
 
     pic10f322:
         tterev3/pic10f322-examples
@@ -388,6 +402,7 @@ Memory
         Werner/STAR_improvements
         alexvh/basic_off_time_driver
         dthoang
+        odd/MGdriver
 
     offtime:
         JonnyC/STAR/STAR_off_time
@@ -401,6 +416,7 @@ Memory
         Werner/STAR_improvements
         _the_/TheStar
         alexvh/basic_off_time_driver
+        odd/MGdriver
         pilotdog68/xintd-x3
         tterev3/pic10f322-examples
 
@@ -467,6 +483,7 @@ Modes
         ToyKeeper/tail-light
         ToyKeeper/uv
         _the_/TheStar
+        odd/MGdriver
         tterev3/power_cycle_light
 
     bike flasher:
@@ -516,6 +533,7 @@ Modes
 
     strobe:
         Tamagotchi/7135x8v2
+        odd/MGdriver
 
     tactical strobe:
         DrJones/luxdrv
