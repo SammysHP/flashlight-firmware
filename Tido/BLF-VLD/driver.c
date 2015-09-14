@@ -1,21 +1,21 @@
 /*
-    Versatile driver for ATtiny controlled flashlights
-    Copyright (C) 2010 Tido Klaassen
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-*/
+ * Versatile driver for ATtiny controlled flashlights
+ * Copyright (C) 2010 Tido Klaassen
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
 /*
  * driver.c
@@ -29,79 +29,90 @@
 #include <avr/interrupt.h>
 #include <avr/wdt.h>
 #include <avr/eeprom.h>
+#include <avr/sleep.h>
+#include <avr/power.h>
 
 /*
  * configure the driver here. For fixed modes, also change the order and/or
  * function variables in the initial EEPROM image down below to your needs.
  */
-#define NUM_MODES 10		// how many modes should the flashlight have
-#define PWM_PIN PB1			// look at your PCB to find out which pin the FET
-#define PWM_OCR OCR0B		// or 7135 is connected to, then consult the
-							// data-sheet on which pin and OCR to use
+#define PWM_PIN PB1	        // look at your PCB to find out which pin the FET
+#define PWM_LVL OCR0B       // or 7135 is connected to, then consult the
+                            // data-sheet on which pin and OCR to use
 
-#define PWM_TCR 0x21		// phase corrected PWM. Set to 0x81 for PB0,
-							// 0x21 for PB1
+#define PWM_TCR 0x21        // phase corrected PWM. Set to 0x81 for PB0,
+                            // 0x21 for PB1
 
-//#define PROGRAMMABLE		// #define for programmable modes
-#define NUM_PROG_CLICKS 6	// how many clicks to enter programming mode
-#define MEMORY				// #undef to disable mode memory
+#define NUM_MODES 3	        // how many modes should the flashlight have
+#define NUM_EXT_CLICKS 6    // how many clicks to enter programming mode
+#define EXTENDED_MODES      // enable to make all mode lines available
+#define PROGRAMMABLE        // user can re-program the mode slots
+#define PROGHELPER          // indicate programming timing by short flashes
+//#define NOMEMORY          // #define to disable mode memory
 
-/*
- * override configurations if built from an IDE config
- *
- * IDE build "Programmable", 3 modes, memory, 6 clicks to go into prog mode
- */
-#ifdef BUILD_PROGRAMMABLE
+
+// no sense to include programming code if extended modes are disabled
+#ifndef EXTENDED_MODES
 #undef PROGRAMMABLE
-#define PROGRAMMABLE
-#undef MEMORY
-#define MEMORY
-#undef NUM_MODES
-#define NUM_MODES 3
-#undef NUM_PROG_CLICKS
-#define NUM_PROG_CLICKS 6
+#endif
+
+// no need for the programming helper if programming is disabled
+#ifndef PROGRAMMABLE
+#undef PROGHELPER
 #endif
 
 /*
- * IDE build "Fixed Modes", Low-Med-High-Lowest with memory
+ * necessary typedefs and forward declarations
  */
-#ifdef BUILD_FIXED
-#undef PROGRAMMABLE
-#undef MEMORY
-#define MEMORY
-#undef NUM_MODES
-#define NUM_MODES 4
-#endif
+typedef void(*mode_func)(uint8_t);
+typedef enum
+{
+    prog_undef = 0,
+    prog_init = 1,
+    prog_1 = 2,
+    prog_2 = 3,
+    prog_3 = 4,
+    prog_4 = 5,
+    prog_nak = 6
+} Prog_stage;
 
+typedef enum
+{
+    tap_none = 0,
+    tap_short,
+    tap_long
+} Tap_t;
 
 /*
- * necessary typedef and forward declarations
+ * working copy of the first part of the eeprom, which will be loaded on
+ * start up. If you change anything here, make sure to bring the EE_* #defines
+ * up to date
  */
+typedef struct
+{
+    uint8_t mode;           // index of regular mode slot last used
+    uint8_t clicks;         // number of consecutive taps so far
+    uint8_t last_click;     // type of last tap (short, long, none)
+    uint8_t target_mode;    // index of slot selected for reprogramming
+    uint8_t chosen_mode;    // index of chosen mode-line to be stored
+    uint8_t prog_stage;     // keep track of programming stages
+    uint8_t extended;       // whether to use normal or extended mode list
+    uint8_t ext_mode;       // current mode-line in extended mode
+    uint8_t mode_arr[NUM_MODES]; // array holding offsets to the mode lines for
+                                 // the configured modes
+} State_t;
 
-#ifdef PROGRAMMABLE
-typedef void (*mode_func)(uint8_t, uint8_t, uint8_t);
-void const_level(uint8_t mode, uint8_t flags, uint8_t setup);
-#else
-typedef void (*mode_func)(uint8_t);
 void const_level(uint8_t mode);
 void strobe(uint8_t mode);
-void sos(uint8_t mode);
-void alpine(uint8_t mode);
-void fade(uint8_t mode);
-#endif
+void ext_signal();
 
 /*
  * array holding pointers to the mode functions
  */
-mode_func mode_func_arr[] = {
-				&const_level
-#ifndef PROGRAMMABLE
-				,
-				&sos,
-				&strobe,
-				&alpine,
-				&fade
-#endif
+mode_func mode_func_arr[] =
+{
+        &const_level,
+        &strobe
 };
 
 /*
@@ -110,64 +121,44 @@ mode_func mode_func_arr[] = {
  * define some mode configurations. Format is
  * "offset in mode_func_arr", "parameter 1", "parameter 2", "parameter 3"
  */
-#define MODE_MIN 0x00, 0x01, 0x00, 0x00		// lowest possible level
-#define MODE_MAX 0x00, 0xFF, 0x00, 0x00		// highest possible level
-#define MODE_LOW 0x00, 0x10, 0x00, 0x00		// low level, 1/16th of maximum
-#define MODE_MED 0x00, 0x80, 0x00, 0x00		// medium level, half of maximum
-#define MODE_SOS 0x01, 0x00, 0x00, 0x00		// can't have a flashlight without SOS, no sir
-#define MODE_STROBE 0x02, 0x14, 0xFF, 0x00	// same for strobe modes
-#define MODE_POLICE 0x02, 0x14, 0x0A, 0x01
-#define MODE_BEACON 0x02, 0x14, 0x01, 0x0A	// beacon might actually be useful
-#define MODE_ALPINE 0x03, 0x00, 0x00, 0x00	// might as well throw this one in, too
-#define MODE_FADE 0x04, 0xFF, 0x01, 0x01	// fade in/out. Just a gimmick
+#define MODE_LVL001 0x00, 0x01, 0x00, 0x00  // lowest possible level
+#define MODE_LVL002 0x00, 0x02, 0x00, 0x00  //      .
+#define MODE_LVL004 0x00, 0x04, 0x00, 0x00  //      .
+#define MODE_LVL008 0x00, 0x08, 0x00, 0x00  //      .
+#define MODE_LVL016 0x00, 0x10, 0x00, 0x00  //      .
+#define MODE_LVL032 0x00, 0x20, 0x00, 0x00  //      .
+#define MODE_LVL064 0x00, 0x40, 0x00, 0x00  //      .
+#define MODE_LVL128 0x00, 0x80, 0x00, 0x00  //      .
+#define MODE_LVL255 0x00, 0xFF, 0x00, 0x00  // highest possible level
+#define MODE_STROBE 0x01, 0x14, 0xFF, 0x00  // simple strobe mode
+#define MODE_POLICE 0x01, 0x14, 0x0A, 0x01  // police type strobe
+#define MODE_BEACON 0x01, 0x14, 0x01, 0x0A  // beacon, might actually be useful
+#define MODE_EMPTY 0xFF, 0xFF, 0xFF, 0xFF   // empty mode slot
 
 /*
  * initialise EEPROM
  * This will be used to build the initial eeprom image.
  */
-#ifdef PROGRAMMABLE
 const uint8_t EEMEM eeprom[64] =
-	{ 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00,
-	  // mode configuration starts here. Format is:
-	  // offset in mode_func_arr, func data1, func data2, func data3
-	  MODE_LOW,
-	  MODE_MED,
-	  MODE_MAX,
-	  MODE_MIN,
-	  MODE_MIN,
-	  MODE_MIN,
-	  MODE_MIN,
-	  MODE_MIN,
-	  MODE_MIN,
-	  MODE_MIN
-	};
-#else
-const uint8_t EEMEM eeprom[64] =
-	{ 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00,
-	  // mode configuration starts here. Format is:
-	  // offset in mode_func_arr, func data1, func data2, func data3
-	  MODE_LOW,
-	  MODE_MED,
-	  MODE_MAX,
-	  MODE_MIN,
-	  MODE_STROBE,
-	  MODE_POLICE,
-	  MODE_BEACON,
-	  MODE_SOS,
-	  MODE_ALPINE,
-	  MODE_FADE
-	};
-#endif //PROGRAMMABLE
+{   0x00, 0x00, 0x00, 0xFF,
+    0xFF, 0x00, 0x00, 0x00,
+    0x03, 0x06, 0x08, 0x00, // initial mode programming
+    0x00, 0x00, 0x00, 0x00,
+    // mode configuration starts here. Format is:
+    // offset in mode_func_arr, func data1, func data2, func data3
+    MODE_LVL001,
+    MODE_LVL002,
+    MODE_LVL004,
+    MODE_LVL008,
+    MODE_LVL016,
+    MODE_LVL032,
+    MODE_LVL064,
+    MODE_LVL128,
+    MODE_LVL255,
+    MODE_STROBE,
+    MODE_POLICE,
+    MODE_BEACON
+};
 
 /*
  * The serious stuff begins below this line
@@ -175,191 +166,152 @@ const uint8_t EEMEM eeprom[64] =
  */
 
 /*
- * addresses of permanent memory variables in EEPROM
+ * override #defines set above if called with build profiles from the IDE
  */
-#define EE_MODE 0          	// mode to start in
-#define EE_CLICKS 1        	// number of consecutive clicks so far
-#define EE_PROGSTAGE 2      // current stage during programming
-#define EE_PROGMODE 3     	// currently programming mode x
-#define EE_PROGFUNC 4      	// index of function currently being configured
-#define EE_PROGFLAGS 5		// misc flags used during programming
-#define EE_MODEDATA_BACKUP 20 // Backup of mode data while programming a mode
-#define EE_MODEDATA_BASE 24 // base address of mode data array
-							// space for 4 bytes per mode, 10 slots
+
+#ifdef BUILD_PROGRAMMABLE
+#undef PROGRAMMABLE
+#undef EXTENDED_MODES
+#undef PROGHELPER
+#define EXTENDED_MODES
+#define PROGRAMMABLE
+#define PROGHELPER
+#endif
+
+#ifdef BUILD_FIXED
+#undef PROGRAMMABLE
+#undef EXTENDED_MODES
+#undef PROGHELPER
+#define EXTENDED_MODES
+#endif
+
+#ifdef BUILD_SIMPLE
+#undef PROGRAMMABLE
+#undef EXTENDED_MODES
+#undef PROGHELPER
+#endif
 
 /*
- * Flags used by mode programming
+ * addresses of permanent memory variables in EEPROM. If you change anything
+ * here, make sure to update struct State_t
  */
-#define PF_SETUP_COMPLETE 0	// function setup is complete
-#define GF_LOWBAT 0
+#define EE_MODE 0          	// index of regular mode slot last used
+#define EE_CLICKS 1        	// number of consecutive taps so far
+#define EE_LAST_CLICK 2     // type of last tap (short, long, none)
+#define EE_TARGETMODE 3     // index of slot selected for reprogramming
+#define EE_CHOSENMODE 4     // index of chosen mode-line to be store
+#define EE_PROGSTAGE 5      // keep track of programming stages
+#define EE_EXTENDED 6       // whether to use normal or extended mode list
+#define EE_EXTMODE 7        // current mode-line in extended mode
+#define EE_MODES_BASE 8     // start of mode slot table
+#define EE_MODEDATA_BASE 16 // start of mode data array
+                            // space for 4 bytes per mode, 10 lines
+#define NUM_EXT_MODES 12    // number of mode data lines in EEPROM
+
+#define EMPTY_MODE 255
 
 /*
  * global variables
  */
-uint8_t mode;
-uint8_t clicks = 1;
-uint8_t global_flags;
-
+uint8_t ticks; // how many times the watchdog timer has been triggered
+State_t state; // struct holding a partial copy of the EEPROM
 
 /*
- * We're using the watchdog timer to clear the mode switch indicator
- * and maybe later monitor the battery voltage
+ * The watchdog timer is called every 250ms and this way we keep track of
+ * whether the light has been turned on for less than a second (up to 4 ticks)
+ * or less than 2 seconds (8 ticks). If PROGHELPER is defined, we also give
+ * hints on when to switch off to follow the programming sequence
  */
 ISR(WDT_vect)
 {
-	/*
-	 * flashlight has been switched on longer than timeout for mode switching,
-	 * reset the click counter and either store current mode in memory or reset
-	 * mode memory to 0, depending on the build configuration.
-	 */
-	if(clicks > 0){
-		clicks = 0;
+    if(ticks < 8){
+        ++ticks;
 
-#ifdef MEMORY
-		eeprom_write_byte((uint8_t *) EE_MODE, mode);
-#else
-		eeprom_write_byte((uint8_t *) EE_MODE, 0);
-#endif
-		eeprom_write_byte((uint8_t *) EE_CLICKS, 0);
-	}
-
-}
-
-/*
- * set up the watchdog timer
- */
-void start_wdt(uint8_t prescaler)
-{
-	uint8_t wdt_mode;
-
-	/*
-	 * prepare new watchdog config beforehand, as it needs to be set within
-	 * four clock cycles after unlocking the WDTCR register.
-	 * Set interrupt mode prescaler bits.
-	 */
-	wdt_mode = ((uint8_t) _BV(WDTIE) | (uint8_t)(prescaler & 0x07));
-	cli();
-	wdt_reset();
-	WDTCR = ((uint8_t)_BV(WDCE) | (uint8_t) _BV(WDE));	// unlock register
-	WDTCR = wdt_mode;									// set new mode and prescaler
-
-	sei();
-}
-
-/*
- * blink blink_cnt times. Useful for debugging
- */
-void blink(unsigned char blink_cnt)
-{
-
-	uint8_t ddrb, portb;
-
-	// back up registers
-	ddrb = DDRB;
-	portb = PORTB;
-
-	// prepare PWM_PIN for output
-	DDRB |= (uint8_t) (_BV(PWM_PIN));
-	PORTB &= (uint8_t) ~(_BV(PWM_PIN));
-
-	// blink blink_cnt times
-	while(blink_cnt > 0){
-		PORTB |= (uint8_t) (_BV(PWM_PIN));
-		_delay_ms(200);
-		PORTB &= (uint8_t) ~(_BV(PWM_PIN));
-		_delay_ms(200);
-
-		blink_cnt--;
-	}
-
-	// restore registers
-	DDRB = ddrb;
-	PORTB = portb;
-
-}
-
-/*
- * Constant light level
- * Set PWM to the level stored in the mode's first variable. If driver was
- * built as programmable, also allows for setting the mode's level by cycling
- * through all possible levels until the light is switched off. As during
- * cycling each level has to be stored in EEPROM, this can wear out a mode's
- * memory cell very rapidly (~400 cycles). Avoid unnecessary programming
- * cycles.
- */
-#ifdef PROGRAMMABLE
-void const_level(const uint8_t mode, uint8_t flags, uint8_t setup)
-#else
-void const_level(const uint8_t mode)
-#endif
-{
-	uint8_t level, offset;
-
-	// calculate offset into mode data array
-	offset = mode << 2;
-
-	//set up PORTB for output on pin PWM_PIN and set PWM_PIN to low
-	DDRB |= (uint8_t) (_BV(PWM_PIN));
-	PORTB &= (uint8_t) ~(_BV(PWM_PIN));
-
-	// Initialise PWM on output pin
-	TCCR0A = PWM_TCR;
-	TCCR0B = 0b00000001;
+        switch(ticks){
+        /* last_click is initialised to tap_short in main() on startup. By the
+         * time we reach four ticks, we change it to tap_long (more than a
+         * second). After eight ticks (two seconds) we clear last_click.
+         */
+        case 8:
+            eeprom_write_byte((uint8_t *) EE_LAST_CLICK, tap_none);
+            break;
 
 #ifdef PROGRAMMABLE
-	if(setup){
-		// setup mode. Cycle through all possible light levels and write
-		// the current one to permanent memory. Also, mark config as complete
-		flags |= (uint8_t) _BV(PF_SETUP_COMPLETE);
-		eeprom_write_byte((uint8_t *)EE_PROGFLAGS, flags);
+        case 4:
+            eeprom_write_byte((uint8_t *)EE_LAST_CLICK, tap_long);
 
-		level = 0;
-		while(1){
-			eeprom_write_byte((uint8_t *)EE_MODEDATA_BASE + offset + 1, level);
-
-			TCNT0 = 0;           // Reset TCNT0
-			PWM_OCR = level;
-
-			// blink once and pause for one second at lowest, middle and
-			// highest level
-			if(level == 0 || level == 128 || level == 255){
-				PWM_OCR = 0;
-				_delay_ms(20);
-				PWM_OCR = level;
-				_delay_ms(1000);
-			}else{
-				_delay_ms(50);
-			}
-
-			++level;
-		}
-	} else
-#endif // PROGRAMMABLE
-	{
-		level = eeprom_read_byte((uint8_t *)EE_MODEDATA_BASE + offset + 1);
-
-		TCNT0 = 0;           // Reset TCNT0
-		PWM_OCR = level;
-
-		while(1)
-			;
-	}
+#ifdef PROGHELPER
+            /* give hints on when to switch off in programming mode. Programming
+             * stages 1,2 and 4 expect a short tap (0s - 1s), so we signal at
+             * 250ms. Stage 3 expects a long tap (1s - 2s), so we signal at
+             * 1s. Signalling is done by toggling the PWM-level's MSB for 100ms.
+             */
+            if(state.prog_stage == prog_3){
+                PWM_LVL ^= (uint8_t) 0x80;
+                _delay_ms(100);
+                PWM_LVL ^= (uint8_t) 0x80;
+            }
+#endif
+            break;
+#ifdef PROGHELPER
+        case 1:
+            if(state.prog_stage == prog_1
+                    || state.prog_stage == prog_2
+                    || state.prog_stage == prog_4)
+            {
+                PWM_LVL ^= (uint8_t) 0x80;
+                _delay_ms(100);
+                PWM_LVL ^= (uint8_t) 0x80;
+            }
+            break;
+#endif		// PROGHELPER
+#endif		// PROGRAMMABLE
+        default:
+            break;
+        }
+    }
 }
 
-#ifndef PROGRAMMABLE
+/*
+ * set up the watchdog timer to trigger an interrupt every 250ms
+ */
+inline void start_wdt()
+{
+    uint8_t wdt_mode;
+
+    /*
+     * prepare new watchdog config beforehand, as it needs to be set within
+     * four clock cycles after unlocking the WDTCR register.
+     * Set interrupt mode prescaler bits.
+     */
+    wdt_mode = ((uint8_t) _BV(WDTIE)
+                | (uint8_t) (WDTO_250MS & (uint8_t) 0x07)
+                | (uint8_t) ((WDTO_250MS & (uint8_t) 0x08) << 2));
+
+    cli();
+    wdt_reset();
+
+    // unlock register
+    WDTCR = ((uint8_t) _BV(WDCE) | (uint8_t) _BV(WDE));
+
+    // set new mode and prescaler
+    WDTCR = wdt_mode;
+
+    sei();
+}
 
 /*
- * Delay for ms millisecond
+ * Delay for ms milliseconds
  * Calling the avr-libc _delay_ms() with a variable argument will pull in the
  * whole floating point handling code and increase flash image size by about
  * 3.5kB
  */
 static void inline sleep_ms(uint16_t ms)
 {
-	while(ms >= 1){
-		_delay_ms(1);
-		--ms;
-	}
+    while(ms >= 1){
+        _delay_ms(1);
+        --ms;
+    }
 }
 
 /*
@@ -367,73 +319,50 @@ static void inline sleep_ms(uint16_t ms)
  */
 static void inline sleep_sec(uint16_t sec)
 {
-	while(sec >= 1){
-		_delay_ms(1000);
-		--sec;
-	}
+    while(sec >= 1){
+        _delay_ms(1000);
+        --sec;
+    }
 }
 
+#ifdef EXTENDED_MODES
 
 /*
- * SOS
- * Well, what can I say...
+ * give two short blinks to indicate entering or leaving extended mode
  */
-
-void sos(uint8_t mode)
+void ext_signal()
 {
-	uint8_t i;
+    uint8_t pwm;
 
-	while(1){
-		for(i = 0; i < 3; ++i){
-			PORTB |= (uint8_t) (_BV(PWM_PIN));
-			_delay_ms(200);
-			PORTB &= (uint8_t) ~(_BV(PWM_PIN));
-			_delay_ms(200);
-		}
+    pwm = PWM_LVL;
 
-		_delay_ms(400);
+    PWM_LVL = 0;
 
-		for(i = 0; i < 3; ++i){
-			PORTB |= (uint8_t) (_BV(PWM_PIN));
-			_delay_ms(600);
-			PORTB &= (uint8_t) ~(_BV(PWM_PIN));
-			_delay_ms(200);
-		}
+    // blink two times
+    for(uint8_t i = 0; i < 4; ++i){
+        PWM_LVL = ~PWM_LVL;
+        _delay_ms(50);
+    }
 
-		_delay_ms(400);
-
-		for(i = 0; i < 3; ++i){
-			PORTB |= (uint8_t) (_BV(PWM_PIN));
-			_delay_ms(200);
-			PORTB &= (uint8_t) ~(_BV(PWM_PIN));
-			_delay_ms(200);
-
-		}
-
-		_delay_ms(5000);
-	}
-
+    PWM_LVL = pwm;
 }
+#endif
 
 /*
- * Alpine distress signal.
- * Six blinks, ten seconds apart, then one minute pause and start over
+ * Constant light level
+ * Set PWM to the level stored in the mode's first variable.
  */
-
-void alpine(uint8_t mode)
+void const_level(const uint8_t mode)
 {
-	uint8_t i;
+    uint8_t offset;
 
-	while(1){
-		for(i = 0; i < 6; i++){
-			PORTB |= (uint8_t) (_BV(PWM_PIN));
-			_delay_ms(200);
-			PORTB &= (uint8_t) ~(_BV(PWM_PIN));
-			sleep_sec(10);
-		}
+    // calculate offset into mode data array
+    offset = mode << 2;
 
-		sleep_sec(50);
-	}
+    PWM_LVL = eeprom_read_byte((uint8_t *) EE_MODEDATA_BASE + offset + 1);
+
+    while(1)
+        ;
 }
 
 /*
@@ -449,351 +378,206 @@ void alpine(uint8_t mode)
  */
 void strobe(uint8_t mode)
 {
-	uint8_t offset, pulse, count, pause, i;
+    uint8_t offset, pulse, pulse_off, count, pause, i;
 
-	// calculate offset into mode data array
-	offset = mode << 2;
+    // calculate offset into mode data array
+    offset = mode << 2;
 
-	pulse = eeprom_read_byte((uint8_t *)EE_MODEDATA_BASE + offset + 1);
-	count = eeprom_read_byte((uint8_t *)EE_MODEDATA_BASE + offset + 2);
-	pause = eeprom_read_byte((uint8_t *)EE_MODEDATA_BASE + offset + 3);
+    pulse = eeprom_read_byte((uint8_t *) EE_MODEDATA_BASE + offset + 1);
+    count = eeprom_read_byte((uint8_t *) EE_MODEDATA_BASE + offset + 2);
+    pause = eeprom_read_byte((uint8_t *) EE_MODEDATA_BASE + offset + 3);
 
-	//
-	while(1){
-		for(i = 0; i < count; ++i){
-			PORTB |= _BV(PWM_PIN);
-			sleep_ms(pulse);
-			PORTB &= ~(_BV(PWM_PIN));
-			sleep_ms(pulse << 1); // 2 * pulse
-		}
-		sleep_sec(pause);
-	}
+    pulse_off = (uint8_t) pulse << (uint8_t) 2; // pause between pulses,
+                                                // 2 * pulse length
+
+    while(1){
+        // pulse group
+        for(i = 0; i < count; ++i){
+            PWM_LVL = 255;
+            sleep_ms(pulse);
+            PWM_LVL = 0;
+            sleep_ms(pulse_off);
+        }
+
+        // pause between groups
+        sleep_sec(pause);
+    }
 }
-
-/*
- * Fade in and out
- * This is more or less a demonstration with no real use I can see.
- * Mode uses three variables:
- * max: maximum level the light will rise to
- * rise: value the level is increased by during rising cycle
- * fall: value the level is decreased by during falling cycle
- *
- * Can produce triangle or saw tooth curves: /\/\... /|/|... |\|\...
- * As I said, nice toy with no real world use ;)
- */
-void fade(uint8_t mode)
-{
-	uint8_t offset, max, rise, fall, level, oldlevel;
-
-	// calculate offset into mode data array
-	offset = mode << 2;
-
-	max = eeprom_read_byte((uint8_t *)EE_MODEDATA_BASE + offset + 1);
-	rise = eeprom_read_byte((uint8_t *)EE_MODEDATA_BASE + offset + 2);
-	fall = eeprom_read_byte((uint8_t *)EE_MODEDATA_BASE + offset + 3);
-
-	DDRB |= (uint8_t) _BV(PWM_PIN);           // Set PORTB as Output
-	PORTB &= (uint8_t) ~(_BV(PWM_PIN));
-
-	// Initialise PWM depending on selected output pin
-	TCCR0A = PWM_TCR;
-	TCCR0B = 0b00000001;
-
-	level = 0;
-	while(1){
-		while(level < max){
-			oldlevel = level;
-			level += rise;
-
-			if(oldlevel > level) // catch integer overflow
-				level = max;
-
-			PWM_OCR = level;
-			sleep_ms(10);
-		}
-
-		while(level > 0){
-			oldlevel = level;
-			level -= fall;
-
-			if(oldlevel < level) // catch integer underflow
-				level = 0;
-
-			PWM_OCR = level;
-			sleep_ms(10);
-		}
-	}
-}
-
-#endif // not PROGRAMMABLE
-
-#ifdef PROGRAMMABLE
-
-/*
- * back up a given mode so it can be restored if programming is aborted
- */
-void inline backup_mode(const uint8_t mode)
-{
-	uint8_t buff, offset;
-
-
-	// calculate mode * 4 without the compiler pulling in the full-blown
-	// multiplication lib (would add ~200 bytes of code in flash image)
-	offset = mode << 2;
-
-	// copy the for bytes defining the mode to the backup area
-	for(uint8_t i = 0; i < 4; ++i){
-		buff = eeprom_read_byte((uint8_t *)EE_MODEDATA_BASE + offset + i);
-		eeprom_write_byte((uint8_t *)EE_MODEDATA_BACKUP + i, buff);
-	}
-}
-
-/*
- * restore a given mode from previously saved backup
- */
-void restore_mode(const uint8_t mode)
-{
-	uint8_t buff, offset;
-
-	offset = mode << 2;
-
-	for(uint8_t i = 0; i < 4; ++i){
-		buff = eeprom_read_byte((uint8_t *)EE_MODEDATA_BACKUP + i);
-		eeprom_write_byte((uint8_t *)EE_MODEDATA_BASE + offset + i, buff);
-	}
-}
-
-/*
- * strobe for one second to indicate chances to abort programming
- */
-void strobe_signal()
-{
-	uint8_t ddrb, portb;
-
-	// back up registers
-	ddrb = DDRB;
-	portb = PORTB;
-
-	// set PWM pin for output
-	DDRB |= (uint8_t) _BV(PWM_PIN);
-	PORTB &= (uint8_t) ~(_BV(PWM_PIN));
-
-	// strobe for one second
-	for(uint8_t i = 0; i < 20; ++i){
-		PORTB |= (uint8_t) _BV(PWM_PIN);
-		_delay_ms(25);
-		PORTB &= (uint8_t) ~(_BV(PWM_PIN));
-		_delay_ms(25);
-	}
-
-	// restore registers
-	DDRB = ddrb;
-	PORTB = portb;
-}
-
-/*
- * First stage of programming.
- * We give warning by strobing for 2 seconds. If the light is switched off
- * during strobe, abort programming. Wait 1 second after strobing and then
- * start cycling through the mode slots. Mode slot is indicated by blinking
- * x times, then sleeping 2 seconds. If light is switched off during this
- * time, proceed programming with second stage for the selected mode
- */
-static void inline progstage0()
-{
-	uint8_t mode;
-
-	// clear progflags in eeprom and signal for 2 seconds, wait another .5s
-	eeprom_write_byte((uint8_t *)EE_PROGFLAGS, 0);
-	strobe_signal();
-	_delay_ms(500);
-
-	// user didn't abort, advance programming stage and cycle through
-	// mode slots
-	eeprom_write_byte((uint8_t *)EE_PROGSTAGE, 1);
-
-	mode = 0;
-	while(mode < NUM_MODES){
-		// blink to indicate the mode slot, then give user 2 seconds to chose
-		// this slot
-		eeprom_write_byte((uint8_t *)EE_PROGMODE, mode);
-		blink(mode + 1);
-		_delay_ms(2000);
-
-		++mode;
-	}
-
-	// no mode selected, give signal and leave programming mode
-	eeprom_write_byte((uint8_t *)EE_PROGSTAGE, 0);
-	strobe_signal();
-}
-
-/*
- * second stage of programming.
- * Back up old mode data and set up advance to stage 3
- */
-static void inline progstage1(const uint8_t mode)
-{
-	// back up old mode data, set programming to stage 2, function to first
-	// in array and clear programming flags
-	backup_mode(mode);
-	eeprom_write_byte((uint8_t *)EE_PROGSTAGE, 2);
-	eeprom_write_byte((uint8_t *)EE_PROGFUNC, 0);
-	eeprom_write_byte((uint8_t *)EE_PROGFLAGS, 0);
-}
-
-/*
- * Third stage of mode programming.
- * If current mode func has not finished setup, call it in setup mode.
- * Otherwise give user the choice of discarding this and moving on to the next
- * function (if there is any left), or locking the mode in. If user does
- * nothing, restore old mode and exit programming
- */
-static void inline progstage2(const uint8_t mode, uint8_t func,	uint8_t flags)
-{
-	uint8_t offset;
-
-	offset = mode << 2;
-
-	// only try configuring the mode if there are still modefuncs left
-	if(func < sizeof(mode_func_arr) / sizeof(mode_func)){
-
-		// if the current function has not been configured. Store the func's
-		// index in the mode slot's first byte and call func in setup mode
-		if(!((uint8_t)flags & (uint8_t) _BV(PF_SETUP_COMPLETE))){
-			eeprom_write_byte((uint8_t *)EE_MODEDATA_BASE + offset, func);
-			(*mode_func_arr[func])(mode, flags, 1);
-			// mode funcs never return
-		}else{
-			// the modefunc is done configuring itself, give user a chance to
-			// discard the chosen level and start a new cycle
-			flags &= (uint8_t) ~(_BV(PF_SETUP_COMPLETE));
-			eeprom_write_byte((uint8_t *)EE_PROGFLAGS, flags);
-
-			/*
-			 * at this point we could move on to an other function, but since
-			 * there is absolutely no space left for one we just stay with
-			 * this one.
-			 */
-			// ++func;
-			// eeprom_write_byte((uint8_t *)EE_PROGFUNC, func);
-			strobe_signal();
-
-			// user did not discard this function config. Give him 2 seconds
-			// to store the config
-			eeprom_write_byte((uint8_t *)EE_PROGSTAGE, 0);
-			_delay_ms(2000);
-		}
-	}else{
-		// we ran out of mode funcs, leave programming mode
-
-		eeprom_write_byte((uint8_t *)EE_PROGSTAGE, 0);
-	}
-	// we either ran out of mode funcs or the user didn't lock in the func
-	// after it finished its setup. Give a single flash and restore the old
-	// mode data
-
-	_delay_ms(500);
-	blink(1);
-	restore_mode(mode);
-
-}
-
-
-static void inline start_programming()
-{
-	uint8_t mode, stage, func, flags;
-
-	// reset click counter
-	eeprom_write_byte((uint8_t *)EE_CLICKS, 0);
-
-	// read programming data from eeprom
-	mode = eeprom_read_byte((uint8_t *)EE_PROGMODE);
-	stage = eeprom_read_byte((uint8_t *)EE_PROGSTAGE);
-
-
-	switch(stage){
-	case 0:
-		progstage0();
-		break;
-	case 1:
-		progstage1(mode);
-		// fall through
-	case 2:
-		func = eeprom_read_byte((uint8_t *)EE_PROGFUNC);
-		flags = eeprom_read_byte((uint8_t *)EE_PROGFLAGS);
-
-		progstage2(mode, func, flags);
-		break;
-	default:
-		// something went wrong, abort
-		restore_mode(mode);
-		eeprom_write_byte((uint8_t *)EE_PROGSTAGE, 0);
-		break;
-	}
-
-}
-#endif // PROGRAMMABLE
 
 int main(void)
 {
+    uint8_t offset, mode_idx, func_idx, signal = 0;
 
-	uint8_t nextmode, offset, func_idx;
+    // set whole PORTB initially to output
+    DDRB = 0xff;
+    // PORTB = 0x00; // initialised to 0 anyway
 
-	//debounce the switch
-	_delay_ms(50);
+    // Initialise PWM on output pin and set level to zero
+    TCCR0A = PWM_TCR;
+    TCCR0B = 0b00000001;
+    // PWM_LVL = 0; // initialised to 0 anyway
+
+    // read the state data at the start of the eeprom into a struct
+    eeprom_read_block(&state, 0, sizeof(State_t));
+
+#ifdef EXTENDED_MODES
+    // if we are in standard mode and got NUM_EXT_CLICKS in a row, change to
+    // extended mode
+    if(!state.extended && state.clicks >= NUM_EXT_CLICKS){
+        state.extended = 1;
+        state.ext_mode = EMPTY_MODE;
+        state.prog_stage = prog_undef;
+        state.clicks = 0;
+
+        // delay signal until state is saved in eeprom
+        signal = 1;
+    }
+
+    // handling of extended mode
+    if(state.extended){
+
+        // in extended mode, we can cycle through modes indefinitely until
+        // one mode is held for more than two seconds
+        if(state.last_click != tap_none){
+            ++state.ext_mode;
+
+            if(state.ext_mode >= NUM_EXT_MODES)
+                state.ext_mode = 0;
+
+            mode_idx = state.ext_mode;
+        } else{
+            // leave extended mode if previous mode was on longer than 2 seconds
+            state.extended = 0;
+            signal = 1; // wait with signal until eeprom is written
 
 #ifdef PROGRAMMABLE
-	uint8_t progstage;
+            // remember last mode and init programming
+            state.chosen_mode = state.ext_mode;
+            state.prog_stage = prog_init;
+#endif
+        }
+    }
 
-	// get the number of consecutive mode switches from permanent memory,
-	// increment it and write it back
-	clicks = eeprom_read_byte((uint8_t *) EE_CLICKS);
-	++clicks;
-	eeprom_write_byte((uint8_t *) EE_CLICKS, clicks);
-
-	// check if we are in programming mode or should enter it
-	progstage = eeprom_read_byte((uint8_t *)EE_PROGSTAGE);
-
-	if(clicks > NUM_PROG_CLICKS || progstage > 0){
-		start_programming();
-	}
-#endif // PROGRAMMABLE
-
-	// get start-up mode from permanent memory and write back next mode
-	mode = eeprom_read_byte(EE_MODE);
-	nextmode = mode;
-	++nextmode;
-	if(nextmode >= NUM_MODES)
-		nextmode = 0;
-
-	eeprom_write_byte(EE_MODE, nextmode);
-
-	// set whole PORTB initially to output
-	DDRB = 0xff;
-	PORTB = 0x00;
-
-	// start watchdog timer with approx. 2 seconds delay.
-	start_wdt(WDTO_2S);
-
-	offset = mode << 2;
-
-	func_idx = eeprom_read_byte((uint8_t *)EE_MODEDATA_BASE + offset);
 #ifdef PROGRAMMABLE
-	(*mode_func_arr[func_idx])(mode, 0, 0);
-#else
-	(*mode_func_arr[func_idx])(mode);
+    /*
+     * mode programming. We have the mode slot to be programmed saved in
+     * state.target_mode, the mode to store in state.chosen_mode. User needs
+     * to acknowledge by following a tapping pattern of short-short-long-short.
+     */
+    if(state.prog_stage >= prog_init){
+
+        switch(state.prog_stage){
+            case prog_init:
+                state.prog_stage = prog_1;
+                break;
+            case prog_1:
+            case prog_2:
+                if(state.last_click == tap_short)
+                    ++state.prog_stage;
+                else
+                    state.prog_stage = prog_nak;
+                break;
+            case prog_3:
+                if(state.last_click == tap_long)
+                    ++state.prog_stage;
+                else
+                    state.prog_stage = prog_nak;
+                break;
+            case prog_4:
+                if(state.last_click == tap_short){
+                    // sequence completed, update mode_arr and eeprom
+                    state.mode_arr[state.target_mode] = state.chosen_mode;
+                    eeprom_write_byte((uint8_t *)EE_MODES_BASE + state.target_mode,
+                                        state.chosen_mode);
+                }
+                // fall through
+            case prog_nak:
+            default:
+                // clean up when leaving programming mode
+                state.last_click = tap_none;
+                state.prog_stage = prog_undef;
+                state.target_mode = EMPTY_MODE;
+                state.chosen_mode = EMPTY_MODE;
+                break;
+        }
+
+        state.clicks = 0;
+    }
+#endif	// PROGRAMMABLE
+#endif	// EXTENDED_MODES
+
+    // standard mode operation
+    if(!state.extended){
+        if(state.last_click != tap_none){
+            // we're coming back from a tap, increment mode
+            ++state.mode;
+#ifdef EXTENDED_MODES
+            // ...and count consecutive clicks
+            ++state.clicks;
+#endif
+        }else{
+            // start up from regular previous use (longer than 2 seconds)
+#ifdef EXTENDED_MODES
+#ifdef PROGRAMMABLE
+            // remember current mode slot in case it is to be programmed
+            if(state.prog_stage == prog_undef)
+                state.target_mode = state.mode;
+#endif
+            // reset click counter
+            state.clicks = 1;
 #endif
 
-	/*
-	 * mode funcs do not return, so this is never reached.
-	 * Alas, removing the following loop will increase code size by 10 bytes,
-	 * even when declaring main void and not calling return...
-	 */
-	for(;;)
-		;
+#ifdef NOMEMORY
+            // reset mode slot
+            state.mode = 0;
+#endif
+        }
 
-	return 0;            // Standard Return Code
+        if(state.mode >= NUM_MODES)
+            state.mode = 0;
+
+        // get index of mode stored in the current slot
+        mode_idx = state.mode_arr[state.mode];
+    }
+
+    // initialise click type for next start up
+    state.last_click = tap_short;
+
+    // write back state to eeprom but omit the mode configuration.
+    // Minimises risk of corruption. Everything else will right itself
+    // eventually, but modes will stay broken until reprogrammed.
+    eeprom_write_block(&state, 0, sizeof(State_t) - sizeof(state.mode_arr));
+    eeprom_busy_wait();
+
+#ifdef EXTENDED_MODES
+    // signal entering or leaving extended mode
+    if(signal)
+        ext_signal();
+#endif
+
+    // sanity check in case of corrupted eeprom
+    if(mode_idx >= NUM_EXT_MODES)
+        mode_idx = 0;
+
+    // fetch pointer to selected mode func from array
+    offset = mode_idx << 2;
+    func_idx = eeprom_read_byte((uint8_t *) EE_MODEDATA_BASE + offset);
+
+    // start watchdog timer with approx. 250ms delay.
+    start_wdt();
+
+    // call mode func
+    (*mode_func_arr[func_idx])(mode_idx);
+
+    /*
+     * mode funcs do not return, so this is never reached.
+     * Alas, removing the following loop will increase code size by 10 bytes,
+     * even when declaring main void and not calling return...
+     */
+    for(;;)
+        ;
+
+    return 0; // Standard Return Code
 }
 
 
