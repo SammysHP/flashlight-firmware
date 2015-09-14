@@ -40,6 +40,9 @@ Summary of each project
     Tamagotchi/7135x8v2:
         Very flexible clicky firmware with hidden modes, from fonarevka.ru
 
+    Tido/BLF-VLD:
+        Tido's Budget Light Forum Versatile LED Driver
+
     Tom_E:
         STAR-momentary plus strobe and 1-click off
 
@@ -146,6 +149,9 @@ Authors
     Tamagotchi:
         Tamagotchi/7135x8v2
 
+    Tido:
+        Tido/BLF-VLD
+
     Tom E:
         Tom_E
 
@@ -200,6 +206,7 @@ Button-Type
         JonnyC/STAR/STAR_dual_switch
         JonnyC/STAR/STAR_off_time
         Tamagotchi/7135x8v2
+        Tido/BLF-VLD
         ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
         ToyKeeper/blf-a6
@@ -281,6 +288,7 @@ Extras
 
     programmable modes:
         DrJones/luxdrv
+        Tido/BLF-VLD
         alexvh/basic_off_time_driver
         tterev3/power_cycle_light
 
@@ -318,6 +326,9 @@ Extras
 
 License
 
+    GPLv2+:
+        Tido/BLF-VLD
+
     GPLv3:
         ToyKeeper/blf-a6/cypreus2
 
@@ -338,6 +349,7 @@ MCU
         JonnyC/STAR/STAR_momentary
         JonnyC/STAR/STAR_off_time
         Tamagotchi/7135x8v2
+        Tido/BLF-VLD
         Tom_E
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/STAR_1mode
@@ -426,6 +438,7 @@ Memory
         DrJones/luxdrv
         JonnyC/STAR/STAR
         Tamagotchi/7135x8v2
+        Tido/BLF-VLD
         ToyKeeper/tail-light
         _the_/TheStar
         tterev3/power_cycle_light
@@ -461,6 +474,7 @@ Modes
 
     SOS:
         Tamagotchi/7135x8v2
+        Tido/BLF-VLD
 
     battcheck:
         DrJones/luxdrv
@@ -505,7 +519,11 @@ Modes
 
     distress beacon:
         Tamagotchi/7135x8v2
+        Tido/BLF-VLD
         _the_/TheStar
+
+    fade:
+        Tido/BLF-VLD
 
     hidden moon:
         Tamagotchi/7135x8v2
@@ -533,6 +551,7 @@ Modes
 
     strobe:
         Tamagotchi/7135x8v2
+        Tido/BLF-VLD
         odd/MGdriver
 
     tactical strobe:
