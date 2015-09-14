@@ -5,3 +5,4 @@ MCU: attiny13a, attiny25
 Authors: ToyKeeper
 Modes: battcheck, tactical strobe, bike flasher, config
 Extras: dual PWM, offtime-3, hidden modes, mode groups
+License: GPLv3
