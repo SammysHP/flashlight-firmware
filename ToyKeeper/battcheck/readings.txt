@@ -54,6 +54,17 @@ RMM FET+7135 attiny25 driver, 17mm:
   129 - 2.80V
   124 - 2.70V
 
+Manker BLF A6 production driver (FET+7135):
+  177 - 4.35V
+  170 - 4.20V
+  162 - 4.00V
+  154 - 3.80V
+  141 - 3.50V
+  121 - 3.00V
+  121 - 2.90V
+  113 - 2.80V
+  109 - 2.70V
+
 Notes:
 http://budgetlightforum.com/node/29150?page=32#comment-719003
 
