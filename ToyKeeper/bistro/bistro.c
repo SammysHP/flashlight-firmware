@@ -76,11 +76,6 @@
 // (controls whether mode memory is on the star or if it's a setting in config mode)
 //#define CONFIG_STARS
 
-// output to use for blinks on battery check mode (primary PWM level, alt PWM level)
-// Use 20,0 for a single-channel driver or 0,20 for a two-channel driver
-// FIXME: make 1-channel vs 2-channel power a single #define option
-#define BLINK_BRIGHTNESS    0,20
-
 // ../../bin/level_calc.py 64 1 10 1400 y 3 0.25 140
 #define RAMP_SIZE  64
 // log curve
@@ -96,21 +91,18 @@
 #define RAMP_7135  3,3,3,4,4,5,5,6,7,8,10,11,13,15,18,21,24,28,33,38,44,50,57,66,75,85,96,108,122,137,154,172,192,213,237,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 #define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,6,9,13,17,21,25,30,35,41,47,53,60,67,75,83,91,101,111,121,132,144,156,169,183,198,213,255
 
+// output to use for blinks on battery check mode
+#define BLINK_BRIGHTNESS    RAMP_SIZE/8
+
 // Mode group 1
 #define NUM_MODES1          7
 // PWM levels for the big circuit (FET or Nx7135)
-#define MODESNx1            0,0,0,7,56,137,255
-// PWM levels for the small circuit (1x7135)
-#define MODES1x1            3,20,110,255,255,255,0
-// My sample:     6=0..6,  7=2..11,  8=8..21(15..32)
-// Krono sample:  6=5..21, 7=17..32, 8=33..96(50..78)
-// Manker2:       2=21, 3=39, 4=47, ... 6?=68
+#define MODES_G1            1,10,21,32,43,53,64
 // PWM speed for each mode
 #define MODES_PWM1          PHASE,FAST,FAST,FAST,FAST,FAST,PHASE
 // Mode group 2
 #define NUM_MODES2          4
-#define MODESNx2            0,0,90,255
-#define MODES1x2            20,230,255,0
+#define MODES_G2            10,28,46,64
 #define MODES_PWM2          FAST,FAST,FAST,PHASE
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
@@ -189,13 +181,9 @@ uint8_t solid_modes;
 PROGMEM const uint8_t ramp_7135[] = { RAMP_7135 };
 PROGMEM const uint8_t ramp_FET[]  = { RAMP_FET };
 
-PROGMEM const uint8_t modesNx1[] = { MODESNx1, HIDDENMODES };
-PROGMEM const uint8_t modesNx2[] = { MODESNx2, HIDDENMODES };
-const uint8_t *modesNx;  // gets pointed at whatever group is current
-
-PROGMEM const uint8_t modes1x1[] = { MODES1x1, HIDDENMODES_ALT };
-PROGMEM const uint8_t modes1x2[] = { MODES1x2, HIDDENMODES_ALT };
-const uint8_t *modes1x;
+PROGMEM const uint8_t modes_g1[] = { MODES_G1, HIDDENMODES };
+PROGMEM const uint8_t modes_g2[] = { MODES_G2, HIDDENMODES };
+const uint8_t *modes;  // gets pointed at whatever group is current
 
 PROGMEM const uint8_t modes_pwm1[] = { MODES_PWM1, HIDDENMODES_PWM };
 PROGMEM const uint8_t modes_pwm2[] = { MODES_PWM2, HIDDENMODES_PWM };
@@ -301,21 +289,14 @@ void count_modes() {
      */
     if (modegroup == 0) {
         solid_modes = NUM_MODES1;
-        modesNx = modesNx1;
-        modes1x = modes1x1;
+        modes = modes_g1;
         modes_pwm = modes_pwm1;
     } else {
         solid_modes = NUM_MODES2;
-        modesNx = modesNx2;
-        modes1x = modes1x2;
+        modes = modes_g2;
         modes_pwm = modes_pwm2;
     }
     mode_cnt = solid_modes + NUM_HIDDEN;
-}
-
-void set_level(uint8_t level) {
-    set_output(pgm_read_byte(ramp_FET + level),
-               pgm_read_byte(ramp_7135 + level));
 }
 
 void set_output(uint8_t pwm1, uint8_t pwm2) {
@@ -327,9 +308,20 @@ void set_output(uint8_t pwm1, uint8_t pwm2) {
     ALT_PWM_LVL = pwm2;
 }
 
+void set_level(uint8_t level) {
+    if (level == 0) {
+        set_output(0,0);
+    } else {
+        level -= 1;
+        set_output(pgm_read_byte(ramp_FET + level),
+                   pgm_read_byte(ramp_7135 + level));
+    }
+}
+
 void set_mode(uint8_t mode) {
-    TCCR0A = pgm_read_byte(modes_pwm + mode);
-    set_output(pgm_read_byte(modesNx + mode), pgm_read_byte(modes1x + mode));
+    //TCCR0A = pgm_read_byte(modes_pwm + mode);
+    //set_output(pgm_read_byte(modesNx + mode), pgm_read_byte(modes1x + mode));
+    set_level(pgm_read_byte(modes + mode));
     /*
     // Only set output for solid modes
     uint8_t out = pgm_read_byte(modesNx + mode);
@@ -343,9 +335,9 @@ void blink(uint8_t val)
 {
     for (; val>0; val--)
     {
-        set_output(BLINK_BRIGHTNESS);
+        set_level(BLINK_BRIGHTNESS);
         _delay_ms(100);
-        set_output(0,0);
+        set_level(0);
         _delay_ms(400);
     }
 }
@@ -470,7 +462,7 @@ int main(void)
     ADCSRA |= (1 << ADSC);
 #endif
     while(1) {
-        output = pgm_read_byte(modesNx + mode_idx);
+        output = pgm_read_byte(modes + mode_idx);
         if (fast_presses > 0x0f) {  // Config mode
             _delay_s();       // wait for user to stop fast-pressing button
             fast_presses = 0; // exit this mode after one use
@@ -495,9 +487,9 @@ int main(void)
 #ifdef STROBE
         else if (output == STROBE) {
             // 10Hz tactical strobe
-            set_output(255,0);
+            set_level(RAMP_SIZE);
             _delay_ms(50);
-            set_output(0,0);
+            set_level(0);
             _delay_ms(50);
         }
 #endif // ifdef STROBE
@@ -580,7 +572,7 @@ int main(void)
             // See if it's been low for a while, and maybe step down
             if (lowbatt_cnt >= 8) {
                 // DEBUG: blink on step-down:
-                //set_output(0,0);  _delay_ms(100);
+                //set_level(0);  _delay_ms(100);
                 i = mode_idx; // save space by not accessing mode_idx more than necessary
                 // properly track hidden vs normal modes
                 if (i >= solid_modes) {
@@ -592,7 +584,7 @@ int main(void)
                 } else { // Already at the lowest mode
                     i = 0;
                     // Turn off the light
-                    set_output(0,0);
+                    set_level(0);
                     // Power down as many components as possible
                     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
                     sleep_mode();
