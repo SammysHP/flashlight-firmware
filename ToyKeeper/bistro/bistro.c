@@ -92,7 +92,10 @@
 #define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,6,9,13,17,21,25,30,35,41,47,53,60,67,75,83,91,101,111,121,132,144,156,169,183,198,213,255
 
 // output to use for blinks on battery check mode
-#define BLINK_BRIGHTNESS    RAMP_SIZE/8
+#define BLINK_BRIGHTNESS    RAMP_SIZE/4
+
+// uncomment to ramp up/down to a mode instead of jumping directly
+#define SOFT_START
 
 // Mode group 1
 #define NUM_MODES1          7
@@ -107,12 +110,12 @@
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,TURBO .
-#define NUM_HIDDEN          4
-#define HIDDENMODES         BIKING_STROBE,BATTCHECK,RAMP,TURBO
-#define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE
-#define HIDDENMODES_ALT     0,0,0,0   // Zeroes, same length as NUM_HIDDEN
+#define NUM_HIDDEN          5
+#define HIDDENMODES         BIKING_STROBE,BATTCHECK,POLICE_STROBE,RAMP,TURBO
+#define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE,PHASE
+#define HIDDENMODES_ALT     0,0,0,0,0   // Zeroes, same length as NUM_HIDDEN
 
-#define TURBO     255       // Convenience code for turbo mode
+#define TURBO     RAMP_SIZE       // Convenience code for turbo mode
 #define BATTCHECK 254       // Convenience code for battery check mode
 // Uncomment to enable tactical strobe mode
 #define STROBE    253       // Convenience code for strobe mode
@@ -121,6 +124,7 @@
 // comment out to use minimal version instead (smaller)
 #define FULL_BIKING_STROBE
 #define RAMP 251   // Convenience code for biking strobe mode
+#define POLICE_STROBE 250
 
 #define NON_WDT_TURBO            // enable turbo step-down without WDT
 // How many timer ticks before before dropping down.
@@ -319,16 +323,43 @@ void set_level(uint8_t level) {
 }
 
 void set_mode(uint8_t mode) {
+#ifdef SOFT_START
+    static uint8_t actual_level = 0;
+    uint8_t target_level = pgm_read_byte(modes + mode);
+    int8_t shift_amount;
+    int8_t diff;
+    do {
+        // TODO: clean out these old implementation ideas
+        //shift_amount = ((target_level - actual_level) >> 2);
+        //shift_amount = ((target_level - actual_level) >> 2) | (target_level!=actual_level);
+        //if ((target_level != actual_level) && (! shift_amount)) { shift_amount = 1; }
+        //if (target_level != actual_level) { shift_amount |= 1; }
+        //shift_amount |= (target_level != actual_level);
+        diff = target_level - actual_level;
+        shift_amount = (diff >> 2) | (diff!=0);
+        actual_level += shift_amount;
+        /*
+        if (target_level > actual_level) {
+            //shift_amount = 1 + ((target_level - actual_level) >> 2);
+            actual_level += 1 + shift_amount;
+            //actual_level ++;
+        } else if (target_level < actual_level) {
+            //shift_amount = 1 + ((actual_level - target_level) >> 2);
+            actual_level -= 1 + shift_amount;
+            //actual_level --;
+        }
+        */
+        //set_level(pgm_read_byte(modes + mode));
+        //set_level(pgm_read_byte(modes + actual_mode));
+        set_level(actual_level);
+        //_delay_ms(RAMP_SIZE/20);
+        _delay_ms(RAMP_SIZE/4);
+    } while (target_level != actual_level);
+#else
     //TCCR0A = pgm_read_byte(modes_pwm + mode);
     //set_output(pgm_read_byte(modesNx + mode), pgm_read_byte(modes1x + mode));
     set_level(pgm_read_byte(modes + mode));
-    /*
-    // Only set output for solid modes
-    uint8_t out = pgm_read_byte(modesNx + mode);
-    if ((out < 250) || (out == 255)) {
-        set_output(pgm_read_byte(modesNx + mode), pgm_read_byte(modes1x + mode));
-    }
-    */
+#endif SOFT_START
 }
 
 void blink(uint8_t val)
@@ -493,6 +524,23 @@ int main(void)
             _delay_ms(50);
         }
 #endif // ifdef STROBE
+#ifdef POLICE_STROBE
+        else if (output == POLICE_STROBE) {
+            // police-like strobe
+            for(i=0;i<8;i++) {
+                set_level(RAMP_SIZE);
+                _delay_ms(20);
+                set_level(0);
+                _delay_ms(40);
+            }
+            for(i=0;i<8;i++) {
+                set_level(RAMP_SIZE);
+                _delay_ms(40);
+                set_level(0);
+                _delay_ms(80);
+            }
+        }
+#endif // ifdef POLICE_STROBE
 #ifdef BIKING_STROBE
         else if (output == BIKING_STROBE) {
             // 2-level stutter beacon for biking and such
@@ -518,11 +566,11 @@ int main(void)
         else if (output == RAMP) {
             int8_t r;
             // simple ramping test
-            for(r=0; r<RAMP_SIZE; r++) {
+            for(r=0; r<=RAMP_SIZE; r++) {
                 set_level(r);
                 _delay_ms(25);
             }
-            for(r=RAMP_SIZE-1; r>=0; r--) {
+            for(r=RAMP_SIZE; r>=0; r--) {
                 set_level(r);
                 _delay_ms(25);
             }
