@@ -374,15 +374,23 @@ void blink(uint8_t val)
 }
 
 #ifndef CONFIG_STARS
-void toggle(uint8_t *var) {
+void toggle(uint8_t *var, uint8_t num) {
     // Used for extended config mode
     // Changes the value of a config option, waits for the user to "save"
     // by turning the light off, then changes the value back in case they
     // didn't save.  Can be used repeatedly on different options, allowing
     // the user to change and save only one at a time.
+    blink(num);  // indicate which option number this is
     *var ^= 1;
     save_state();
-    blink(2);
+    // "buzz" for a while to indicate the active toggle window
+    for(uint8_t i=0; i<32; i++) {
+        set_level(RAMP_SIZE/8);
+        _delay_ms(20);
+        set_level(0);
+        _delay_ms(20);
+    }
+    // if the user didn't click, reset the value and return
     *var ^= 1;
     save_state();
     _delay_s();
@@ -509,10 +517,10 @@ int main(void)
 #else
             // Longer/larger version of the config mode
             // Toggle the mode group, blink, un-toggle, continue
-            toggle(&modegroup);
+            toggle(&modegroup, 1);
 
             // Toggle memory, blink, untoggle, exit
-            toggle(&memory);
+            toggle(&memory, 2);
 #endif  // ifdef CONFIG_STARS
         }
 #ifdef STROBE
