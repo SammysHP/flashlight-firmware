@@ -1,9 +1,7 @@
 /*
- * BLF EE A6 firmware (special-edition group buy light)
- * This light uses a FET+1 style driver, with a FET on the main PWM channel
- * for the brightest high modes and a single 7135 chip on the secondary PWM
- * channel so we can get stable, efficient low / medium modes.  It also
- * includes a capacitor for measuring off time.
+ * "Bistro" firmware
+ * This code runs on a single-channel or dual-channel driver (FET+7135)
+ * with an attiny25/45/85 MCU and a capacitor to measure offtime (OTC).
  *
  * Copyright (C) 2015 Selene Scriven
  *
@@ -21,41 +19,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  *
- * NANJG 105C Diagram
- *           ---
- *         -|   |- VCC
- *     OTC -|   |- Voltage ADC
- *  Star 3 -|   |- PWM (FET)
- *     GND -|   |- PWM (1x7135)
- *           ---
+ * ATTINY25/45/85 Diagram
+ *           ----
+ *         -|1  8|- VCC
+ *     OTC -|2  7|- Voltage ADC
+ *  Star 3 -|3  6|- PWM (FET, optional)
+ *     GND -|4  5|- PWM (1x7135)
+ *           ----
  *
  * FUSES
- *      I use these fuse settings
- *      Low:  0x75  (4.8MHz CPU without 8x divider, 9.4kHz phase-correct PWM or 18.75kHz fast-PWM)
- *      High: 0xfd  (to enable brownout detection)
+ *      I use these fuse settings on attiny25
+ *      Low:  0xd2
+ *      High: 0xde
+ *      Ext:  0xff
  *
- *      For more details on these settings, visit http://github.com/JCapSolutions/blf-firmware/wiki/PWM-Frequency
+ *      For more details on these settings:
+ *      http://www.engbedded.com/cgi-bin/fcx.cgi?P_PREV=ATtiny25&P=ATtiny25&M_LOW_0x3F=0x12&M_HIGH_0x07=0x06&M_HIGH_0x20=0x00&B_SPIEN=P&B_SUT0=P&B_CKSEL3=P&B_CKSEL2=P&B_CKSEL0=P&B_BODLEVEL0=P&V_LOW=E2&V_HIGH=DE&V_EXTENDED=FF
  *
  * STARS
- *      Star 2 = second PWM output channel
- *      Star 3 = mode memory if soldered, no memory by default
- *      Star 4 = Capacitor for off-time
+ *      Star 3 = unused
  *
- * VOLTAGE
- *      Resistor values for voltage divider (reference BLF-VLD README for more info)
- *      Reference voltage can be anywhere from 1.0 to 1.2, so this cannot be all that accurate
- *
- *           VCC
- *            |
- *           Vd (~.25 v drop from protection diode)
- *            |
- *          1912 (R1 19,100 ohms)
- *            |
- *            |---- PB2 from MCU
- *            |
- *          4701 (R2 4,700 ohms)
- *            |
- *           GND
+ * CALIBRATION
  *
  *   To find out what values to use, flash the driver with battcheck.hex
  *   and hook the light up to each voltage you need a value for.  This is
@@ -77,6 +61,7 @@
  * Settings to modify per driver
  */
 
+// FIXME: make 1-channel vs 2-channel power a single #define option
 //#define FAST 0x23           // fast PWM channel 1 only
 //#define PHASE 0x21          // phase-correct PWM channel 1 only
 #define FAST 0xA3           // fast PWM both channels
@@ -93,7 +78,23 @@
 
 // output to use for blinks on battery check mode (primary PWM level, alt PWM level)
 // Use 20,0 for a single-channel driver or 0,20 for a two-channel driver
+// FIXME: make 1-channel vs 2-channel power a single #define option
 #define BLINK_BRIGHTNESS    0,20
+
+// ../../bin/level_calc.py 64 1 10 1400 y 3 0.25 140
+#define RAMP_SIZE  64
+// log curve
+//#define RAMP_7135  3,3,3,3,3,3,4,4,4,4,4,5,5,5,6,6,7,7,8,9,10,11,12,13,15,16,18,21,23,27,30,34,39,44,50,57,65,74,85,97,111,127,145,166,190,217,248,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+//#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,6,11,17,23,30,39,48,59,72,86,103,121,143,168,197,255
+// x**2 curve
+//#define RAMP_7135  3,5,8,12,17,24,32,41,51,63,75,90,105,121,139,158,178,200,223,247,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+//#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,6,9,12,16,19,22,26,30,33,37,41,45,50,54,59,63,68,73,78,84,89,94,100,106,111,117,123,130,136,142,149,156,162,169,176,184,191,198,206,214,221,255
+// x**3 curve
+//#define RAMP_7135  3,3,4,5,7,8,10,13,16,20,25,30,36,42,50,59,68,78,90,103,116,131,148,165,184,204,226,249,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+//#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,7,10,13,16,20,24,28,32,36,41,46,51,56,61,67,73,80,86,93,100,107,115,123,131,139,148,157,166,176,186,196,207,218,255
+// x**5 curve
+#define RAMP_7135  3,3,3,4,4,5,5,6,7,8,10,11,13,15,18,21,24,28,33,38,44,50,57,66,75,85,96,108,122,137,154,172,192,213,237,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,6,9,13,17,21,25,30,35,41,47,53,60,67,75,83,91,101,111,121,132,144,156,169,183,198,213,255
 
 // Mode group 1
 #define NUM_MODES1          7
@@ -115,7 +116,7 @@
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,TURBO .
 #define NUM_HIDDEN          4
-#define HIDDENMODES         BIKING_STROBE,BATTCHECK,STROBE,TURBO
+#define HIDDENMODES         BIKING_STROBE,BATTCHECK,RAMP,TURBO
 #define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE
 #define HIDDENMODES_ALT     0,0,0,0   // Zeroes, same length as NUM_HIDDEN
 
@@ -127,6 +128,7 @@
 #define BIKING_STROBE 252   // Convenience code for biking strobe mode
 // comment out to use minimal version instead (smaller)
 #define FULL_BIKING_STROBE
+#define RAMP 251   // Convenience code for biking strobe mode
 
 #define NON_WDT_TURBO            // enable turbo step-down without WDT
 // How many timer ticks before before dropping down.
@@ -184,6 +186,9 @@ uint8_t solid_modes;
 
 
 // Modes (gets set when the light starts up based on saved config values)
+PROGMEM const uint8_t ramp_7135[] = { RAMP_7135 };
+PROGMEM const uint8_t ramp_FET[]  = { RAMP_FET };
+
 PROGMEM const uint8_t modesNx1[] = { MODESNx1, HIDDENMODES };
 PROGMEM const uint8_t modesNx2[] = { MODESNx2, HIDDENMODES };
 const uint8_t *modesNx;  // gets pointed at whatever group is current
@@ -306,6 +311,11 @@ void count_modes() {
         modes_pwm = modes_pwm2;
     }
     mode_cnt = solid_modes + NUM_HIDDEN;
+}
+
+void set_level(uint8_t level) {
+    set_output(pgm_read_byte(ramp_FET + level),
+               pgm_read_byte(ramp_7135 + level));
 }
 
 void set_output(uint8_t pwm1, uint8_t pwm2) {
@@ -512,6 +522,20 @@ int main(void)
 #endif
         }
 #endif  // ifdef BIKING_STROBE
+#ifdef RAMP
+        else if (output == RAMP) {
+            int8_t r;
+            // simple ramping test
+            for(r=0; r<RAMP_SIZE; r++) {
+                set_level(r);
+                _delay_ms(25);
+            }
+            for(r=RAMP_SIZE-1; r>=0; r--) {
+                set_level(r);
+                _delay_ms(25);
+            }
+        }
+#endif  // ifdef RAMP
 #ifdef BATTCHECK
         else if (output == BATTCHECK) {
             // blink zero to five times to show voltage
