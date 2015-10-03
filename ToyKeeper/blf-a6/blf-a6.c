@@ -155,6 +155,10 @@
 #define USE_DELAY_S         // Also use _delay_s(), not just _delay_ms()
 #include "../tk-delay.h"
 #define USE_BATTCHECK
+//#define BATTCHECK_4bars
+#define BATTCHECK_8bars
+//#define BATTCHECK_VpT
+#define BLINK_SPEED 500
 #include "../tk-voltage.h"
 
 /*
@@ -334,9 +338,9 @@ void blink(uint8_t val)
     for (; val>0; val--)
     {
         set_output(BLINK_BRIGHTNESS);
-        _delay_ms(100);
+        _delay_ms(BLINK_SPEED / 5);
         set_output(0,0);
-        _delay_ms(400);
+        _delay_ms(BLINK_SPEED * 4 / 5);
     }
 }
 

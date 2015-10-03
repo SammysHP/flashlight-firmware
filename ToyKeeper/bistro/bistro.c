@@ -85,11 +85,11 @@
 //#define RAMP_7135  3,5,8,12,17,24,32,41,51,63,75,90,105,121,139,158,178,200,223,247,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 //#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,6,9,12,16,19,22,26,30,33,37,41,45,50,54,59,63,68,73,78,84,89,94,100,106,111,117,123,130,136,142,149,156,162,169,176,184,191,198,206,214,221,255
 // x**3 curve
-//#define RAMP_7135  3,3,4,5,7,8,10,13,16,20,25,30,36,42,50,59,68,78,90,103,116,131,148,165,184,204,226,249,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
-//#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,7,10,13,16,20,24,28,32,36,41,46,51,56,61,67,73,80,86,93,100,107,115,123,131,139,148,157,166,176,186,196,207,218,255
+#define RAMP_7135  3,3,4,5,7,8,10,13,16,20,25,30,36,42,50,59,68,78,90,103,116,131,148,165,184,204,226,249,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,7,10,13,16,20,24,28,32,36,41,46,51,56,61,67,73,80,86,93,100,107,115,123,131,139,148,157,166,176,186,196,207,218,255
 // x**5 curve
-#define RAMP_7135  3,3,3,4,4,5,5,6,7,8,10,11,13,15,18,21,24,28,33,38,44,50,57,66,75,85,96,108,122,137,154,172,192,213,237,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
-#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,6,9,13,17,21,25,30,35,41,47,53,60,67,75,83,91,101,111,121,132,144,156,169,183,198,213,255
+//#define RAMP_7135  3,3,3,4,4,5,5,6,7,8,10,11,13,15,18,21,24,28,33,38,44,50,57,66,75,85,96,108,122,137,154,172,192,213,237,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+//#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,6,9,13,17,21,25,30,35,41,47,53,60,67,75,83,91,101,111,121,132,144,156,169,183,198,213,255
 
 // output to use for blinks on battery check mode
 #define BLINK_BRIGHTNESS    RAMP_SIZE/4
@@ -153,6 +153,10 @@
 #define USE_DELAY_S         // Also use _delay_s(), not just _delay_ms()
 #include "../tk-delay.h"
 #define USE_BATTCHECK
+//#define BATTCHECK_4bars
+//#define BATTCHECK_8bars
+#define BATTCHECK_VpT
+#define BLINK_SPEED 500
 #include "../tk-voltage.h"
 
 /*
@@ -359,17 +363,23 @@ void set_mode(uint8_t mode) {
     //TCCR0A = pgm_read_byte(modes_pwm + mode);
     //set_output(pgm_read_byte(modesNx + mode), pgm_read_byte(modes1x + mode));
     set_level(pgm_read_byte(modes + mode));
-#endif SOFT_START
+#endif  // SOFT_START
 }
 
-void blink(uint8_t val)
+void blink(uint8_t val, uint16_t speed)
 {
     for (; val>0; val--)
     {
+        /*
+        set_output(BLINK_BRIGHTNESS);
+        _delay_ms(BLINK_SPEED / 5);
+        set_output(0,0);
+        _delay_ms(BLINK_SPEED * 4 / 5);
+        */
         set_level(BLINK_BRIGHTNESS);
-        _delay_ms(100);
+        _delay_ms(speed);
         set_level(0);
-        _delay_ms(400);
+        _delay_ms(speed<<2);
     }
 }
 
@@ -380,7 +390,7 @@ void toggle(uint8_t *var, uint8_t num) {
     // by turning the light off, then changes the value back in case they
     // didn't save.  Can be used repeatedly on different options, allowing
     // the user to change and save only one at a time.
-    blink(num);  // indicate which option number this is
+    blink(num, BLINK_SPEED/8);  // indicate which option number this is
     *var ^= 1;
     save_state();
     // "buzz" for a while to indicate the active toggle window
@@ -513,7 +523,7 @@ int main(void)
             modegroup ^= 1;
             save_state();
             count_modes();  // reconfigure without a power cycle
-            blink(1);
+            blink(1, BLINK_SPEED/4);
 #else
             // Longer/larger version of the config mode
             // Toggle the mode group, blink, un-toggle, continue
@@ -586,9 +596,19 @@ int main(void)
 #endif  // ifdef RAMP
 #ifdef BATTCHECK
         else if (output == BATTCHECK) {
+#ifdef BATTCHECK_VpT
+            // blink out volts and tenths
+            uint8_t result = battcheck();
+            blink(result >> 5, BLINK_SPEED/8);
+            _delay_ms(BLINK_SPEED);
+            blink(1,5);
+            _delay_ms(BLINK_SPEED*3/2);
+            blink(result & 0b00011111, BLINK_SPEED/8);
+#else  // ifdef BATTCHECK_VpT
             // blink zero to five times to show voltage
             // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
-            blink(battcheck());
+            blink(battcheck(), BLINK_SPEED/8);
+#endif  // ifdef BATTCHECK_VpT
             // wait between readouts
             _delay_s(); _delay_s();
         }
