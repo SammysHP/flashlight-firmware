@@ -574,11 +574,11 @@ int main(void)
         else if (output == RAMP) {
             int8_t r;
             // simple ramping test
-            for(r=0; r<=RAMP_SIZE; r++) {
+            for(r=1; r<=RAMP_SIZE; r++) {
                 set_level(r);
                 _delay_ms(25);
             }
-            for(r=RAMP_SIZE; r>=0; r--) {
+            for(r=RAMP_SIZE; r>0; r--) {
                 set_level(r);
                 _delay_ms(25);
             }
