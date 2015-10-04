@@ -167,6 +167,9 @@
 uint8_t eepos = 0;
 uint8_t memory = 0;        // mode memory, or not (set via soldered star)
 uint8_t modegroup = 0;     // which mode group (set above in #defines)
+#ifdef OFFTIM3
+uint8_t offtim3 = 1;       // enable medium-press?
+#endif
 uint8_t mode_idx = 0;      // current or last-used mode number
 // counter for entering config mode
 // (needs to be remembered while off, but only for up to half a second)
@@ -197,37 +200,61 @@ PROGMEM const uint8_t modes_pwm1[] = { MODES_PWM1, HIDDENMODES_PWM };
 PROGMEM const uint8_t modes_pwm2[] = { MODES_PWM2, HIDDENMODES_PWM };
 const uint8_t *modes_pwm;
 
-void save_state() {  // central method for writing (with wear leveling)
-    // a single 16-bit write uses less ROM space than two 8-bit writes
-    uint8_t eep;
+void save_mode() {  // save the current mode index (with wear leveling)
     uint8_t oldpos=eepos;
 
-    eepos = (eepos+1) & (EEPSIZE-1);  // wear leveling, use next cell
+    eepos = (eepos+1) & ((EEPSIZE/2)-1); // wear leveling, use next cell
 
-#ifdef CONFIG_STARS
-    eep = mode_idx | (modegroup << 5);
-#else
-    eep = mode_idx | (modegroup << 5) | (memory << 6);
-#endif
-    eeprom_write_byte((uint8_t *)(eepos), eep);      // save current state
+    eeprom_write_byte((uint8_t *)(eepos), mode_idx);      // save current state
     eeprom_write_byte((uint8_t *)(oldpos), 0xff);    // erase old state
+}
+
+#define FIRSTBOOT 0b01010101
+#define OPT_firstboot (EEPSIZE-1)
+#define OPT_modegroup (EEPSIZE-2)
+#define OPT_memory (EEPSIZE-3)
+#define OPT_offtim3 (EEPSIZE-4)
+void save_state() {  // central method for writing complete state
+    save_mode();
+    eeprom_write_byte((uint8_t *)OPT_firstboot, FIRSTBOOT);
+    eeprom_write_byte((uint8_t *)OPT_modegroup, modegroup);
+    eeprom_write_byte((uint8_t *)OPT_memory, memory);
+#ifdef OFFTIM3
+    eeprom_write_byte((uint8_t *)OPT_offtim3, offtim3);
+#endif
 }
 
 void restore_state() {
     uint8_t eep;
-    // find the config data
-    for(eepos=0; eepos<EEPSIZE; eepos++) {
-        eep = eeprom_read_byte((const uint8_t *)eepos);
-        if (eep != 0xff) break;
-    }
-    // unpack the config data
-    if (eepos < EEPSIZE) {
-        mode_idx = eep & 0x0f;
-        modegroup = (eep >> 5) & 1;
-#ifndef CONFIG_STARS
-        memory = (eep >> 6) & 1;
+
+    // check if this is the first time we have powered on
+    eep = eeprom_read_byte((uint8_t *)OPT_firstboot);
+    if (eep != FIRSTBOOT) {
+        modegroup = 0;
+        memory = 0;
+#ifdef OFFTIM3
+        offtim3 = 1;
 #endif
+        save_state();
+        return;
     }
+
+    // find the mode index data
+    for(eepos=0; eepos<(EEPSIZE/2); eepos++) {
+        eep = eeprom_read_byte((const uint8_t *)eepos);
+        if (eep != 0xff) {
+            mode_idx = eep;
+            break;
+        }
+    }
+
+    // load other config values
+    modegroup = eeprom_read_byte((uint8_t *)OPT_modegroup);
+    memory    = eeprom_read_byte((uint8_t *)OPT_memory);
+#ifdef OFFTIM3
+    offtim3   = eeprom_read_byte((uint8_t *)OPT_offtim3);
+#endif
+
     // unnecessary, save_state handles wrap-around
     // (and we don't really care about it skipping cell 0 once in a while)
     //else eepos=0;
@@ -464,7 +491,7 @@ int main(void)
         // Indicates they did a short press, go to the next mode
         next_mode(); // Will handle wrap arounds
 #ifdef OFFTIM3
-    } else if (cap_val > CAP_MED) {
+    } else if (offtim3  &&  (cap_val > CAP_MED)) {
         fast_presses = 0;
         // User did a medium press, go back one mode
         prev_mode(); // Will handle "negative" modes and wrap-arounds
@@ -478,7 +505,7 @@ int main(void)
             mode_idx = 0;
         }
     }
-    save_state();
+    save_mode();
 
     // Turn off ADC
     //ADC_off();
@@ -498,6 +525,8 @@ int main(void)
     // Enable sleep mode set to Idle that will be triggered by the sleep_mode() command.
     // Will allow us to go idle between WDT interrupts
     //set_sleep_mode(SLEEP_MODE_IDLE);  // not used due to blinky modes
+
+    //blink(modegroup + 1, BLINK_SPEED/4);
 
     uint8_t output;
 #ifdef NON_WDT_TURBO
@@ -531,6 +560,9 @@ int main(void)
 
             // Toggle memory, blink, untoggle, exit
             toggle(&memory, 2);
+
+            // Toggle offtim3, blink, untoggle, exit
+            toggle(&offtim3, 3);
 #endif  // ifdef CONFIG_STARS
         }
 #ifdef STROBE
@@ -624,7 +656,7 @@ int main(void)
                     && (output == TURBO)) {
                 mode_idx = solid_modes - 2; // step down to second-highest mode
                 set_mode(mode_idx);
-                save_state();
+                save_mode();
             }
 #endif
             // Otherwise, just sleep.
@@ -667,7 +699,7 @@ int main(void)
                 }
                 set_mode(i);
                 mode_idx = i;
-                save_state();
+                save_mode();
                 lowbatt_cnt = 0;
                 // Wait at least 2 seconds before lowering the level again
                 _delay_ms(250);  // this will interrupt blinky modes
