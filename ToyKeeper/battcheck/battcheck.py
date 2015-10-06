@@ -7,6 +7,8 @@ def main(args):
     measurements = {}
     readings_path = args[0]
     for line in open(readings_path):
+        if line.startswith('#'):
+            continue
         line = line.strip()
         print('Line: %s' % (line))
         parts = line.split()

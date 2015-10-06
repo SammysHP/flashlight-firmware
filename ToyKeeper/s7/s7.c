@@ -57,7 +57,10 @@
  *          value = (V * 4700 * 255) / (23800 * 1.1)
  *
  */
-#define F_CPU 4800000UL
+#define NANJG_LAYOUT
+#include "../tk-attiny.h"
+#undef BOGOMIPS  // this particular driver runs slower
+#define BOGOMIPS 890
 
 /*
  * =========================================================================
@@ -66,9 +69,11 @@
 
 #define VOLTAGE_MON                 // Comment out to disable
 #define OWN_DELAY                   // Should we use the built-in delay or our own?
+#define USE_FINE_DELAY
 
+#define FAST_PWM_START      10      // Anything under this will use phase-correct
 // Lumen measurements used a Nichia 219B at 1900mA in a Convoy S7 host
-#define MODE_MOON           6       // 6: 0.14 lm (6 through 9 may be useful levels)
+#define MODE_MOON           4       // 6: 0.14 lm (6 through 9 may be useful levels)
 #define MODE_LOW            14      // 14: 7.3 lm
 #define MODE_MED            39      // 39: 42 lm
 #define MODE_HIGH           120     // 120: 155 lm
@@ -83,56 +88,24 @@
 // Note: don't use more than 32 modes, or it will interfere with the mechanism used for mode memory
 #define TOTAL_MODES         BATT_CHECK_MODE
 
-//#define ADC_LOW             130     // When do we start ramping
-//#define ADC_CRIT            120     // When do we shut the light off
+#define USE_BATTCHECK
+#define BATTCHECK_VpT  // Use the volts+tenths battcheck style
+//#define BATTCHECK_4bars  // Use the volts+tenths battcheck style
 
-#define ADC_42          185 // the ADC value we expect for 4.20 volts
-#define ADC_100         185 // the ADC value for 100% full (4.2V resting)
-#define ADC_75          175 // the ADC value for 75% full (4.0V resting)
-#define ADC_50          164 // the ADC value for 50% full (3.8V resting)
-#define ADC_25          154 // the ADC value for 25% full (3.6V resting)
-#define ADC_0           139 // the ADC value for 0% full (3.3V resting)
-#define ADC_LOW         123 // When do we start ramping down
-#define ADC_CRIT        113 // When do we shut the light off
+#include "../tk-calibration.h"
 
 /*
  * =========================================================================
  */
 
-#ifdef OWN_DELAY
-#include <util/delay_basic.h>
-// Having own _delay_ms() saves some bytes AND adds possibility to use variables as input
-static void _delay_ms(uint16_t n)
-{
-    // TODO: make this take tenths of a ms instead of ms,
-    // for more precise timing?
-    // (would probably be better than the if/else here for a special-case
-    // sub-millisecond delay)
-    if (n==0) { _delay_loop_2(300); }
-    else {
-        while(n-- > 0)
-            _delay_loop_2(890);
-    }
-}
-#else
-#include <util/delay.h>
-#endif
+#include "../tk-delay.h"
 
 #include <avr/pgmspace.h>
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
 #include <avr/sleep.h>
 
-#define STAR2_PIN   PB0
-#define STAR3_PIN   PB4
-#define STAR4_PIN   PB3
-#define PWM_PIN     PB1
-#define VOLTAGE_PIN PB2
-#define ADC_CHANNEL 0x01    // MUX 01 corresponds with PB2
-#define ADC_DIDR    ADC1D   // Digital input disable bit corresponding with PB2
-#define ADC_PRSCL   0x06    // clk/64
-
-#define PWM_LVL     OCR0B   // OCR0B is the output compare register for PB1
+#include "../tk-voltage.h"
 
 /*
  * global variables
@@ -162,13 +135,6 @@ volatile uint8_t mode_idx = 0;
 // 1 or -1. Do we increase or decrease the idx when moving up to a higher mode?
 // Is set by checking stars in the original STAR firmware, but that's removed to save space.
 #define mode_dir 1
-PROGMEM const uint8_t voltage_blinks[] = {
-    ADC_0,    // 1 blink  for 0%-25%
-    ADC_25,   // 2 blinks for 25%-50%
-    ADC_50,   // 3 blinks for 50%-75%
-    ADC_75,   // 4 blinks for 75%-100%
-    ADC_100,  // 5 blinks for >100%
-};
 
 inline void next_mode() {
     mode_idx += mode_dir;
@@ -178,24 +144,29 @@ inline void next_mode() {
     }
 }
 
-inline void ADC_on() {
-    ADMUX  = (1 << REFS0) | (1 << ADLAR) | ADC_CHANNEL; // 1.1v reference, left-adjust, ADC1/PB2
-    DIDR0 |= (1 << ADC_DIDR);                           // disable digital input on ADC pin to reduce power consumption
-    ADCSRA = (1 << ADEN ) | (1 << ADSC ) | ADC_PRSCL;   // enable, start, prescale
+#define BLINK_BRIGHTNESS MODE_MED
+#define BLINK_SPEED 500
+#ifdef BATTCHECK_VpT
+void blink(uint8_t val, uint16_t speed)
+{
+    for (; val>0; val--)
+    {
+        PWM_LVL = BLINK_BRIGHTNESS;
+        _delay_ms(speed);
+        PWM_LVL = 0;
+        _delay_ms(speed<<2);
+    }
 }
-
-inline void ADC_off() {
-    ADCSRA &= ~(1<<7); //ADC off
-}
-
-#ifdef VOLTAGE_MON
-uint8_t get_voltage() {
-    // Start conversion
-    ADCSRA |= (1 << ADSC);
-    // Wait for completion
-    while (ADCSRA & (1 << ADSC));
-    // See if voltage is lower than what we were looking for
-    return ADCH;
+#else
+void blink(uint8_t val)
+{
+    for (; val>0; val--)
+    {
+        PWM_LVL = BLINK_BRIGHTNESS;
+        _delay_ms(100);
+        PWM_LVL = 0;
+        _delay_ms(400);
+    }
 }
 #endif
 
@@ -208,10 +179,6 @@ int main(void)
 
     // Set PWM pin to output
     DDRB = (1 << PWM_PIN);
-
-    // Set timer to do PWM for correct output pin and set prescaler timing
-    TCCR0A = 0x23; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
-    TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
 
     // Turn features on or off as needed
     #ifdef VOLTAGE_MON
@@ -238,6 +205,16 @@ int main(void)
     }
     // set noinit data for next boot
     noinit_decay = 0;
+
+    // set PWM mode
+    if (modes[mode_idx] < FAST_PWM_START) {
+        // Set timer to do PWM for correct output pin and set prescaler timing
+        TCCR0A = 0x21; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
+    } else {
+        // Set timer to do PWM for correct output pin and set prescaler timing
+        TCCR0A = 0x23; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
+    }
+    TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
 
     // Now just fire up the mode
     PWM_LVL = modes[mode_idx];
@@ -270,10 +247,9 @@ int main(void)
             PWM_LVL = 0;
             _delay_ms(749);
         } else if (mode_idx < FIXED_STROBE_MODES) { // strobe mode, fixed-speed
-            strobe_len = 1;
-            if (modes[mode_idx] < 50) { strobe_len = 0; }
             PWM_LVL = modes[SOLID_MODES-1];
-            _delay_ms(strobe_len);
+            if (modes[mode_idx] < 50) { _delay_zero(); }
+            else { _delay_ms(1); }
             PWM_LVL = 0;
             _delay_ms(modes[mode_idx]);
         } else if (mode_idx == VARIABLE_STROBE_MODES-2) {
@@ -290,39 +266,25 @@ int main(void)
             // strobe mode, smoothly oscillating frequency ~16 Hz to ~100 Hz
             for(j=0; j<100; j++) {
                 PWM_LVL = modes[SOLID_MODES-1];
-                _delay_ms(0); // less than a millisecond
+                _delay_zero(); // less than a millisecond
                 PWM_LVL = 0;
                 if (j<50) { strobe_len = j; }
                 else { strobe_len = 100-j; }
                 _delay_ms(strobe_len+9);
             }
         } else if (mode_idx < BATT_CHECK_MODE) {
-            uint8_t blinks = 0;
-            // turn off and wait one second before showing the value
-            // (also, ensure voltage is measured while not under load)
-            PWM_LVL = 0;
-            _delay_ms(1000);
-            voltage = get_voltage();
-            voltage = get_voltage(); // the first one is unreliable
-            // division takes too much flash space
-            //voltage = (voltage-ADC_LOW) / (((ADC_42 - 15) - ADC_LOW) >> 2);
-            // a table uses less space than 5 logic clauses
-            for (i=0; i<sizeof(voltage_blinks); i++) {
-                if (voltage > pgm_read_byte(voltage_blinks + i)) {
-                    blinks ++;
-                }
-            }
-
-            // blink up to five times to show voltage
-            // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
-            for(i=0; i<blinks; i++) {
-                PWM_LVL = MODE_MED;
-                _delay_ms(100);
-                PWM_LVL = 0;
-                _delay_ms(400);
-            }
-
-            _delay_ms(1000);  // wait at least 1 second between readouts
+            get_voltage();  _delay_ms(50);  // the first reading is junk
+#ifdef BATTCHECK_VpT
+            uint8_t result = battcheck();
+            blink(result >> 5, BLINK_SPEED/8);
+            _delay_ms(BLINK_SPEED);
+            blink(1,5);
+            _delay_ms(BLINK_SPEED*3/2);
+            blink(result & 0b00011111, BLINK_SPEED/8);
+#else
+            blink(battcheck());
+#endif  // BATTCHECK_VpT
+            _delay_ms(2000);  // wait at least 2 seconds between readouts
         }
 #ifdef VOLTAGE_MON
         if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
