@@ -63,7 +63,23 @@
  *
  *   Same for off-time capacitor values.  Measure, don't guess.
  */
+// Choose your MCU here, or in the build script
+//#define ATTINY 13
+//#define ATTINY 25
+
+
+// set some hardware-specific values...
+// (while configuring this firmware, skip this section)
+#if (ATTINY == 13)
 #define F_CPU 4800000UL
+#define EEPLEN 64
+#elif (ATTINY == 25)
+#define F_CPU 8000000UL
+#define EEPLEN 128
+#else
+Hey, you need to define ATTINY.
+#endif
+
 
 /*
  * =========================================================================
@@ -79,7 +95,11 @@
 #define OWN_DELAY           // Should we use the built-in delay or our own?
 // Adjust the timing per-driver, since the hardware has high variance
 // Higher values will run slower, lower values run faster.
+#if (ATTINY == 13)
 #define DELAY_TWEAK         950
+#elif (ATTINY == 25)
+#define DELAY_TWEAK         2000
+#endif
 
 #define OFFTIM3             // Use short/med/long off-time presses
                             // instead of just short/long
@@ -91,9 +111,9 @@
 // Mode group 1
 #define NUM_MODES           7
 // PWM levels for the big circuit (FET or Nx7135)
-#define MODESNx             0,0,0,6,56,135,255
+#define MODESNx             0,0,0,7,56,137,255
 // PWM levels for the small circuit (1x7135)
-#define MODES1x             3,20,100,255,255,255,0
+#define MODES1x             3,20,110,255,255,255,0
 // PWM speed for each mode
 #define MODES_PWM           PHASE,FAST,FAST,FAST,FAST,FAST,PHASE
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
@@ -117,41 +137,28 @@
 // How many timer ticks before before dropping down.
 // Each timer tick is 500ms, so "60" would be a 30-second stepdown.
 // Max value of 255 unless you change "ticks"
-#define TURBO_TIMEOUT       60
+#define TURBO_TIMEOUT       90
 
-// These values were measured using wight's "A17HYBRID-S" driver built by DBCstm.
+// These values were measured using Manker's BLF A6 production driver.
 // Your mileage may vary.
-#define ADC_42          174 // the ADC value we expect for 4.20 volts
-#define ADC_100         174 // the ADC value for 100% full (4.2V resting)
-#define ADC_75          166 // the ADC value for 75% full (4.0V resting)
-#define ADC_50          158 // the ADC value for 50% full (3.8V resting)
-#define ADC_25          145 // the ADC value for 25% full (3.5V resting)
-#define ADC_0           124 // the ADC value for 0% full (3.0V resting)
-#define ADC_LOW         116 // When do we start ramping down (2.8V)
-#define ADC_CRIT        112 // When do we shut the light off (2.7V)
-// These values were copied from s7.c.
-// Your mileage may vary.
-//#define ADC_42          185 // the ADC value we expect for 4.20 volts
-//#define ADC_100         185 // the ADC value for 100% full (4.2V resting)
-//#define ADC_75          175 // the ADC value for 75% full (4.0V resting)
-//#define ADC_50          164 // the ADC value for 50% full (3.8V resting)
-//#define ADC_25          154 // the ADC value for 25% full (3.5V resting)
-//#define ADC_0           139 // the ADC value for 0% full (3.0V resting)
-//#define ADC_LOW         123 // When do we start ramping down (2.8V)
-//#define ADC_CRIT        113 // When do we shut the light off (2.7V)
-// Values for testing only:
-//#define ADC_LOW         125 // When do we start ramping down (2.8V)
-//#define ADC_CRIT        124 // When do we shut the light off (2.7V)
+#define ADC_42          170 // the ADC value we expect for 4.20 volts
+#define ADC_100         170 // the ADC value for 100% full (4.2V resting)
+#define ADC_75          162 // the ADC value for 75% full (4.0V resting)
+#define ADC_50          154 // the ADC value for 50% full (3.8V resting)
+#define ADC_25          141 // the ADC value for 25% full (3.5V resting)
+#define ADC_0           121 // the ADC value for 0% full (3.0V resting)
+#define ADC_LOW         113 // When do we start ramping down (2.8V)
+#define ADC_CRIT        109 // When do we shut the light off (2.7V)
 
 // the BLF EE A6 driver may have different offtime cap values than most other drivers
 // Values are between 1 and 255, and can be measured with offtime-cap.c
 // These #defines are the edge boundaries, not the center of the target.
 #ifdef OFFTIM3
-#define CAP_SHORT           250  // Anything higher than this is a short press
-#define CAP_MED             190  // Between CAP_MED and CAP_SHORT is a medium press
+#define CAP_SHORT           245  // Anything higher than this is a short press
+#define CAP_MED             180  // Between CAP_MED and CAP_SHORT is a medium press
                                  // Below CAP_MED is a long press
 #else
-#define CAP_SHORT           190  // Anything higher than this is a short press, lower is a long press
+#define CAP_SHORT           180  // Anything higher than this is a short press, lower is a long press
 #endif
 
 /*
@@ -241,7 +248,7 @@ void save_state() {  // central method for writing (with wear leveling)
     uint8_t eep;
     uint8_t oldpos=eepos;
 
-    eepos = (eepos+1) & 63;  // wear leveling, use next cell
+    eepos = (eepos+1) & (EEPLEN-1);  // wear leveling, use next cell
 
     eep = mode_idx;
     eeprom_write_byte((uint8_t *)(eepos), eep);      // save current state
@@ -251,12 +258,12 @@ void save_state() {  // central method for writing (with wear leveling)
 void restore_state() {
     uint8_t eep;
     // find the config data
-    for(eepos=0; eepos<64; eepos++) {
+    for(eepos=0; eepos<EEPLEN; eepos++) {
         eep = eeprom_read_byte((const uint8_t *)eepos);
         if (eep != 0xff) break;
     }
     // unpack the config data
-    if (eepos < 64) {
+    if (eepos < EEPLEN) {
         mode_idx = eep;
     }
     // unnecessary, save_state handles wrap-around
@@ -292,7 +299,11 @@ inline void prev_mode() {
 #ifdef VOLTAGE_MON
 inline void ADC_on() {
     DIDR0 |= (1 << ADC_DIDR);                           // disable digital input on ADC pin to reduce power consumption
+#if (ATTINY == 13)
     ADMUX  = (1 << REFS0) | (1 << ADLAR) | ADC_CHANNEL; // 1.1v reference, left-adjust, ADC1/PB2
+#elif (ATTINY == 25)
+    ADMUX  = (1 << REFS1) | (1 << ADLAR) | ADC_CHANNEL; // 1.1v reference, left-adjust, ADC1/PB2
+#endif
     ADCSRA = (1 << ADEN ) | (1 << ADSC ) | ADC_PRSCL;   // enable, start, prescale
 }
 #else
@@ -351,7 +362,11 @@ int main(void)
     // Read the off-time cap *first* to get the most accurate reading
     // Start up ADC for capacitor pin
     DIDR0 |= (1 << CAP_DIDR);                           // disable digital input on ADC pin to reduce power consumption
+#if (ATTINY == 13)
     ADMUX  = (1 << REFS0) | (1 << ADLAR) | CAP_CHANNEL; // 1.1v reference, left-adjust, ADC3/PB3
+#elif (ATTINY == 25)
+    ADMUX  = (1 << REFS1) | (1 << ADLAR) | CAP_CHANNEL; // 1.1v reference, left-adjust, ADC1/PB2
+#endif
     ADCSRA = (1 << ADEN ) | (1 << ADSC ) | ADC_PRSCL;   // enable, start, prescale
 
     // Wait for completion
@@ -466,21 +481,17 @@ int main(void)
 #endif  // ifdef BIKING_STROBE
 #ifdef BATTCHECK
         else if (output == BATTCHECK) {
-            // turn off and wait one second before showing the value
-            // (also, ensure voltage is measured while not under load)
-            set_output(0,0);
-            _delay_s();
             voltage = get_voltage();
-            //voltage = get_voltage(); // the first one is unreliable
             // figure out how many times to blink
             for (i=0;
                     voltage > pgm_read_byte(voltage_blinks + i);
                     i ++) {}
 
-            // blink up to five times to show voltage
+            // blink zero to five times to show voltage
             // (~0%, ~25%, ~50%, ~75%, ~100%, >100%)
             blink(i);
-            //_delay_s();  // wait at least 1 second between readouts
+            // wait between readouts
+            _delay_s(); _delay_s();
         }
 #endif // ifdef BATTCHECK
         else {  // Regular non-hidden solid mode

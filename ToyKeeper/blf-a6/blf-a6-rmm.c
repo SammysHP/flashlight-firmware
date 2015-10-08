@@ -118,7 +118,7 @@ Hey, you need to define ATTINY.
 // PWM levels for the big circuit (FET or Nx7135)
 #define MODESNx1            0,0,0,7,56,137,255
 // PWM levels for the small circuit (1x7135)
-#define MODES1x1            2,20,110,255,255,255,0
+#define MODES1x1            3,20,110,255,255,255,0
 // My sample:     6=0..6,  7=2..11,  8=8..21(15..32)
 // Krono sample:  6=5..21, 7=17..32, 8=33..96(50..78)
 // Manker2:       2=21, 3=39, 4=47, ... 6?=68
@@ -152,26 +152,26 @@ Hey, you need to define ATTINY.
 // Max value of 255 unless you change "ticks"
 #define TURBO_TIMEOUT       90
 
-// These values were measured using Manker's BLF A6 production driver.
+// These values were measured using wight's "A17HYBRID-S" driver built by DBCstm.
 // Your mileage may vary.
-#define ADC_42          170 // the ADC value we expect for 4.20 volts
-#define ADC_100         170 // the ADC value for 100% full (4.2V resting)
-#define ADC_75          162 // the ADC value for 75% full (4.0V resting)
-#define ADC_50          154 // the ADC value for 50% full (3.8V resting)
-#define ADC_25          141 // the ADC value for 25% full (3.5V resting)
-#define ADC_0           121 // the ADC value for 0% full (3.0V resting)
-#define ADC_LOW         113 // When do we start ramping down (2.8V)
-#define ADC_CRIT        109 // When do we shut the light off (2.7V)
+#define ADC_42          195 // the ADC value we expect for 4.20 volts
+#define ADC_100         195 // the ADC value for 100% full (4.2V resting)
+#define ADC_75          186 // the ADC value for 75% full (4.0V resting)
+#define ADC_50          176 // the ADC value for 50% full (3.8V resting)
+#define ADC_25          162 // the ADC value for 25% full (3.5V resting)
+#define ADC_0           138 // the ADC value for 0% full (3.0V resting)
+#define ADC_LOW         129 // When do we start ramping down (2.8V)
+#define ADC_CRIT        124 // When do we shut the light off (2.7V)
 
 // the BLF EE A6 driver may have different offtime cap values than most other drivers
 // Values are between 1 and 255, and can be measured with offtime-cap.c
 // These #defines are the edge boundaries, not the center of the target.
 #ifdef OFFTIM3
-#define CAP_SHORT           245  // Anything higher than this is a short press
-#define CAP_MED             180  // Between CAP_MED and CAP_SHORT is a medium press
+#define CAP_SHORT           190  // Anything higher than this is a short press
+#define CAP_MED             94  // Between CAP_MED and CAP_SHORT is a medium press
                                  // Below CAP_MED is a long press
 #else
-#define CAP_SHORT           180  // Anything higher than this is a short press, lower is a long press
+#define CAP_SHORT           115  // Anything higher than this is a short press, lower is a long press
 #endif
 
 /*
