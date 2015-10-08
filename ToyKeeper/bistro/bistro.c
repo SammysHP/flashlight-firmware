@@ -110,10 +110,10 @@
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,TURBO .
-#define NUM_HIDDEN          5
-#define HIDDENMODES         BIKING_STROBE,BATTCHECK,POLICE_STROBE,RAMP,TURBO
-#define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE,PHASE
-#define HIDDENMODES_ALT     0,0,0,0,0   // Zeroes, same length as NUM_HIDDEN
+#define NUM_HIDDEN          6
+#define HIDDENMODES         BIKING_STROBE,BATTCHECK,RANDOM_STROBE,POLICE_STROBE,RAMP,TURBO
+#define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE,PHASE,PHASE
+#define HIDDENMODES_ALT     0,0,0,0,0,0   // Zeroes, same length as NUM_HIDDEN
 
 #define TURBO     RAMP_SIZE       // Convenience code for turbo mode
 #define BATTCHECK 254       // Convenience code for battery check mode
@@ -125,6 +125,7 @@
 #define FULL_BIKING_STROBE
 #define RAMP 251   // Convenience code for biking strobe mode
 #define POLICE_STROBE 250
+#define RANDOM_STROBE 249
 
 #define NON_WDT_TURBO            // enable turbo step-down without WDT
 // How many timer ticks before before dropping down.
@@ -159,6 +160,9 @@
 #define BLINK_SPEED 500
 #include "../tk-voltage.h"
 
+#ifdef RANDOM_STROBE
+#include "../tk-random.h"
+#endif
 /*
  * global variables
  */
@@ -591,6 +595,16 @@ int main(void)
             }
         }
 #endif // ifdef POLICE_STROBE
+#ifdef RANDOM_STROBE
+        else if (output == RANDOM_STROBE) {
+            // pseudo-random strobe
+            uint8_t ms = 34 + (pgm_rand() & 0x3f);
+            set_level(RAMP_SIZE);
+            _delay_ms(ms);
+            set_level(0);
+            _delay_ms(ms);
+        }
+#endif // ifdef RANDOM_STROBE
 #ifdef BIKING_STROBE
         else if (output == BIKING_STROBE) {
             // 2-level stutter beacon for biking and such
