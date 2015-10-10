@@ -363,11 +363,13 @@ void count_modes() {
     }
 }
 
-void set_output(uint8_t pwm1, uint8_t pwm2) {
+inline void set_output(uint8_t pwm1, uint8_t pwm2) {
+    /* This is no longer needed since we always use PHASE mode.
     // Need PHASE to properly turn off the light
     if ((pwm1==0) && (pwm2==0)) {
         TCCR0A = PHASE;
     }
+    */
     PWM_LVL = pwm1;
     ALT_PWM_LVL = pwm2;
 }
