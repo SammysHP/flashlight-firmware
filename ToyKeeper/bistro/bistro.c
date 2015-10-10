@@ -612,7 +612,9 @@ int main(void)
 #else
             // Longer/larger version of the config mode
             // Toggle the mode group, blink, un-toggle, continue
-            toggle(&modegroup, 1);
+            mode_idx = GROUP_SELECT_MODE;
+            toggle(&mode_override, 1);
+            mode_idx = 0;
 
             // Toggle memory, blink, untoggle, exit
             toggle(&memory, 2);
@@ -719,6 +721,20 @@ int main(void)
             _delay_s(); _delay_s();
         }
 #endif // ifdef BATTCHECK
+        else if (output == GROUP_SELECT_MODE) {
+#define NUM_MODEGROUPS 8
+            // exit this mode after one use
+            mode_idx = 0;
+            mode_override = 0;
+
+            for(i=0; i<NUM_MODEGROUPS; i++) {
+                modegroup = i;
+                save_state();
+
+                blink(1, BLINK_SPEED/3);
+            }
+            _delay_s(); _delay_s();
+        }
 #ifdef TEMP_CAL_MODE
         else if (output == TEMP_CAL_MODE) {
             // make sure we don't stay in this mode after button press
