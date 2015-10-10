@@ -154,6 +154,7 @@
 #include <avr/eeprom.h>
 #include <avr/sleep.h>
 //#include <avr/power.h>
+#include <string.h>
 
 #define OWN_DELAY           // Don't use stock delay functions.
 #define USE_DELAY_S         // Also use _delay_s(), not just _delay_ms()
@@ -201,17 +202,29 @@ uint8_t solid_modes;
 //uint8_t hidden_modes = NUM_HIDDEN;  // this is never used
 
 
+PROGMEM const uint8_t modegroups[] = {
+    64,  0,  0,  0,  0,  0,  0,  0,
+     8, 64,  0,  0,  0,  0,  0,  0,
+     8, 36, 64,  0,  0,  0,  0,  0,
+     8, 26, 45, 64,  0,  0,  0,  0,
+     8, 22, 36, 50, 64,  0,  0,  0,
+     8, 19, 30, 41, 52, 64,  0,  0,
+     8, 17, 26, 36, 45, 54, 64,  0,
+     8, 16, 24, 32, 40, 48, 56, 64,
+};
+uint8_t foo_modes[] = { 1,2,3,4,5,6,7,8, HIDDENMODES };  // make sure this is long enough...
+
 // Modes (gets set when the light starts up based on saved config values)
 PROGMEM const uint8_t ramp_7135[] = { RAMP_7135 };
 PROGMEM const uint8_t ramp_FET[]  = { RAMP_FET };
 
 PROGMEM const uint8_t modes_g1[] = { MODES_G1, HIDDENMODES };
 PROGMEM const uint8_t modes_g2[] = { MODES_G2, HIDDENMODES };
-const uint8_t *modes;  // gets pointed at whatever group is current
+uint8_t *modes;  // gets pointed at whatever group is current
 
 PROGMEM const uint8_t modes_pwm1[] = { MODES_PWM1, HIDDENMODES_PWM };
 PROGMEM const uint8_t modes_pwm2[] = { MODES_PWM2, HIDDENMODES_PWM };
-const uint8_t *modes_pwm;
+uint8_t *modes_pwm;
 
 void save_mode() {  // save the current mode index (with wear leveling)
     uint8_t oldpos=eepos;
@@ -349,6 +362,7 @@ void count_modes() {
      * (this matters because we have more than one set of modes to choose
      *  from, so we need to count at runtime)
      */
+    /*
     if (modegroup == 0) {
         solid_modes = NUM_MODES1;
         modes = modes_g1;
@@ -358,6 +372,13 @@ void count_modes() {
         modes = modes_g2;
         modes_pwm = modes_pwm2;
     }
+    mode_cnt = solid_modes + NUM_HIDDEN;
+    */
+    solid_modes = modegroup + 1;
+    modes = foo_modes;
+    modes_pwm = modes_pwm1;
+    memcpy_P(foo_modes, modegroups + (modegroup<<3), solid_modes);
+    memcpy_P(foo_modes + solid_modes, modes_g1+NUM_MODES1, NUM_HIDDEN);
     mode_cnt = solid_modes + NUM_HIDDEN;
 }
 
@@ -417,7 +438,8 @@ void set_mode(uint8_t mode) {
 #else
     //TCCR0A = pgm_read_byte(modes_pwm + mode);
     //set_output(pgm_read_byte(modesNx + mode), pgm_read_byte(modes1x + mode));
-    set_level(pgm_read_byte(modes + mode));
+    //set_level(pgm_read_byte(modes + mode));
+    set_level(modes[mode]);
 #endif  // SOFT_START
 }
 
@@ -587,7 +609,8 @@ int main(void)
     // Make sure voltage reading is running for later
     ADCSRA |= (1 << ADSC);
 #endif
-    output = pgm_read_byte(modes + mode_idx);
+    //output = pgm_read_byte(modes + mode_idx);
+    output = modes[mode_idx];
     actual_level = output;
     // handle mode overrides, like mode group selection and temperature calibration
     if (mode_override) {
@@ -628,7 +651,8 @@ int main(void)
             mode_idx = 0;
 
 #endif  // ifdef CONFIG_STARS
-            output = pgm_read_byte(modes + mode_idx);
+            //output = pgm_read_byte(modes + mode_idx);
+            output = modes[mode_idx];
             actual_level = output;
         }
 #ifdef STROBE
