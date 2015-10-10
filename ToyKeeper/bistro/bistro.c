@@ -97,22 +97,11 @@
 // uncomment to ramp up/down to a mode instead of jumping directly
 #define SOFT_START
 
-// Mode group 1
-#define NUM_MODES1          7
-// PWM levels for the big circuit (FET or Nx7135)
-#define MODES_G1            1,10,21,32,43,53,64
-// PWM speed for each mode
-#define MODES_PWM1          PHASE,FAST,FAST,FAST,FAST,FAST,PHASE
-// Mode group 2
-#define NUM_MODES2          4
-#define MODES_G2            10,28,46,64
-#define MODES_PWM2          FAST,FAST,FAST,PHASE
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,TURBO .
 #define NUM_HIDDEN          6
 #define HIDDENMODES         BIKING_STROBE,BATTCHECK,RANDOM_STROBE,POLICE_STROBE,RAMP,TURBO
-#define HIDDENMODES_PWM     PHASE,PHASE,PHASE,PHASE,PHASE,PHASE
 #define HIDDENMODES_ALT     0,0,0,0,0,0   // Zeroes, same length as NUM_HIDDEN
 
 #define TURBO     RAMP_SIZE       // Convenience code for turbo mode
@@ -202,29 +191,22 @@ uint8_t solid_modes;
 //uint8_t hidden_modes = NUM_HIDDEN;  // this is never used
 
 
+PROGMEM const uint8_t hiddenmodes[] = { HIDDENMODES };
 PROGMEM const uint8_t modegroups[] = {
     64,  0,  0,  0,  0,  0,  0,  0,
-     8, 64,  0,  0,  0,  0,  0,  0,
-     8, 36, 64,  0,  0,  0,  0,  0,
-     8, 26, 45, 64,  0,  0,  0,  0,
-     8, 22, 36, 50, 64,  0,  0,  0,
-     8, 19, 30, 41, 52, 64,  0,  0,
-     8, 17, 26, 36, 45, 54, 64,  0,
-     8, 16, 24, 32, 40, 48, 56, 64,
+    10, 64,  0,  0,  0,  0,  0,  0,
+    10, 37, 64,  0,  0,  0,  0,  0,
+    10, 28, 46, 64,  0,  0,  0,  0,
+    10, 23, 37, 50, 64,  0,  0,  0,
+    10, 20, 31, 42, 53, 64,  0,  0,
+    10, 19, 28, 37, 46, 54, 64,  0,
+    10, 17, 25, 33, 40, 48, 56, 64,
 };
-uint8_t foo_modes[] = { 1,2,3,4,5,6,7,8, HIDDENMODES };  // make sure this is long enough...
+uint8_t modes[] = { 1,2,3,4,5,6,7,8,9, HIDDENMODES };  // make sure this is long enough...
 
 // Modes (gets set when the light starts up based on saved config values)
 PROGMEM const uint8_t ramp_7135[] = { RAMP_7135 };
 PROGMEM const uint8_t ramp_FET[]  = { RAMP_FET };
-
-PROGMEM const uint8_t modes_g1[] = { MODES_G1, HIDDENMODES };
-PROGMEM const uint8_t modes_g2[] = { MODES_G2, HIDDENMODES };
-uint8_t *modes;  // gets pointed at whatever group is current
-
-PROGMEM const uint8_t modes_pwm1[] = { MODES_PWM1, HIDDENMODES_PWM };
-PROGMEM const uint8_t modes_pwm2[] = { MODES_PWM2, HIDDENMODES_PWM };
-uint8_t *modes_pwm;
 
 void save_mode() {  // save the current mode index (with wear leveling)
     uint8_t oldpos=eepos;
@@ -262,7 +244,7 @@ void restore_state() {
     // check if this is the first time we have powered on
     eep = eeprom_read_byte((uint8_t *)OPT_firstboot);
     if (eep != FIRSTBOOT) {
-        modegroup = 0;
+        modegroup = 3;
         memory = 0;
 #ifdef OFFTIM3
         offtim3 = 1;
@@ -356,30 +338,29 @@ inline void check_stars() {
 void count_modes() {
     /*
      * Determine how many solid and hidden modes we have.
-     * The modes_pwm array should have several values for regular modes
-     * then some values for hidden modes.
      *
      * (this matters because we have more than one set of modes to choose
      *  from, so we need to count at runtime)
      */
-    /*
-    if (modegroup == 0) {
-        solid_modes = NUM_MODES1;
-        modes = modes_g1;
-        modes_pwm = modes_pwm1;
-    } else {
-        solid_modes = NUM_MODES2;
-        modes = modes_g2;
-        modes_pwm = modes_pwm2;
-    }
-    mode_cnt = solid_modes + NUM_HIDDEN;
-    */
+    uint8_t *dest;
+    dest = modes;
     solid_modes = modegroup + 1;
-    modes = foo_modes;
-    modes_pwm = modes_pwm1;
-    memcpy_P(foo_modes, modegroups + (modegroup<<3), solid_modes);
-    memcpy_P(foo_modes + solid_modes, modes_g1+NUM_MODES1, NUM_HIDDEN);
+    // TODO: add moon mode (or not) if config says to add it
+    uint8_t enable_moon = 1;
+    if (enable_moon) {
+        modes[0] = 1;
+        dest ++;
+    }
+    // add regular modes
+    memcpy_P(dest, modegroups + (modegroup<<3), solid_modes);
+    // add hidden modes
+    memcpy_P(dest + solid_modes, hiddenmodes, NUM_HIDDEN);
+    // final count
     mode_cnt = solid_modes + NUM_HIDDEN;
+    if (enable_moon) {
+        mode_cnt ++;
+        solid_modes ++;
+    }
 }
 
 void set_output(uint8_t pwm1, uint8_t pwm2) {
@@ -436,7 +417,6 @@ void set_mode(uint8_t mode) {
         _delay_ms(RAMP_SIZE/4);
     } while (target_level != actual_level);
 #else
-    //TCCR0A = pgm_read_byte(modes_pwm + mode);
     //set_output(pgm_read_byte(modesNx + mode), pgm_read_byte(modes1x + mode));
     //set_level(pgm_read_byte(modes + mode));
     set_level(modes[mode]);
