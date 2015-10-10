@@ -74,7 +74,6 @@
 
 // comment out to use extended config mode instead of a solderable star
 // (controls whether mode memory is on the star or if it's a setting in config mode)
-//#define CONFIG_STARS
 
 // ../../bin/level_calc.py 64 1 10 1400 y 3 0.25 140
 #define RAMP_SIZE  64
@@ -311,35 +310,6 @@ inline void prev_mode() {
 }
 #endif
 
-#ifdef CONFIG_STARS
-inline void check_stars() {
-    // Configure options based on stars
-    // 0 being low for soldered, 1 for pulled-up for not soldered
-#if 0  // not implemented, STAR2_PIN is used for second PWM channel
-    // Moon
-    // enable moon mode?
-    if ((PINB & (1 << STAR2_PIN)) == 0) {
-        modes[mode_cnt++] = MODE_MOON;
-    }
-#endif
-#if 0  // Mode order not as important as mem/no-mem
-    // Mode order
-    if ((PINB & (1 << STAR3_PIN)) == 0) {
-        // High to Low
-        mode_dir = -1;
-    } else {
-        mode_dir = 1;
-    }
-#endif
-    // Memory
-    if ((PINB & (1 << STAR3_PIN)) == 0) {
-        memory = 1;  // solder to enable memory
-    } else {
-        memory = 0;  // unsolder to disable memory
-    }
-}
-#endif  // ifdef CONFIG_STARS
-
 void count_modes() {
     /*
      * Determine how many solid and hidden modes we have.
@@ -446,7 +416,6 @@ void blink(uint8_t val, uint16_t speed)
     }
 }
 
-#ifndef CONFIG_STARS
 void toggle(uint8_t *var, uint8_t num) {
     // Used for extended config mode
     // Changes the value of a config option, waits for the user to "save"
@@ -468,7 +437,6 @@ void toggle(uint8_t *var, uint8_t num) {
     save_state();
     _delay_s();
 }
-#endif // ifndef CONFIG_STARS
 
 #ifdef TEMPERATURE_MON
 uint8_t get_temperature() {
@@ -504,13 +472,6 @@ int main(void)
     while (ADCSRA & (1 << ADSC));
     cap_val = ADCH; // save this for later
 
-#ifdef CONFIG_STARS
-    // All ports default to input, but turn pull-up resistors on for the stars (not the ADC input!  Made that mistake already)
-    // only one star, because one is used for PWM channel 2
-    // and the other is used for the off-time capacitor
-    PORTB = (1 << STAR3_PIN);
-#endif
-
     // Set PWM pin to output
     DDRB |= (1 << PWM_PIN);     // enable main channel
     DDRB |= (1 << ALT_PWM_PIN); // enable second channel
@@ -523,9 +484,6 @@ int main(void)
     TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
 
     // Read config values and saved state
-#ifdef CONFIG_STARS
-    check_stars();
-#endif
     restore_state();
     // Enable the current mode group
     count_modes();
@@ -611,15 +569,6 @@ int main(void)
             fast_presses = 0; // exit this mode after one use
             mode_idx = 0;
 
-#ifdef CONFIG_STARS
-            // Short/small version of the config mode
-            // Toggle the mode group, blink, then exit
-            modegroup ^= 1;
-            save_state();
-            count_modes();  // reconfigure without a power cycle
-            blink(1, BLINK_SPEED/4);
-#else
-            // Longer/larger version of the config mode
             // Enter the mode group selection mode?
             mode_idx = GROUP_SELECT_MODE;
             toggle(&mode_override, 1);
@@ -636,7 +585,6 @@ int main(void)
             toggle(&mode_override, 5);
             mode_idx = 0;
 
-#endif  // ifdef CONFIG_STARS
             //output = pgm_read_byte(modes + mode_idx);
             output = modes[mode_idx];
             actual_level = output;
