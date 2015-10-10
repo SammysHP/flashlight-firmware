@@ -127,7 +127,10 @@
 #define POLICE_STROBE 250
 #define RANDOM_STROBE 249
 
-#define NON_WDT_TURBO            // enable turbo step-down without WDT
+// thermal step-down
+#define TEMPERATURE_MON
+// time-based step-down
+//#define NON_WDT_TURBO            // enable turbo step-down without WDT
 // How many timer ticks before before dropping down.
 // Each timer tick is 500ms, so "60" would be a 30-second stepdown.
 // Max value of 255 unless you change "ticks"
@@ -360,7 +363,8 @@ void set_level(uint8_t level) {
 void set_mode(uint8_t mode) {
 #ifdef SOFT_START
     static uint8_t actual_level = 0;
-    uint8_t target_level = pgm_read_byte(modes + mode);
+    //uint8_t target_level = pgm_read_byte(modes + mode);
+    uint8_t target_level = mode;
     int8_t shift_amount;
     int8_t diff;
     do {
@@ -533,6 +537,7 @@ int main(void)
     //blink(modegroup + 1, BLINK_SPEED/4);
 
     uint8_t output;
+    uint8_t actual_level;
 #ifdef NON_WDT_TURBO
     uint8_t ticks = 0;
 #endif
@@ -543,12 +548,12 @@ int main(void)
     // Make sure voltage reading is running for later
     ADCSRA |= (1 << ADSC);
 #endif
+    output = pgm_read_byte(modes + mode_idx);
+    actual_level = output;
     while(1) {
-        output = pgm_read_byte(modes + mode_idx);
         if (fast_presses > 0x0f) {  // Config mode
             _delay_s();       // wait for user to stop fast-pressing button
             fast_presses = 0; // exit this mode after one use
-            mode_idx = 0;
 
 #ifdef CONFIG_STARS
             // Short/small version of the config mode
@@ -568,6 +573,9 @@ int main(void)
             // Toggle offtim3, blink, untoggle, exit
             toggle(&offtim3, 3);
 #endif  // ifdef CONFIG_STARS
+            mode_idx = 0;
+            output = pgm_read_byte(modes + mode_idx);
+            actual_level = output;
         }
 #ifdef STROBE
         else if (output == STROBE) {
@@ -660,18 +668,29 @@ int main(void)
         }
 #endif // ifdef BATTCHECK
         else {  // Regular non-hidden solid mode
-            set_mode(mode_idx);
-            // This part of the code will mostly replace the WDT tick code.
-#ifdef NON_WDT_TURBO
-            // Do some magic here to handle turbo step-down
-            //if (ticks < 255) ticks++;  // don't roll over
-            ticks ++;  // actually, we don't care about roll-over prevention
-            if ((ticks > TURBO_TIMEOUT) 
-                    && (output == TURBO)) {
-                mode_idx = solid_modes - 2; // step down to second-highest mode
-                set_mode(mode_idx);
-                save_mode();
+            set_mode(actual_level);
+#ifdef TEMPERATURE_MON
+#define temp_threshold 78
+            ADC_on_temperature();
+
+            // average a few values; temperature is noisy
+            uint16_t temp = 0;
+            get_voltage();
+            for(i=0; i<8; i++) {
+                temp += get_voltage();
+                _delay_ms(5);
             }
+            temp >>= 3;
+
+            // step down? (or step back up?)
+            if ((temp >= temp_threshold)  &&  (actual_level > 1)) {
+                actual_level --;
+            } else if (actual_level < output) {
+                actual_level ++;
+            }
+            set_mode(actual_level);
+
+            ADC_on();  // return to voltage mode
 #endif
             // Otherwise, just sleep.
             _delay_ms(500);
@@ -697,10 +716,10 @@ int main(void)
                 //set_level(0);  _delay_ms(100);
                 i = mode_idx; // save space by not accessing mode_idx more than necessary
                 // properly track hidden vs normal modes
-                if (i >= solid_modes) {
+                if (i >= solid_modes) {  // FIXME: won't work with too few modes!
                     // step down from blinky modes to medium
                     i = 2;
-                } else if (i > 0) {
+                } else if (i > 0) {  // FIXME: step down via actual_level, not mode_idx
                     // step down from solid modes one at a time
                     i -= 1;
                 } else { // Already at the lowest mode
@@ -711,6 +730,7 @@ int main(void)
                     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
                     sleep_mode();
                 }
+                // FIXME: use actual_level, not mode_idx!
                 set_mode(i);
                 mode_idx = i;
                 save_mode();
