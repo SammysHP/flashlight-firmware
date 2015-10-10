@@ -166,6 +166,7 @@
 uint8_t eepos = 0;
 uint8_t memory = 0;        // mode memory, or not (set via soldered star)
 uint8_t modegroup = 0;     // which mode group (set above in #defines)
+uint8_t enable_moon = 0;   // Should we add moon to the set of modes?
 #ifdef OFFTIM3
 uint8_t offtim3 = 1;       // enable medium-press?
 #endif
@@ -224,6 +225,7 @@ void save_mode() {  // save the current mode index (with wear leveling)
 #define OPT_offtim3 (EEPSIZE-4)
 #define OPT_maxtemp (EEPSIZE-5)
 #define OPT_mode_override (EEPSIZE-6)
+#define OPT_moon (EEPSIZE-7)
 void save_state() {  // central method for writing complete state
     save_mode();
     eeprom_write_byte((uint8_t *)OPT_firstboot, FIRSTBOOT);
@@ -236,6 +238,7 @@ void save_state() {  // central method for writing complete state
     eeprom_write_byte((uint8_t *)OPT_maxtemp, maxtemp);
 #endif
     eeprom_write_byte((uint8_t *)OPT_mode_override, mode_override);
+    eeprom_write_byte((uint8_t *)OPT_moon, enable_moon);
 }
 
 void restore_state() {
@@ -253,6 +256,7 @@ void restore_state() {
         maxtemp = 78;
 #endif
         mode_override = 0;
+        enable_moon = 0;
         save_state();
         return;
     }
@@ -276,6 +280,7 @@ void restore_state() {
     maxtemp   = eeprom_read_byte((uint8_t *)OPT_maxtemp);
 #endif
     mode_override = eeprom_read_byte((uint8_t *)OPT_mode_override);
+    enable_moon   = eeprom_read_byte((uint8_t *)OPT_moon);
 
     // unnecessary, save_state handles wrap-around
     // (and we don't really care about it skipping cell 0 once in a while)
@@ -346,7 +351,6 @@ void count_modes() {
     dest = modes;
     solid_modes = modegroup + 1;
     // TODO: add moon mode (or not) if config says to add it
-    uint8_t enable_moon = 1;
     if (enable_moon) {
         modes[0] = 1;
         dest ++;
@@ -616,20 +620,20 @@ int main(void)
             blink(1, BLINK_SPEED/4);
 #else
             // Longer/larger version of the config mode
-            // Toggle the mode group, blink, un-toggle, continue
+            // Enter the mode group selection mode?
             mode_idx = GROUP_SELECT_MODE;
             toggle(&mode_override, 1);
             mode_idx = 0;
 
-            // Toggle memory, blink, untoggle, exit
-            toggle(&memory, 2);
+            toggle(&enable_moon, 2);
 
-            // Toggle offtim3, blink, untoggle, exit
-            toggle(&offtim3, 3);
+            toggle(&memory, 3);
+
+            toggle(&offtim3, 4);
 
             // Enter temperature calibration mode?
             mode_idx = TEMP_CAL_MODE;
-            toggle(&mode_override, 4);
+            toggle(&mode_override, 5);
             mode_idx = 0;
 
 #endif  // ifdef CONFIG_STARS
