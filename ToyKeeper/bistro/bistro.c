@@ -165,6 +165,7 @@
 uint8_t eepos = 0;
 uint8_t memory = 0;        // mode memory, or not (set via soldered star)
 uint8_t modegroup = 0;     // which mode group (set above in #defines)
+uint8_t reverse_modes = 0; // flip the mode order?
 uint8_t enable_moon = 0;   // Should we add moon to the set of modes?
 #ifdef OFFTIM3
 uint8_t offtim3 = 1;       // enable medium-press?
@@ -225,6 +226,7 @@ void save_mode() {  // save the current mode index (with wear leveling)
 #define OPT_maxtemp (EEPSIZE-5)
 #define OPT_mode_override (EEPSIZE-6)
 #define OPT_moon (EEPSIZE-7)
+#define OPT_revmodes (EEPSIZE-8)
 void save_state() {  // central method for writing complete state
     save_mode();
     eeprom_write_byte((uint8_t *)OPT_firstboot, FIRSTBOOT);
@@ -238,6 +240,7 @@ void save_state() {  // central method for writing complete state
 #endif
     eeprom_write_byte((uint8_t *)OPT_mode_override, mode_override);
     eeprom_write_byte((uint8_t *)OPT_moon, enable_moon);
+    eeprom_write_byte((uint8_t *)OPT_revmodes, reverse_modes);
 }
 
 void restore_state() {
@@ -256,6 +259,7 @@ void restore_state() {
 #endif
         mode_override = 0;
         enable_moon = 0;
+        reverse_modes = 0;
         save_state();
         return;
     }
@@ -280,6 +284,7 @@ void restore_state() {
 #endif
     mode_override = eeprom_read_byte((uint8_t *)OPT_mode_override);
     enable_moon   = eeprom_read_byte((uint8_t *)OPT_moon);
+    reverse_modes = eeprom_read_byte((uint8_t *)OPT_revmodes);
 
     // unnecessary, save_state handles wrap-around
     // (and we don't really care about it skipping cell 0 once in a while)
@@ -318,6 +323,7 @@ void count_modes() {
      *  from, so we need to count at runtime)
      */
     uint8_t *dest;
+    uint8_t *src = modegroups + (modegroup<<3);
     dest = modes;
     solid_modes = modegroup + 1;
     // TODO: add moon mode (or not) if config says to add it
@@ -326,11 +332,27 @@ void count_modes() {
         dest ++;
     }
     // add regular modes
-    memcpy_P(dest, modegroups + (modegroup<<3), solid_modes);
+    memcpy_P(dest, src, solid_modes);
     // add hidden modes
     memcpy_P(dest + solid_modes, hiddenmodes, NUM_HIDDEN);
     // final count
     mode_cnt = solid_modes + NUM_HIDDEN;
+    if (reverse_modes) {
+        int8_t i;
+        //uint8_t *src;
+        //src = modegroups + (modegroup<<3);
+        src += solid_modes;
+        dest = modes;
+        for(i=0; i<solid_modes; i++) {
+            src --;
+            *dest = pgm_read_byte(src);
+            dest ++;
+        }
+        if (enable_moon) {
+            *dest = 1;
+        }
+        mode_cnt --;  // get rid of last hidden mode, since it's a duplicate turbo
+    }
     if (enable_moon) {
         mode_cnt ++;
         solid_modes ++;
@@ -576,13 +598,15 @@ int main(void)
 
             toggle(&enable_moon, 2);
 
-            toggle(&memory, 3);
+            toggle(&reverse_modes, 3);
 
-            toggle(&offtim3, 4);
+            toggle(&memory, 4);
+
+            toggle(&offtim3, 5);
 
             // Enter temperature calibration mode?
             mode_idx = TEMP_CAL_MODE;
-            toggle(&mode_override, 5);
+            toggle(&mode_override, 6);
             mode_idx = 0;
 
             //output = pgm_read_byte(modes + mode_idx);
