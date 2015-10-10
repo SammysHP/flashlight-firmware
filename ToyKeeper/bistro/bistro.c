@@ -117,15 +117,17 @@
 
 #define TURBO     RAMP_SIZE       // Convenience code for turbo mode
 #define BATTCHECK 254       // Convenience code for battery check mode
+#define GROUP_SELECT_MODE 253
+#define TEMP_CAL_MODE 252
 // Uncomment to enable tactical strobe mode
-#define STROBE    253       // Convenience code for strobe mode
+#define STROBE    251       // Convenience code for strobe mode
 // Uncomment to unable a 2-level stutter beacon instead of a tactical strobe
-#define BIKING_STROBE 252   // Convenience code for biking strobe mode
+#define BIKING_STROBE 250   // Convenience code for biking strobe mode
 // comment out to use minimal version instead (smaller)
 #define FULL_BIKING_STROBE
-#define RAMP 251   // Convenience code for biking strobe mode
-#define POLICE_STROBE 250
-#define RANDOM_STROBE 249
+#define RAMP 249   // Convenience code for biking strobe mode
+#define POLICE_STROBE 248
+#define RANDOM_STROBE 247
 
 // thermal step-down
 #define TEMPERATURE_MON
@@ -177,6 +179,10 @@ uint8_t modegroup = 0;     // which mode group (set above in #defines)
 #ifdef OFFTIM3
 uint8_t offtim3 = 1;       // enable medium-press?
 #endif
+#ifdef TEMPERATURE_MON
+uint8_t maxtemp = 78;      // temperature step-down threshold
+#endif
+uint8_t mode_override = 0; // do we need to enter a special mode?
 uint8_t mode_idx = 0;      // current or last-used mode number
 // counter for entering config mode
 // (needs to be remembered while off, but only for up to half a second)
@@ -221,6 +227,8 @@ void save_mode() {  // save the current mode index (with wear leveling)
 #define OPT_modegroup (EEPSIZE-2)
 #define OPT_memory (EEPSIZE-3)
 #define OPT_offtim3 (EEPSIZE-4)
+#define OPT_maxtemp (EEPSIZE-5)
+#define OPT_mode_override (EEPSIZE-6)
 void save_state() {  // central method for writing complete state
     save_mode();
     eeprom_write_byte((uint8_t *)OPT_firstboot, FIRSTBOOT);
@@ -229,6 +237,10 @@ void save_state() {  // central method for writing complete state
 #ifdef OFFTIM3
     eeprom_write_byte((uint8_t *)OPT_offtim3, offtim3);
 #endif
+#ifdef TEMPERATURE_MON
+    eeprom_write_byte((uint8_t *)OPT_maxtemp, maxtemp);
+#endif
+    eeprom_write_byte((uint8_t *)OPT_mode_override, mode_override);
 }
 
 void restore_state() {
@@ -242,6 +254,10 @@ void restore_state() {
 #ifdef OFFTIM3
         offtim3 = 1;
 #endif
+#ifdef TEMPERATURE_MON
+        maxtemp = 78;
+#endif
+        mode_override = 0;
         save_state();
         return;
     }
@@ -261,6 +277,10 @@ void restore_state() {
 #ifdef OFFTIM3
     offtim3   = eeprom_read_byte((uint8_t *)OPT_offtim3);
 #endif
+#ifdef TEMPERATURE_MON
+    maxtemp   = eeprom_read_byte((uint8_t *)OPT_maxtemp);
+#endif
+    mode_override = eeprom_read_byte((uint8_t *)OPT_mode_override);
 
     // unnecessary, save_state handles wrap-around
     // (and we don't really care about it skipping cell 0 once in a while)
@@ -442,6 +462,22 @@ void toggle(uint8_t *var, uint8_t num) {
 }
 #endif // ifndef CONFIG_STARS
 
+#ifdef TEMPERATURE_MON
+uint8_t get_temperature() {
+    ADC_on_temperature();
+    // average a few values; temperature is noisy
+    uint16_t temp = 0;
+    uint8_t i;
+    get_voltage();
+    for(i=0; i<8; i++) {
+        temp += get_voltage();
+        _delay_ms(5);
+    }
+    temp >>= 3;
+    return temp;
+}
+#endif  // TEMPERATURE_MON
+
 int main(void)
 {
     uint8_t cap_val;
@@ -493,24 +529,27 @@ int main(void)
     //  so let's not wait until it decays to reset it)
     //if (fast_presses > 0x20) { fast_presses = 0; }
 
-    if (cap_val > CAP_SHORT) {
-        // We don't care what the value is as long as it's over 15
-        fast_presses = (fast_presses+1) & 0x1f;
-        // Indicates they did a short press, go to the next mode
-        next_mode(); // Will handle wrap arounds
+    // don't bother if the mode is overridden
+    if (! mode_override) {
+        if (cap_val > CAP_SHORT) {
+            // We don't care what the value is as long as it's over 15
+            fast_presses = (fast_presses+1) & 0x1f;
+            // Indicates they did a short press, go to the next mode
+            next_mode(); // Will handle wrap arounds
 #ifdef OFFTIM3
-    } else if (offtim3  &&  (cap_val > CAP_MED)) {
-        fast_presses = 0;
-        // User did a medium press, go back one mode
-        prev_mode(); // Will handle "negative" modes and wrap-arounds
+        } else if (offtim3  &&  (cap_val > CAP_MED)) {
+            fast_presses = 0;
+            // User did a medium press, go back one mode
+            prev_mode(); // Will handle "negative" modes and wrap-arounds
 #endif
-    } else {
-        // Long press, keep the same mode
-        // ... or reset to the first mode
-        fast_presses = 0;
-        if (! memory) {
-            // Reset to the first mode
-            mode_idx = 0;
+        } else {
+            // Long press, keep the same mode
+            // ... or reset to the first mode
+            fast_presses = 0;
+            if (! memory) {
+                // Reset to the first mode
+                mode_idx = 0;
+            }
         }
     }
     save_mode();
@@ -550,10 +589,18 @@ int main(void)
 #endif
     output = pgm_read_byte(modes + mode_idx);
     actual_level = output;
+    // handle mode overrides, like mode group selection and temperature calibration
+    if (mode_override) {
+        // do nothing; mode is already set
+        //mode_idx = mode_override;
+        fast_presses = 0;
+        output = mode_idx;
+    }
     while(1) {
         if (fast_presses > 0x0f) {  // Config mode
             _delay_s();       // wait for user to stop fast-pressing button
             fast_presses = 0; // exit this mode after one use
+            mode_idx = 0;
 
 #ifdef CONFIG_STARS
             // Short/small version of the config mode
@@ -572,8 +619,13 @@ int main(void)
 
             // Toggle offtim3, blink, untoggle, exit
             toggle(&offtim3, 3);
-#endif  // ifdef CONFIG_STARS
+
+            // Enter temperature calibration mode?
+            mode_idx = TEMP_CAL_MODE;
+            toggle(&mode_override, 4);
             mode_idx = 0;
+
+#endif  // ifdef CONFIG_STARS
             output = pgm_read_byte(modes + mode_idx);
             actual_level = output;
         }
@@ -667,23 +719,30 @@ int main(void)
             _delay_s(); _delay_s();
         }
 #endif // ifdef BATTCHECK
+#ifdef TEMP_CAL_MODE
+        else if (output == TEMP_CAL_MODE) {
+            // make sure we don't stay in this mode after button press
+            mode_idx = 0;
+            mode_override = 0;
+
+            // run at highest output level, to generate heat
+            set_mode(RAMP_SIZE);
+
+            // measure, save, wait...  repeat
+            while(1) {
+                maxtemp = get_temperature();
+                save_state();
+                _delay_s();
+            }
+        }
+#endif  // TEMP_CAL_MODE
         else {  // Regular non-hidden solid mode
             set_mode(actual_level);
 #ifdef TEMPERATURE_MON
-#define temp_threshold 78
-            ADC_on_temperature();
-
-            // average a few values; temperature is noisy
-            uint16_t temp = 0;
-            get_voltage();
-            for(i=0; i<8; i++) {
-                temp += get_voltage();
-                _delay_ms(5);
-            }
-            temp >>= 3;
+            uint8_t temp = get_temperature();
 
             // step down? (or step back up?)
-            if ((temp >= temp_threshold)  &&  (actual_level > 1)) {
+            if ((temp >= maxtemp)  &&  (actual_level > 1)) {
                 actual_level --;
             } else if (actual_level < output) {
                 actual_level ++;
