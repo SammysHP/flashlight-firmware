@@ -476,11 +476,11 @@ uint8_t get_temperature() {
     uint16_t temp = 0;
     uint8_t i;
     get_voltage();
-    for(i=0; i<8; i++) {
+    for(i=0; i<16; i++) {
         temp += get_voltage();
         _delay_ms(5);
     }
-    temp >>= 3;
+    temp >>= 4;
     return temp;
 }
 #endif  // TEMPERATURE_MON
@@ -579,6 +579,9 @@ int main(void)
 #endif
 #ifdef VOLTAGE_MON
     uint8_t lowbatt_cnt = 0;
+#ifdef TEMPERATURE_MON
+    uint8_t overheat_count = 0;
+#endif
     uint8_t i = 0;
     uint8_t voltage;
     // Make sure voltage reading is running for later
@@ -738,10 +741,18 @@ int main(void)
             uint8_t temp = get_temperature();
 
             // step down? (or step back up?)
-            if ((temp >= maxtemp)  &&  (actual_level > 1)) {
-                actual_level --;
-            } else if (actual_level < output) {
-                actual_level ++;
+            if (temp >= maxtemp) {
+                overheat_count ++;
+                // reduce noise, and limit the lowest step-down level
+                if ((overheat_count > 7) && (actual_level > (RAMP_SIZE/8))) {
+                    actual_level --;
+                }
+            } else {
+                // if we're not overheated, ramp up to the user-requested level
+                overheat_count = 0;
+                if (actual_level < output) {
+                    actual_level ++;
+                }
             }
             set_mode(actual_level);
 
