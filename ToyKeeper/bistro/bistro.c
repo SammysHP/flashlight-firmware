@@ -440,6 +440,13 @@ void blink(uint8_t val, uint16_t speed)
     }
 }
 
+void strobe(uint8_t ontime, uint8_t offtime) {
+    set_level(RAMP_SIZE);
+    _delay_ms(ontime);
+    set_level(0);
+    _delay_ms(offtime);
+}
+
 void toggle(uint8_t *var, uint8_t num) {
     // Used for extended config mode
     // Changes the value of a config option, waits for the user to "save"
@@ -618,26 +625,17 @@ int main(void)
 #ifdef STROBE
         else if (output == STROBE) {
             // 10Hz tactical strobe
-            set_level(RAMP_SIZE);
-            _delay_ms(50);
-            set_level(0);
-            _delay_ms(50);
+            strobe(50,50);
         }
 #endif // ifdef STROBE
 #ifdef POLICE_STROBE
         else if (output == POLICE_STROBE) {
             // police-like strobe
             for(i=0;i<8;i++) {
-                set_level(RAMP_SIZE);
-                _delay_ms(20);
-                set_level(0);
-                _delay_ms(40);
+                strobe(20,40);
             }
             for(i=0;i<8;i++) {
-                set_level(RAMP_SIZE);
-                _delay_ms(40);
-                set_level(0);
-                _delay_ms(80);
+                strobe(40,80);
             }
         }
 #endif // ifdef POLICE_STROBE
@@ -645,10 +643,8 @@ int main(void)
         else if (output == RANDOM_STROBE) {
             // pseudo-random strobe
             uint8_t ms = 34 + (pgm_rand() & 0x3f);
-            set_level(RAMP_SIZE);
-            _delay_ms(ms);
-            set_level(0);
-            _delay_ms(ms);
+            strobe(ms, ms);
+            strobe(ms, ms);
         }
 #endif // ifdef RANDOM_STROBE
 #ifdef BIKING_STROBE
