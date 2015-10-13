@@ -99,23 +99,23 @@
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,TURBO .
-#define NUM_HIDDEN          6
-#define HIDDENMODES         BIKING_STROBE,BATTCHECK,RANDOM_STROBE,POLICE_STROBE,RAMP,TURBO
-#define HIDDENMODES_ALT     0,0,0,0,0,0   // Zeroes, same length as NUM_HIDDEN
+#define NUM_HIDDEN          4
+#define HIDDENMODES         BIKING_STROBE,BATTCHECK,POLICE_STROBE,TURBO
+#define HIDDENMODES_ALT     0,0,0,0   // Zeroes, same length as NUM_HIDDEN
 
 #define TURBO     RAMP_SIZE       // Convenience code for turbo mode
 #define BATTCHECK 254       // Convenience code for battery check mode
 #define GROUP_SELECT_MODE 253
 #define TEMP_CAL_MODE 252
 // Uncomment to enable tactical strobe mode
-#define STROBE    251       // Convenience code for strobe mode
+//#define STROBE    251       // Convenience code for strobe mode
 // Uncomment to unable a 2-level stutter beacon instead of a tactical strobe
 #define BIKING_STROBE 250   // Convenience code for biking strobe mode
 // comment out to use minimal version instead (smaller)
 #define FULL_BIKING_STROBE
-#define RAMP 249   // Convenience code for biking strobe mode
+//#define RAMP 249       // ramp test mode for tweaking ramp shape
 #define POLICE_STROBE 248
-#define RANDOM_STROBE 247
+//#define RANDOM_STROBE 247
 
 // thermal step-down
 #define TEMPERATURE_MON
@@ -164,9 +164,9 @@
 // Config / state variables
 uint8_t eepos = 0;
 uint8_t memory = 0;        // mode memory, or not (set via soldered star)
-uint8_t modegroup = 0;     // which mode group (set above in #defines)
+uint8_t modegroup = 5;     // which mode group (set above in #defines)
 uint8_t reverse_modes = 0; // flip the mode order?
-uint8_t enable_moon = 0;   // Should we add moon to the set of modes?
+uint8_t enable_moon = 1;   // Should we add moon to the set of modes?
 #ifdef OFFTIM3
 uint8_t offtim3 = 1;       // enable medium-press?
 #endif
@@ -249,6 +249,7 @@ void restore_state() {
     // check if this is the first time we have powered on
     eep = eeprom_read_byte((uint8_t *)OPT_firstboot);
     if (eep != FIRSTBOOT) {
+        /*
         // TODO: simply return here, instead of setting defaults?
         //       (they should already be set while defining the variables)
         modegroup = 3;
@@ -262,6 +263,7 @@ void restore_state() {
         mode_override = 0;
         enable_moon = 0;
         reverse_modes = 0;
+        */
         save_state();
         return;
     }
@@ -616,10 +618,12 @@ int main(void)
 
             toggle(&offtim3, 5);
 
+#ifdef TEMPERATURE_MON
             // Enter temperature calibration mode?
             mode_idx = TEMP_CAL_MODE;
             toggle(&mode_override, 6);
             mode_idx = 0;
+#endif
 
             //output = pgm_read_byte(modes + mode_idx);
             output = modes[mode_idx];
@@ -724,6 +728,12 @@ int main(void)
             mode_idx = 0;
             mode_override = 0;
 
+            // Allow the user to turn off thermal regulation if they want
+            maxtemp = 255;
+            save_state();
+            set_mode(RAMP_SIZE/4);  // start somewhat dim during turn-off-regulation mode
+            _delay_s(); _delay_s();
+
             // run at highest output level, to generate heat
             set_mode(RAMP_SIZE);
 
@@ -731,7 +741,7 @@ int main(void)
             while(1) {
                 maxtemp = get_temperature();
                 save_state();
-                _delay_s();
+                _delay_s(); _delay_s();
             }
         }
 #endif  // TEMP_CAL_MODE
@@ -744,13 +754,15 @@ int main(void)
             if (temp >= maxtemp) {
                 overheat_count ++;
                 // reduce noise, and limit the lowest step-down level
-                if ((overheat_count > 7) && (actual_level > (RAMP_SIZE/8))) {
+                if ((overheat_count > 15) && (actual_level > (RAMP_SIZE/8))) {
                     actual_level --;
+                    //_delay_ms(5000);  // don't ramp down too fast
+                    overheat_count = 0;  // don't ramp down too fast
                 }
             } else {
                 // if we're not overheated, ramp up to the user-requested level
                 overheat_count = 0;
-                if (actual_level < output) {
+                if ((temp < maxtemp - 1) && (actual_level < output)) {
                     actual_level ++;
                 }
             }
