@@ -249,6 +249,8 @@ void restore_state() {
     // check if this is the first time we have powered on
     eep = eeprom_read_byte((uint8_t *)OPT_firstboot);
     if (eep != FIRSTBOOT) {
+        // TODO: simply return here, instead of setting defaults?
+        //       (they should already be set while defining the variables)
         modegroup = 3;
         memory = 0;
 #ifdef OFFTIM3
@@ -323,7 +325,7 @@ void count_modes() {
      *  from, so we need to count at runtime)
      */
     uint8_t *dest;
-    uint8_t *src = modegroups + (modegroup<<3);
+    const uint8_t *src = modegroups + (modegroup<<3);
     dest = modes;
     solid_modes = modegroup + 1;
     // TODO: add moon mode (or not) if config says to add it
