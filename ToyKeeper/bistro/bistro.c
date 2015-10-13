@@ -778,11 +778,9 @@ int main(void)
             fast_presses = 0;
         }
 #ifdef VOLTAGE_MON
-#if 1
         if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
-            voltage = ADCH; // get_voltage();
+            voltage = ADCH;  // get the waiting value
             // See if voltage is lower than what we were looking for
-            //if (voltage < ((mode_idx <= 1) ? ADC_CRIT : ADC_LOW)) {
             if (voltage < ADC_LOW) {
                 lowbatt_cnt ++;
             } else {
@@ -792,25 +790,28 @@ int main(void)
             if (lowbatt_cnt >= 8) {
                 // DEBUG: blink on step-down:
                 //set_level(0);  _delay_ms(100);
-                i = mode_idx; // save space by not accessing mode_idx more than necessary
-                // properly track hidden vs normal modes
-                if (i >= solid_modes) {  // FIXME: won't work with too few modes!
+
+                if (mode_idx >= solid_modes) {  // hidden / blinky modes
                     // step down from blinky modes to medium
-                    i = 2;
-                } else if (i > 0) {  // FIXME: step down via actual_level, not mode_idx
-                    // step down from solid modes one at a time
-                    i -= 1;
+                    mode_idx = solid_modes >> 1;
+                    actual_level = RAMP_SIZE / 2;
+                } else if (actual_level > 1) {  // regular solid mode
+                    // step down from solid modes somewhat gradually
+                    // drop by 25% each time
+                    actual_level = (actual_level >> 2) + (actual_level >> 1);
+                    // drop by half each time
+                    //actual_level = (actual_level >> 1);
                 } else { // Already at the lowest mode
-                    i = 0;
+                    //mode_idx = 0;  // unnecessary; we never leave this clause
+                    //actual_level = 0;  // unnecessary; we never leave this clause
                     // Turn off the light
                     set_level(0);
                     // Power down as many components as possible
                     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
                     sleep_mode();
                 }
-                // FIXME: use actual_level, not mode_idx!
-                set_mode(i);
-                mode_idx = i;
+                set_mode(actual_level);
+                output = actual_level;
                 save_mode();
                 lowbatt_cnt = 0;
                 // Wait at least 2 seconds before lowering the level again
@@ -820,13 +821,7 @@ int main(void)
             // Make sure conversion is running for next time through
             ADCSRA |= (1 << ADSC);
         }
-#endif
 #endif  // ifdef VOLTAGE_MON
-        //sleep_mode();  // incompatible with blinky modes
-
-        // If we got this far, the user has stopped fast-pressing.
-        // So, don't enter config mode.
-        //fast_presses = 0;  // doesn't interact well with strobe, too fast
     }
 
     //return 0; // Standard Return Code
