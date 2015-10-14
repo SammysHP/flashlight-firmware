@@ -194,6 +194,7 @@ uint8_t solid_modes;
 
 PROGMEM const uint8_t hiddenmodes[] = { HIDDENMODES };
 // default values calculated by group_calc.py
+// Each group must be 8 values long, but can be cut short with a zero.
 PROGMEM const uint8_t modegroups[] = {
     64,  0,  0,  0,  0,  0,  0,  0,
     10, 64,  0,  0,  0,  0,  0,  0,
@@ -318,12 +319,21 @@ void count_modes() {
     uint8_t *dest;
     const uint8_t *src = modegroups + (modegroup<<3);
     dest = modes;
-    solid_modes = modegroup + 1;
+
+    // Figure out how many modes are in this group
+    //solid_modes = modegroup + 1;  // Assume group N has N modes
+    // No, how about actually counting the modes instead?
+    // (in case anyone changes the mode groups above so they don't form a triangle)
+    for(solid_modes=0;
+        (solid_modes<8) && pgm_read_byte(src + solid_modes);
+        solid_modes++ ) {}
+
     // add moon mode (or not) if config says to add it
     if (enable_moon) {
         modes[0] = 1;
         dest ++;
     }
+
     // add regular modes
     memcpy_P(dest, src, solid_modes);
     // add hidden modes
@@ -751,9 +761,8 @@ int main(void)
                 // DEBUG: blink on step-down:
                 //set_level(0);  _delay_ms(100);
 
-                if (mode_idx >= solid_modes) {  // hidden / blinky modes
+                if (actual_level > RAMP_SIZE) {  // hidden / blinky modes
                     // step down from blinky modes to medium
-                    mode_idx = solid_modes >> 1;
                     actual_level = RAMP_SIZE / 2;
                 } else if (actual_level > 1) {  // regular solid mode
                     // step down from solid modes somewhat gradually
@@ -772,7 +781,7 @@ int main(void)
                 }
                 set_mode(actual_level);
                 output = actual_level;
-                save_mode();
+                //save_mode();  // we didn't actually change the mode
                 lowbatt_cnt = 0;
                 // Wait at least 2 seconds before lowering the level again
                 _delay_ms(250);  // this will interrupt blinky modes
