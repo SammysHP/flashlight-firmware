@@ -105,9 +105,7 @@
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,TURBO .
-#define NUM_HIDDEN          4
 #define HIDDENMODES         BIKING_STROBE,BATTCHECK,POLICE_STROBE,TURBO
-#define HIDDENMODES_ALT     0,0,0,0   // Zeroes, same length as NUM_HIDDEN
 
 #define TURBO     RAMP_SIZE       // Convenience code for turbo mode
 #define BATTCHECK 254       // Convenience code for battery check mode
@@ -331,9 +329,9 @@ void count_modes() {
     // add regular modes
     memcpy_P(dest, src, solid_modes);
     // add hidden modes
-    memcpy_P(dest + solid_modes, hiddenmodes, NUM_HIDDEN);
+    memcpy_P(dest + solid_modes, hiddenmodes, sizeof(hiddenmodes));
     // final count
-    mode_cnt = solid_modes + NUM_HIDDEN;
+    mode_cnt = solid_modes + sizeof(hiddenmodes);
     if (reverse_modes) {
         // TODO: yuck, isn't there a better way to do this?
         int8_t i;
