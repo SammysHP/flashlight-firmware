@@ -173,7 +173,7 @@ uint8_t memory = 0;        // mode memory, or not (set via soldered star)
 uint8_t offtim3 = 1;       // enable medium-press?
 #endif
 #ifdef TEMPERATURE_MON
-uint8_t maxtemp = 78;      // temperature step-down threshold
+uint8_t maxtemp = 79;      // temperature step-down threshold
 #endif
 // Other state variables
 uint8_t mode_override = 0; // do we need to enter a special mode?
@@ -722,7 +722,7 @@ int main(void)
             } else {
                 // if we're not overheated, ramp up to the user-requested level
                 overheat_count = 0;
-                if ((temp < maxtemp - 1) && (actual_level < output)) {
+                if ((temp < maxtemp - 2) && (actual_level < output)) {
                     actual_level ++;
                 }
             }
