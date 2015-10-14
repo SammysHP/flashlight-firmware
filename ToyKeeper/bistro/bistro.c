@@ -125,12 +125,6 @@
 
 // thermal step-down
 #define TEMPERATURE_MON
-// time-based step-down
-//#define NON_WDT_TURBO            // enable turbo step-down without WDT
-// How many timer ticks before before dropping down.
-// Each timer tick is 500ms, so "60" would be a 30-second stepdown.
-// Max value of 255 unless you change "ticks"
-#define TURBO_TIMEOUT       90
 
 // Calibrate voltage and OTC in this file:
 #include "../tk-calibration.h"
@@ -546,9 +540,6 @@ int main(void)
 
     uint8_t output;
     uint8_t actual_level;
-#ifdef NON_WDT_TURBO
-    uint8_t ticks = 0;
-#endif
 #ifdef TEMPERATURE_MON
     uint8_t overheat_count = 0;
 #endif
