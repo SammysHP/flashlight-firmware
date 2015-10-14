@@ -1,0 +1,96 @@
+"Bistro" firmware
+=================
+
+This is designed for an ATTiny25V-based driver with off-time capacitor 
+and FET+7135 power channel configuration.
+
+The interface is as follows:
+  (see bistro-ui.png for a quick start)
+
+  While off:
+
+    - Fully click and release to turn the light on.  It will go to the 
+      first mode or the last-used mode, depending on whether you enabled 
+      mode memory.
+
+  While on:
+
+    - Short tap: Do a short (less than 0.5s) half-press to go forward to 
+      the next mode.
+
+    - Med tap: Do a medium (0.5s to 1.5s) half-press to go backward to 
+      the previous mode, if medium-press is enabled.
+
+    - Long tap: Do a long (longer than 1.5s) half-press to reset to the 
+      first mode (if mode memory is turned off).
+
+    - Or fully click and release to turn the light off.
+
+    - Short tap a bunch of times (15+ taps, or until the light stops 
+      turning on) to enter config mode.
+
+  Hidden modes:
+
+    - Go backward from moon to access the hidden modes.  They are, in 
+      order:
+
+      - Turbo (just like the regular turbo)
+
+      - Tactical / police strobe (7 Hz / 14 Hz alternating)
+
+      - Battery check / beacon mode
+        It should blink out the voltage in whole numbers then a '.' then 
+        tenths.  So, for 3.6V it would blink out "--- . ------".  
+        Voltage range is from about 2.5V to 4.4V
+
+      - Biking flasher (2-level stutter beacon, 1 Hz)
+
+  Configuration options:
+
+    The config mode has several options.  It will blink out a number to 
+    show which option is active, then "buzz" for a bit.  Click during 
+    the "buzz" to select that option.  Some options may enter a 
+    secondary config mode after the light turns back on.
+
+    Options include:
+
+      1. Mode group.  Choice of 1 to 8 regular modes from low to turbo.
+         After clicking, the light should come on in a special 
+         group-select mode.  In this mode, it slowly blinks 8 times, 
+         pauses, then repeats.  Turn the light off after N blinks to 
+         select mode group N.  The number of levels in each group is 
+         equal to the group number, and all levels within are 
+         evenly-spaced.
+
+         Example: To select low-med-high, let it blink three times then 
+         click the button.
+
+      2. Moon.  Select to turn moon mode on or off.  This is in addition 
+         to the other regular modes, so you get 2 to 9 levels when moon 
+         is enabled.
+
+      3. Mode order.  Low to high, or high to low.
+
+      4. Mode memory.  Off or on.
+
+      5. Medium-press.  Off or on.  If on, a medium-press will allow 
+         going backward through the mode sequence, and hidden blinky 
+         modes will be accessible.
+
+      6. Thermal calibration.  Set the temperature at which the light 
+         will begin stepping down to cool itself off.  After clicking to 
+         select this, the light should turn on in a special thermal 
+         calibration mode.  It will start at a medium-low brightness, 
+         wait a second or two, then step up to turbo.
+
+         - To turn off thermal regulation, click within the first second 
+           (while the output is relatively low).
+
+         - To set a new maximum temperature, leave the light on until 
+           you think it is too hot, then turn it off.  From this point 
+           on, the light will use that new temperature as its maximum 
+           allowed heat.
+
+           Note that there may be a delay between when you feel the heat 
+           and when the MCU feels the heat, so the value saved may be a 
+           little bit lower than expected.
