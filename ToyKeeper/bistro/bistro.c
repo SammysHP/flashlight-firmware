@@ -502,16 +502,7 @@ int main(void)
 
     // check button press time, unless the mode is overridden
     if (! mode_override) {
-        if  ( (cap_val > CAP_SHORT)  // true short-press
-                /*
-#ifdef OFFTIM3
-              // Oops, fast_presses decays here and this takes us directly to config mode.
-              // (so, this should be implemented elsewhere, not here)
-              ||
-              ( (cap_val > CAP_MED) && (!offtim3) )  // disabled-med-press == short-press
-#endif
-*/
-            ) {
+        if (cap_val > CAP_SHORT) {
             // Indicates they did a short press, go to the next mode
             // We don't care what the fast_presses value is as long as it's over 15
             fast_presses = (fast_presses+1) & 0x1f;
