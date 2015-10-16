@@ -422,7 +422,7 @@ void toggle(uint8_t *var, uint8_t num) {
     save_state();
     // "buzz" for a while to indicate the active toggle window
     for(uint8_t i=0; i<32; i++) {
-        set_level(RAMP_SIZE/8);
+        set_level(BLINK_BRIGHTNESS * 3 / 4);
         _delay_ms(20);
         set_level(0);
         _delay_ms(20);
@@ -502,16 +502,30 @@ int main(void)
 
     // check button press time, unless the mode is overridden
     if (! mode_override) {
-        if (cap_val > CAP_SHORT) {
+        if  ( (cap_val > CAP_SHORT)  // true short-press
+                /*
+#ifdef OFFTIM3
+              // Oops, fast_presses decays here and this takes us directly to config mode.
+              // (so, this should be implemented elsewhere, not here)
+              ||
+              ( (cap_val > CAP_MED) && (!offtim3) )  // disabled-med-press == short-press
+#endif
+*/
+            ) {
             // Indicates they did a short press, go to the next mode
             // We don't care what the fast_presses value is as long as it's over 15
             fast_presses = (fast_presses+1) & 0x1f;
             next_mode(); // Will handle wrap arounds
 #ifdef OFFTIM3
-        } else if (offtim3  &&  (cap_val > CAP_MED)) {
+        } else if (cap_val > CAP_MED) {
             // User did a medium press, go back one mode
             fast_presses = 0;
-            prev_mode(); // Will handle "negative" modes and wrap-arounds
+            if (offtim3) {
+                prev_mode();  // Will handle "negative" modes and wrap-arounds
+            } else {
+                next_mode();  // disabled-med-press acts like short-press
+                              // (except that fast_presses isn't reliable then)
+            }
 #endif
         } else {
             // Long press, keep the same mode
@@ -575,7 +589,9 @@ int main(void)
 
             toggle(&memory, 4);
 
+#ifdef OFFTIM3
             toggle(&offtim3, 5);
+#endif
 
 #ifdef TEMPERATURE_MON
             // Enter temperature calibration mode?
