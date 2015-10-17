@@ -167,6 +167,7 @@ uint8_t offtim3 = 1;       // enable medium-press?
 #ifdef TEMPERATURE_MON
 uint8_t maxtemp = 79;      // temperature step-down threshold
 #endif
+uint8_t muggle_mode = 0;   // simple mode designed for muggles
 // Other state variables
 uint8_t mode_override = 0; // do we need to enter a special mode?
 uint8_t mode_idx = 0;      // current or last-used mode number
@@ -187,6 +188,7 @@ uint8_t solid_modes;
 PROGMEM const uint8_t hiddenmodes[] = { HIDDENMODES };
 // default values calculated by group_calc.py
 // Each group must be 8 values long, but can be cut short with a zero.
+#define NUM_MODEGROUPS 8  // don't count muggle mode
 PROGMEM const uint8_t modegroups[] = {
     64,  0,  0,  0,  0,  0,  0,  0,
     10, 64,  0,  0,  0,  0,  0,  0,
@@ -196,6 +198,7 @@ PROGMEM const uint8_t modegroups[] = {
     10, 20, 31, 42, 53, 64,  0,  0,
     10, 19, 28, 37, 46, 54, 64,  0,
     10, 17, 25, 33, 40, 48, 56, 64,
+    10, 30, 50,  0,                  // muggle mode, exception to "must be 8 bytes long"
 };
 uint8_t modes[] = { 1,2,3,4,5,6,7,8,9, HIDDENMODES };  // make sure this is long enough...
 
@@ -221,6 +224,7 @@ void save_mode() {  // save the current mode index (with wear leveling)
 #define OPT_mode_override (EEPSIZE-6)
 #define OPT_moon (EEPSIZE-7)
 #define OPT_revmodes (EEPSIZE-8)
+#define OPT_muggle (EEPSIZE-9)
 void save_state() {  // central method for writing complete state
     save_mode();
     eeprom_write_byte((uint8_t *)OPT_firstboot, FIRSTBOOT);
@@ -235,6 +239,7 @@ void save_state() {  // central method for writing complete state
     eeprom_write_byte((uint8_t *)OPT_mode_override, mode_override);
     eeprom_write_byte((uint8_t *)OPT_moon, enable_moon);
     eeprom_write_byte((uint8_t *)OPT_revmodes, reverse_modes);
+    eeprom_write_byte((uint8_t *)OPT_muggle, muggle_mode);
 }
 
 void restore_state() {
@@ -270,6 +275,7 @@ void restore_state() {
     mode_override = eeprom_read_byte((uint8_t *)OPT_mode_override);
     enable_moon   = eeprom_read_byte((uint8_t *)OPT_moon);
     reverse_modes = eeprom_read_byte((uint8_t *)OPT_revmodes);
+    muggle_mode   = eeprom_read_byte((uint8_t *)OPT_muggle);
 
     // unnecessary, save_state handles wrap-around
     // (and we don't really care about it skipping cell 0 once in a while)
@@ -288,6 +294,9 @@ inline void next_mode() {
 
 #ifdef OFFTIM3
 inline void prev_mode() {
+    // simple mode has no reverse
+    if (muggle_mode) { return next_mode(); }
+
     if (mode_idx == solid_modes) {
         // If we hit the end of the hidden modes, go back to moon
         mode_idx = 0;
@@ -308,8 +317,21 @@ void count_modes() {
      * (this matters because we have more than one set of modes to choose
      *  from, so we need to count at runtime)
      */
+    // copy config to local vars to avoid accidentally overwriting them in muggle mode
+    // (also, it seems to reduce overall program size)
+    uint8_t my_modegroup = modegroup;
+    uint8_t my_enable_moon = enable_moon;
+    uint8_t my_reverse_modes = reverse_modes;
+
+    // override config if we're in simple mode
+    if (muggle_mode) {
+        my_modegroup = NUM_MODEGROUPS;
+        my_enable_moon = 0;
+        my_reverse_modes = 0;
+    }
+
     uint8_t *dest;
-    const uint8_t *src = modegroups + (modegroup<<3);
+    const uint8_t *src = modegroups + (my_modegroup<<3);
     dest = modes;
 
     // Figure out how many modes are in this group
@@ -321,7 +343,7 @@ void count_modes() {
         solid_modes++ ) {}
 
     // add moon mode (or not) if config says to add it
-    if (enable_moon) {
+    if (my_enable_moon) {
         modes[0] = 1;
         dest ++;
     }
@@ -332,7 +354,7 @@ void count_modes() {
     memcpy_P(dest + solid_modes, hiddenmodes, sizeof(hiddenmodes));
     // final count
     mode_cnt = solid_modes + sizeof(hiddenmodes);
-    if (reverse_modes) {
+    if (my_reverse_modes) {
         // TODO: yuck, isn't there a better way to do this?
         int8_t i;
         src += solid_modes;
@@ -342,12 +364,12 @@ void count_modes() {
             *dest = pgm_read_byte(src);
             dest ++;
         }
-        if (enable_moon) {
+        if (my_enable_moon) {
             *dest = 1;
         }
         mode_cnt --;  // get rid of last hidden mode, since it's a duplicate turbo
     }
-    if (enable_moon) {
+    if (my_enable_moon) {
         mode_cnt ++;
         solid_modes ++;
     }
@@ -522,7 +544,7 @@ int main(void)
             // Long press, keep the same mode
             // ... or reset to the first mode
             fast_presses = 0;
-            if (! memory) {
+            if (muggle_mode  || (! memory)) {
                 // Reset to the first mode
                 mode_idx = 0;
             }
@@ -569,25 +591,29 @@ int main(void)
             fast_presses = 0; // exit this mode after one use
             mode_idx = 0;
 
+            // Enter or leave "muggle mode"?
+            toggle(&muggle_mode, 1);
+            if (muggle_mode) { continue; };  // don't offer other options in muggle mode
+
             // Enter the mode group selection mode?
             mode_idx = GROUP_SELECT_MODE;
-            toggle(&mode_override, 1);
+            toggle(&mode_override, 2);
             mode_idx = 0;
 
-            toggle(&enable_moon, 2);
+            toggle(&enable_moon, 3);
 
-            toggle(&reverse_modes, 3);
+            toggle(&reverse_modes, 4);
 
-            toggle(&memory, 4);
+            toggle(&memory, 5);
 
 #ifdef OFFTIM3
-            toggle(&offtim3, 5);
+            toggle(&offtim3, 6);
 #endif
 
 #ifdef TEMPERATURE_MON
             // Enter temperature calibration mode?
             mode_idx = TEMP_CAL_MODE;
-            toggle(&mode_override, 6);
+            toggle(&mode_override, 7);
             mode_idx = 0;
 #endif
 
@@ -675,7 +701,6 @@ int main(void)
         }
 #endif // ifdef BATTCHECK
         else if (output == GROUP_SELECT_MODE) {
-#define NUM_MODEGROUPS 8
             // exit this mode after one use
             mode_idx = 0;
             mode_override = 0;
