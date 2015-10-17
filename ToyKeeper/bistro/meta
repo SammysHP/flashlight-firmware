@@ -6,6 +6,7 @@ Description: "Bistro" firmware for clicky-switch lights
   - mode memory, or not
   - medium-press to go backward, or not
   - thermal calibration mode sets the maximum allowed temperature
+  - "muggle mode" simplified UI for use while lending the light to others
   Default config fits on an attiny25, which can be used on drivers designed for the attiny13a.
   So, there is no need to build a special driver board with extra room for tiny45/85.
   Should work on both FET+1 and single-channel drivers, though the single-channel ones
@@ -14,6 +15,6 @@ Button-Type: clicky
 Memory: offtime, OTC, configurable
 MCU: attiny25, attiny45, attiny85
 Authors: ToyKeeper
-Modes: battcheck, voltage readout, tactical strobe, random strobe, police strobe, bike flasher, config
+Modes: battcheck, voltage readout, tactical strobe, random strobe, police strobe, bike flasher, config, muggle
 Extras: dual PWM, offtime-3, hidden modes, mode groups, thermal regulation, LVP, soft start
 License: GPLv3

@@ -48,13 +48,19 @@ The interface is as follows:
   Configuration options:
 
     The config mode has several options.  It will blink out a number to 
-    show which option is active, then "buzz" for a bit.  Click during 
-    the "buzz" to select that option.  Some options may enter a 
-    secondary config mode after the light turns back on.
+    show which option is active, then "buzz" or "stutter" for a bit.  
+    Click during the "buzz" to select that option.  Some options may 
+    enter a secondary config mode after the light turns back on.
 
     Options include:
 
-      1. Mode group.  Choice of 1 to 8 regular modes from low to turbo.
+      1. Muggle mode / simple mode.  Good while lending the light to 
+         others.  It overrides other config settings temporarily:
+         - low/med/high, in that order, with high at about half power.
+         - no moon, no memory, no medium-presses, no hidden modes
+         - the only config option is the option to exit muggle mode
+
+      2. Mode group.  Choice of 1 to 8 regular modes from low to turbo.
          After clicking, the light should come on in a special 
          group-select mode.  In this mode, it slowly blinks 8 times, 
          pauses, then repeats.  Turn the light off after N blinks to 
@@ -65,19 +71,19 @@ The interface is as follows:
          Example: To select low-med-high, let it blink three times then 
          click the button.
 
-      2. Moon.  Select to turn moon mode on or off.  This is in addition 
+      3. Moon.  Select to turn moon mode on or off.  This is in addition 
          to the other regular modes, so you get 2 to 9 levels when moon 
          is enabled.
 
-      3. Mode order.  Low to high, or high to low.
+      4. Mode order.  Low to high, or high to low.
 
-      4. Mode memory.  Off or on.
+      5. Mode memory.  Off or on.
 
-      5. Medium-press.  Off or on.  If on, a medium-press will allow 
+      6. Medium-press.  Off or on.  If on, a medium-press will allow 
          going backward through the mode sequence, and hidden blinky 
          modes will be accessible.
 
-      6. Thermal calibration.  Set the temperature at which the light 
+      7. Thermal calibration.  Set the temperature at which the light 
          will begin stepping down to cool itself off.  After clicking to 
          select this, the light should turn on in a special thermal 
          calibration mode.  It will start at a medium-low brightness, 
