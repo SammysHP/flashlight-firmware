@@ -60,7 +60,15 @@ The interface is as follows:
          - no moon, no memory, no medium-presses, no hidden modes
          - the only config option is the option to exit muggle mode
 
-      2. Mode group.  Choice of 1 to 8 regular modes from low to turbo.
+      2. Mode memory.  Off or on.
+
+      3. Moon.  Select to turn moon mode on or off.  This is in addition 
+         to the other regular modes, so you get 2 to 9 levels when moon 
+         is enabled.
+
+      4. Mode order.  Low to high, or high to low.
+
+      5. Mode group.  Choice of 1 to 8 regular modes from low to turbo.
          After clicking, the light should come on in a special 
          group-select mode.  In this mode, it slowly blinks 8 times, 
          pauses, then repeats.  Turn the light off after N blinks to 
@@ -70,14 +78,6 @@ The interface is as follows:
 
          Example: To select low-med-high, let it blink three times then 
          click the button.
-
-      3. Moon.  Select to turn moon mode on or off.  This is in addition 
-         to the other regular modes, so you get 2 to 9 levels when moon 
-         is enabled.
-
-      4. Mode order.  Low to high, or high to low.
-
-      5. Mode memory.  Off or on.
 
       6. Medium-press.  Off or on.  If on, a medium-press will allow 
          going backward through the mode sequence, and hidden blinky 

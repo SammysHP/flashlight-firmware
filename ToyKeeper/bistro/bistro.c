@@ -596,16 +596,16 @@ int main(void)
             toggle(&muggle_mode, 1);
             if (muggle_mode) { continue; };  // don't offer other options in muggle mode
 
-            // Enter the mode group selection mode?
-            mode_idx = GROUP_SELECT_MODE;
-            toggle(&mode_override, 2);
-            mode_idx = 0;
+            toggle(&memory, 2);
 
             toggle(&enable_moon, 3);
 
             toggle(&reverse_modes, 4);
 
-            toggle(&memory, 5);
+            // Enter the mode group selection mode?
+            mode_idx = GROUP_SELECT_MODE;
+            toggle(&mode_override, 5);
+            mode_idx = 0;
 
 #ifdef OFFTIM3
             toggle(&offtim3, 6);
