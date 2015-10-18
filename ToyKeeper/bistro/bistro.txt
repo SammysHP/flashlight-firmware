@@ -100,3 +100,5 @@ The interface is as follows:
            Note that there may be a delay between when you feel the heat 
            and when the MCU feels the heat, so the value saved may be a 
            little bit lower than expected.
+
+      8. Factory reset.  Change all settings back to default.

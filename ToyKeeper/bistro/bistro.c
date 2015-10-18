@@ -157,6 +157,8 @@
  */
 
 // Config option variables
+#define FIRSTBOOT 0b01010101
+uint8_t firstboot = FIRSTBOOT;  // detect initial boot or factory reset
 uint8_t modegroup = 5;     // which mode group (set above in #defines)
 uint8_t enable_moon = 1;   // Should we add moon to the set of modes?
 uint8_t reverse_modes = 0; // flip the mode order?
@@ -215,7 +217,6 @@ void save_mode() {  // save the current mode index (with wear leveling)
     eeprom_write_byte((uint8_t *)(oldpos), 0xff);     // erase old state
 }
 
-#define FIRSTBOOT 0b01010101
 #define OPT_firstboot (EEPSIZE-1)
 #define OPT_modegroup (EEPSIZE-2)
 #define OPT_memory (EEPSIZE-3)
@@ -227,7 +228,7 @@ void save_mode() {  // save the current mode index (with wear leveling)
 #define OPT_muggle (EEPSIZE-9)
 void save_state() {  // central method for writing complete state
     save_mode();
-    eeprom_write_byte((uint8_t *)OPT_firstboot, FIRSTBOOT);
+    eeprom_write_byte((uint8_t *)OPT_firstboot, firstboot);
     eeprom_write_byte((uint8_t *)OPT_modegroup, modegroup);
     eeprom_write_byte((uint8_t *)OPT_memory, memory);
 #ifdef OFFTIM3
@@ -616,6 +617,8 @@ int main(void)
             toggle(&mode_override, 7);
             mode_idx = 0;
 #endif
+
+            toggle(&firstboot, 8);
 
             //output = pgm_read_byte(modes + mode_idx);
             output = modes[mode_idx];
