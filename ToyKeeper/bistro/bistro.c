@@ -54,7 +54,7 @@
 // FIXME: make 1-channel vs 2-channel power a single #define option
 #define FET_7135_LAYOUT  // specify an I/O pin layout
 // Also, assign I/O pins in this file:
-#include "../tk-attiny.h"
+#include "tk-attiny.h"
 
 /*
  * =========================================================================
@@ -125,7 +125,7 @@
 #define TEMPERATURE_MON
 
 // Calibrate voltage and OTC in this file:
-#include "../tk-calibration.h"
+#include "tk-calibration.h"
 
 /*
  * =========================================================================
@@ -144,12 +144,12 @@
 
 #define OWN_DELAY           // Don't use stock delay functions.
 #define USE_DELAY_S         // Also use _delay_s(), not just _delay_ms()
-#include "../tk-delay.h"
+#include "tk-delay.h"
 
-#include "../tk-voltage.h"
+#include "tk-voltage.h"
 
 #ifdef RANDOM_STROBE
-#include "../tk-random.h"
+#include "tk-random.h"
 #endif
 
 /*
