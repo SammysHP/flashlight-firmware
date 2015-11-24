@@ -1,0 +1,8 @@
+Description: full-featured configurable e-switch firmware for tiny45/85
+Authors: Tom E
+MCU: attiny45, attiny85
+Button-Type: momentary
+Memory: configurable
+Modes: config, tactical strobe, police strobe, bike flasher, beacon,
+  alpine beacon, battcheck, voltage readout
+Extras: mode groups, lock-out, config mode
