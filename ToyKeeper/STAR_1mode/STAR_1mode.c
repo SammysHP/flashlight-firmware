@@ -131,6 +131,7 @@ uint8_t mode_cnt = 0;
 
 uint8_t lowbatt_cnt = 0;
 
+#if 0  // memory is irrelevant for 1 mode
 void store_mode_idx(uint8_t lvl) {  //central method for writing (with wear leveling)
 	uint8_t oldpos=eepos;
 	eepos=(eepos+1)&31;  //wear leveling, use next cell
@@ -159,6 +160,7 @@ inline void next_mode() {
 		}
 	}
 }
+#endif  // memory/modes are irrelevant for 1 mode
 
 inline void WDT_on() {
 	// Setup watchdog timer to only interrupt, not reset
@@ -237,6 +239,7 @@ ISR(WDT_vect) {
 	//static uint16_t ticks = 0;
 	//if (ticks < 60000) ticks++;
 	
+#if 0  // memory is irrelevant with only one mode
 	if (ticks == WDT_TIMEOUT) {
 		if (memory) {
 			store_mode_idx(mode_idx);
@@ -245,6 +248,7 @@ ISR(WDT_vect) {
 			store_mode_idx((mode_dir == 1) ? 0 : (mode_cnt - 1));
 		}
 	}
+#endif
 #ifdef MODE_TURBO	
 	//if (ticks == TURBO_TIMEOUT && modes[mode_idx] == MODE_TURBO) { // Doesn't make any sense why this doesn't work
 	if (ticks >= TURBO_TIMEOUT && mode_idx == (mode_cnt - 1) && PWM_LVL > MODE_TURBO_LOW) {
