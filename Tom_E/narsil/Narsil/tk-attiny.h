@@ -37,6 +37,12 @@
     #define EEPSIZE 128
     #define V_REF REFS1
     #define BOGOMIPS 2000
+#elif (ATTINY == 85)
+	// TODO: Use 6.4 MHz instead of 8 MHz?
+	#define F_CPU 8000000UL
+	#define EEPSIZE 512
+	#define V_REF REFS1
+	#define BOGOMIPS 2000
 #else
     Hey, you need to define ATTINY.
 #endif

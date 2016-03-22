@@ -103,7 +103,7 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="eswBrOutCfg.c">
+    <Compile Include="Narsil.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="tk-attiny.h">
