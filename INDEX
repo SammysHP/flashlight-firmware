@@ -43,11 +43,11 @@ Summary of each project
     Tido/BLF-VLD:
         Tido's Budget Light Forum Versatile LED Driver
 
-    Tom_E/eswBrOutCfg:
-        full-featured configurable e-switch firmware for tiny45/85
-
     Tom_E/eswitch-13:
         STAR-momentary plus strobe and 1-click off
+
+    Tom_E/narsil:
+        full-featured configurable e-switch firmware for tiny45/85
 
     ToyKeeper/DarkHorse:
         Imitation of ZebraLight's UI
@@ -145,6 +145,7 @@ Authors
         JonnyC/STAR/STAR_momentary
         JonnyC/STAR/STAR_off_time
         Tom_E/eswitch-13
+        Tom_E/narsil
         ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
         ToyKeeper/starry-offtime
@@ -159,8 +160,8 @@ Authors
         Tido/BLF-VLD
 
     Tom E:
-        Tom_E/eswBrOutCfg
         Tom_E/eswitch-13
+        Tom_E/narsil
 
     ToyKeeper:
         ToyKeeper/Ferrero_Rocher
@@ -238,8 +239,8 @@ Button-Type
         JonnyC/STAR/MTN_momentary_temp
         JonnyC/STAR/STAR_dual_switch
         JonnyC/STAR/STAR_momentary
-        Tom_E/eswBrOutCfg
         Tom_E/eswitch-13
+        Tom_E/narsil
         ToyKeeper/Ferrero_Rocher
         Werner/STAR_improvements
         dthoang
@@ -263,7 +264,7 @@ Extras
         ToyKeeper/Ferrero_Rocher
 
     config mode:
-        Tom_E/eswBrOutCfg
+        Tom_E/narsil
 
     dual PWM:
         JonnyC/STAR/STAR
@@ -292,10 +293,10 @@ Extras
         _the_/TheStar
 
     lock-out:
-        Tom_E/eswBrOutCfg
+        Tom_E/narsil
 
     mode groups:
-        Tom_E/eswBrOutCfg
+        Tom_E/narsil
         ToyKeeper/bistro
         ToyKeeper/blf-a6
         odd/MGdriver
@@ -406,11 +407,11 @@ MCU
         ToyKeeper/blf-a6
 
     attiny45:
-        Tom_E/eswBrOutCfg
+        Tom_E/narsil
         ToyKeeper/bistro
 
     attiny85:
-        Tom_E/eswBrOutCfg
+        Tom_E/narsil
         ToyKeeper/bistro
 
     pic10f322:
@@ -431,7 +432,7 @@ Memory
         pilotdog68/xintd-x3
 
     configurable:
-        Tom_E/eswBrOutCfg
+        Tom_E/narsil
         ToyKeeper/bistro
 
     mem decay:
@@ -522,12 +523,12 @@ Modes
         Tido/BLF-VLD
 
     alpine beacon:
-        Tom_E/eswBrOutCfg
+        Tom_E/narsil
 
     battcheck:
         DrJones/luxdrv
         Tamagotchi/7135x8v2
-        Tom_E/eswBrOutCfg
+        Tom_E/narsil
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/bistro
         ToyKeeper/blf-a6
@@ -542,7 +543,7 @@ Modes
         ToyKeeper/battcheck
 
     beacon:
-        Tom_E/eswBrOutCfg
+        Tom_E/narsil
         ToyKeeper/cypreus
         ToyKeeper/s7
         ToyKeeper/tail-light
@@ -553,7 +554,7 @@ Modes
 
     bike flasher:
         Tamagotchi/7135x8v2
-        Tom_E/eswBrOutCfg
+        Tom_E/narsil
         ToyKeeper/bistro
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
@@ -566,7 +567,7 @@ Modes
 
     config:
         DrJones/luxdrv
-        Tom_E/eswBrOutCfg
+        Tom_E/narsil
         ToyKeeper/bistro
         ToyKeeper/blf-a6
         pilotdog68/xintd-x3
@@ -600,7 +601,7 @@ Modes
         Tamagotchi/7135x8v2
 
     police strobe:
-        Tom_E/eswBrOutCfg
+        Tom_E/narsil
         ToyKeeper/bistro
 
     ramp:
@@ -621,8 +622,8 @@ Modes
 
     tactical strobe:
         DrJones/luxdrv
-        Tom_E/eswBrOutCfg
         Tom_E/eswitch-13
+        Tom_E/narsil
         ToyKeeper/bistro
         ToyKeeper/blf-a6
         ToyKeeper/starry-offtime
@@ -638,7 +639,7 @@ Modes
         ToyKeeper/s7
 
     voltage readout:
-        Tom_E/eswBrOutCfg
+        Tom_E/narsil
         ToyKeeper/bistro
 
 TODO

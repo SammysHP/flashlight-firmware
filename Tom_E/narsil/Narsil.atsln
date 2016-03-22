@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Atmel Studio Solution File, Format Version 11.00
-Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "eswBrOutCfg", "eswBrOutCfg\eswBrOutCfg.cproj", "{15DE09C3-0AF4-4D66-A5AF-C8CEB4C6C58E}"
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "Narsil", "Narsil\Narsil.cproj", "{15DE09C3-0AF4-4D66-A5AF-C8CEB4C6C58E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

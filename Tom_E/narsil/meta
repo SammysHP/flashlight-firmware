@@ -1,5 +1,5 @@
 Description: full-featured configurable e-switch firmware for tiny45/85
-Authors: Tom E
+Authors: Tom E, JonnyC
 MCU: attiny45, attiny85
 Button-Type: momentary
 Memory: configurable
