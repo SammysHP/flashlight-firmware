@@ -1,4 +1,5 @@
 Description: full-featured configurable e-switch firmware for tiny45/85
+  2016-03-21 rev: http://budgetlightforum.com/comment/915711#comment-915711
 Authors: Tom E, JonnyC
 MCU: attiny45, attiny85
 Button-Type: momentary
