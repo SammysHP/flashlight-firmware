@@ -59,17 +59,17 @@ The interface is as follows:
 
          The mode groups are: (output is approximate)
 
-           1. 0.1%, 1, 10, 40, 100, strobe, biking, battcheck
-           2. 0.1, 1, 10, 40, 100
-           3. 100, 40, 10, 1, 0.1
-           4. 1, 22, 100, strobe, biking, battcheck, SOS
-           5. 1, 22, 100
-           6. 100, 22, 1
+           1. 0.1%, 1, 10, 35, 100, strobe, biking, battcheck
+           2. 0.1, 1, 10, 35, 100
+           3. 100, 35, 10, 1, 0.1
+           4. 1, 20, 100, strobe, biking, battcheck, SOS
+           5. 1, 20, 100
+           6. 100, 20, 1
            7. 0.1, 1, 10, 50, strobe, biking, battcheck, SOS
            8. 0.1, 1, 10, 50
            9. 50, 10, 1, 0.1
-          10. 1, 10, 40, 100
-          11. 100, 22, strobe
+          10. 1, 10, 35, 100
+          11. 100, 20, strobe
           12. 100% only
 
          Example: To select group 4 (low-med-high), let it blink until 
