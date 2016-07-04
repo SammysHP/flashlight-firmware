@@ -758,10 +758,10 @@ int main(void)
             for(i=0;i<4;i++) {
                 //set_output(255,0);
                 set_mode(RAMP_SIZE);
-                _delay_ms(5);
+                _delay_ms(10);
                 //set_output(0,255);
-                set_mode(3);
-                _delay_ms(65);
+                set_mode(4);
+                _delay_ms(60);
             }
             //_delay_ms(720);
             _delay_s();
