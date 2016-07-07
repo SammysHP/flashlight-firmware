@@ -21,7 +21,7 @@ The interface is as follows:
 
     - Or fully click and release to turn the light off.
 
-    - Short tap a bunch of times (8+ taps, or until the light stops 
+    - Short tap a bunch of times (10+ taps, or until the light stops 
       turning on) to enter config mode.
 
   Blinky modes:
@@ -72,7 +72,7 @@ The interface is as follows:
           11. 100, 20, strobe
           12. 100% only
 
-         Example: To select group 4 (low-med-high), let it blink until 
+         Example: To select group 5 (low-med-high), let it blink until 
          it counts out five, then click the button.
 
       2. Mode memory.  Off or on.

@@ -686,7 +686,7 @@ int main(void)
         output = mode_idx;
     }
     while(1) {
-        if (fast_presses > 0x07) {  // Config mode
+        if (fast_presses > 9) {  // Config mode
             _delay_s();       // wait for user to stop fast-pressing button
             fast_presses = 0; // exit this mode after one use
             mode_idx = 0;
