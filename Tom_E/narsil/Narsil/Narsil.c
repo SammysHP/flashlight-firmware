@@ -18,14 +18,33 @@
 //  - battery voltage level display in n.n format (ex: 4.1v blinks 4 times followed by 1 blink)
 //  - multiple strobe and beacon modes
 //  - mode configuration settings:
+//			- ramping
 //			- 12 mode sets to choose from
 //			- moonlight mode on/off plus setting it's PWM level 1-7
 //			- lo->hi or hi->lo ordering
 //			- mode memory on e-switch on/off
 // 		- turbo-timeout setting
+//			- blinkie mode configuration (off, strobe only, all blinkies)
 //
 // Change History
 // --------------
+// 2016-06-08:
+//   - add double-click support to max when ON (already worked from OFF)
+//   - add triple-click to be configurable, currently it's battery voltage level display
+//   - add a pause at moon mode for 0.368 sec delay when ramping up from OFF (allows user to easier stop and engage moon mode)
+//   - add new 2.4 sec ramping tables (older 2.046 sec table is comppiled out)
+//
+// 2016-05-19..25:
+//   - add full ramping support
+// 2016-04-06:
+//   - add a new config setting for blinky mode control: disable, 1 strobe mode only, all blinkies
+// 04/04/2016:
+//   - Bug fix: turn OFF locator LED when in lockout, restore upon exiting
+//   - add feature of toggling locator LED: from OFF, 1 quick click the click&hold til the main LED goes OFF
+//
+// 04/03/2016:
+//   - add turning OFF the AtoD during low power sleep mode - knocked the amps down by half
+//
 // 03/21/2016:
 //   - Bug fix: modes/alt_modes tables (now byPrimModes and bySecModes) was [8] -- too small for new 7 mode entry ([10] now)
 // 03/20/2016:
@@ -151,6 +170,14 @@
 //-------------------------------------------------------------------------
 //-------------------------------------------------------------------------
 
+//#define ADV_RAMP_OPTIONS		// enables lock-out and battery voltage display in ramping, comment out to disable
+//#define TRIPLE_CLICK_LOC		// enable a triple-click to toggle the Locator LED
+#define TRIPLE_CLICK_BATT		// enable a triple-click to display Battery status
+
+#define SHORT_CLICK_DUR 18		// Short click max duration - 0.288 secs
+#define RAMP_MOON_PAUSE 23		// this results in a 0.368 sec delay, paused in moon mode
+
+
 // ----- 2/14 TE: One-Click Turn OFF option --------------------------------------------
 #define IDLE_TIME         75	// make the time-out 1.2 seconds (Comment out to disable)
 
@@ -226,10 +253,87 @@
 #define DB_REL_DUR  0b00001111 // time before we consider the switch released
 							   // each bit of 1 from the right equals 16ms, so 0x0f = 64ms
 
+
 /*
  * The actual program
  * =========================================================================
  */
+
+
+
+#if 0
+//---------------------------------------------------------------------------------------
+#define RAMP_SIZE  128
+#define TURBO_DROP_MIN 98	// min level in ramping the turbo timeout will engage,
+										//    level 98 = 105 PWM, this is ~43%
+#define TURBO_DROP_SET 88	// the level turbo timeout will set,
+										//    level 88 = 71 PWM, this is ~32%
+
+// Ramping Modes, 128 total entries (2.048 secs)
+//    level_calc.py 2 128 7135 3 0.3 150 FET 1 1 1500
+PROGMEM const byte ramp_7135[] = {
+	3,3,3,4,4,5,5,6,  7,7,8,9,11,12,13,15,
+	17,18,20,22,25,27,30,33,  36,39,43,46,50,54,58,63,
+	68,73,78,84,89,96,102,109,  115,123,130,138,146,155,163,173,
+	182,192,202,213,223,235,246,255,  255,255,255,255,255,255,255,255,	// 49-64
+	255,255,255,255,255,255,255,255,  255,255,255,255,255,255,255,255,	// 65-80
+	255,255,255,255,255,255,255,255,  255,255,255,255,255,255,255,255,	// 81-96
+	255,255,255,255,255,255,255,255,  255,255,255,255,255,255,255,255,	// 97-112
+	255,255,255,255,255,255,255,255,  255,255,255,255,255,255,255,0		// 113-128
+};
+
+PROGMEM const byte ramp_FET[]  = {
+	0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,1,  3,4,5,7,9,10,12,14,											// 49-64
+	15,17,19,21,23,25,27,29,  31,33,36,38,41,43,45,48,							// 65-80
+	51,53,56,59,62,65,68,71,  74,77,81,84,87,91,94,98,							// 81-96
+	102,105,109,113,117,121,125,129,  134,138,143,147,152,156,161,166,	// 97-112
+	171,176,181,186,191,197,202,208,  213,219,225,231,237,243,249,255		// 113-128
+};
+//---------------------------------------------------------------------------------------
+#endif
+
+
+//#if 0
+//---------------------------------------------------------------------------------------
+#define RAMP_SIZE  150
+#define TURBO_DROP_MIN 115// min level in ramping the turbo timeout will engage,
+//    level 115 = 106 PWM, this is ~43%
+#define TURBO_DROP_SET 102// the level turbo timeout will set,
+//    level 102 = 71 PWM, this is ~32%
+
+// Ramping Modes, 150 total entries (2.4 secs)
+//    level_calc.py 2 128 7135 3 0.3 150 FET 1 1 1500
+PROGMEM const byte ramp_7135[] = {
+	3,3,3,4,4,4,5,5,  6,6,7,8,9,10,11,12,
+	13,14,15,17,18,20,22,24,  26,28,30,33,35,38,41,44,
+	47,51,54,58,62,66,70,74,  79,83,88,93,99,104,110,116,
+	122,128,135,142,149,156,164,172,  180,188,196,205,214,223,233,243,	// 49-64
+	253,255,255,255,255,255,255,255,  255,255,255,255,255,255,255,255,
+	255,255,255,255,255,255,255,255,  255,255,255,255,255,255,255,255,
+	255,255,255,255,255,255,255,255,  255,255,255,255,255,255,255,255,
+	255,255,255,255,255,255,255,255,  255,255,255,255,255,255,255,255,
+	255,255,255,255,255,255,255,255,  255,255,255,255,255,255,255,255,
+	255,255,255,255,255,0																// 145-150
+};
+
+PROGMEM const byte ramp_FET[]  = {
+	0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,												// 49-64
+	0,2,3,4,5,7,8,9,  11,12,14,15,17,18,20,22,
+	23,25,27,29,30,32,34,36,  38,40,42,44,47,49,51,53,
+	56,58,60,63,66,68,71,73,  76,79,82,85,87,90,93,96,							// 96-112
+	100,103,106,109,113,116,119,123,  126,130,134,137,141,145,149,153,	// 113-128
+	157,161,165,169,173,178,182,186,  191,196,200,205,210,214,219,224,	// 129-144
+	229,234,239,244,250,255																// 145-150
+};
+//---------------------------------------------------------------------------------------
+//#endif
+
 
 //------------------- MODE SETS --------------------------
 
@@ -314,6 +418,7 @@ volatile byte specModeIdx;
 //----------------------------------------------------------------
 // Config Settings via UI, with default values:
 //----------------------------------------------------------------
+volatile byte ramping = 1;				// ramping mode in effect
 volatile byte modeSetIdx = 3;			// 0..11, mode set currently in effect, chosen by user (3=4 modes)
 volatile byte moonLightEnable = 1;	// 1: enable moonlight mode, 0: disable moon mode
 volatile byte highToLow = 0;			// 1: highest to lowest, 0: modes go from lowest to highest
@@ -325,14 +430,27 @@ volatile byte moonlightLevel = 3;	// 0..7, 0: disabled, usually set to 3 (350 mA
 volatile byte bvldLedOnly = 0;		// BVLD (Battery Voltage Level Display) - 1=BVLD shown only w/onboard LED, 0=both primary and onboard LED's
 volatile byte onboardLedEnable = 1;	// On Board LED support - 1=enabled, 0=disabled
 volatile byte OffTimeEnable = 0;		// 1: Do OFF time mode memory on power switching (tailswitch), 0: disabled
+volatile byte blinkyMode = 2;			// blinky mode config: 1=strobe only, 2=all blinkies, 0=disable
 
 //----------------------------------------------------------------
 
 //----------------------------------------------------------------
 // Global state options
 //----------------------------------------------------------------
+
 volatile byte byLockOutEnable = 1;					// button lock-out feature is enabled
 //----------------------------------------------------------------
+
+// Ramping :
+#define RAMP_SWITCH_TIMEOUT 32		// make the up/dn ramp switch timeout 1/2 sec
+#define MAX_RAMP_LEVEL (RAMP_SIZE)
+
+volatile byte rampingLevel = 0;		// 0=OFF, 1..MAX_RAMP_LEVEL is the ramping table index, 255=moon mode
+volatile byte rampState = 0;			// 0=OFF, 1=in lowest mode (moon) delay, 2=ramping Up, 3=Ramping Down, 4=ramping completed (Up or Dn)
+volatile byte savedLevel = 0;			// mode memory for ramping (copy of rampingLevel)
+byte outLevel;								// current set rampingLevel
+volatile byte byForceLockOut = 0;	// when the main loop want to temporarily lock-out the ramping switch
+byte rampPauseCntDn;						// count down timer for ramping support
 
 
 // State and count vars:
@@ -346,7 +464,7 @@ volatile byte configIdleTime = 0;
 
 volatile byte modeIdx = 0;			// current mode selected
 volatile byte prevModeIdx = 0;	// used to restore the initial mode when exiting strobe mode
-volatile byte pressDuration = 0;
+volatile word wPressDuration = 0;
 
 volatile byte last_modeIdx;		// last value for modeIdx
 
@@ -369,10 +487,16 @@ volatile byte LowBattSignal = 0;	// a low battery has been detected - trigger/si
 volatile byte LowBattState = 0;	// in a low battery state (it's been triggered)
 volatile byte LowBattBlinkSignal = 0;	// a periodic low battery blink signal
 
+volatile byte locatorLed;			// Locator LED feature (ON when light is OFF) - 1=enabled, 0=disabled
 
 
 // Configuration settings storage in EEPROM
 word eepos = 0;	// (0..n) position of mode/settings stored in EEPROM (128/256/512)
+
+volatile byte config1;	// keep these global, not on stack local
+volatile byte config2;
+volatile byte config3;
+
 
 // OFF Time Detection
 volatile byte noinit_decay __attribute__ ((section (".noinit")));
@@ -426,10 +550,10 @@ void TurnOnBoardLed(byte on)
 
 
 /**************************************************************************************
-* strobe
+* Strobe
 * ======
 **************************************************************************************/
-void strobe(byte ontime, byte offtime)
+void Strobe(byte ontime, byte offtime)
 {
 	PWM_LVL = 255;
 	_delay_ms(ontime);
@@ -438,10 +562,10 @@ void strobe(byte ontime, byte offtime)
 }
 
 /**************************************************************************************
-* get_voltage
+* GetVoltage
 * ===========
 **************************************************************************************/
-uint8_t get_voltage()
+uint8_t GetVoltage()
 {
 	ADCSRA |= (1 << ADSC);				// Start conversion
 	
@@ -451,17 +575,17 @@ uint8_t get_voltage()
 }
 
 /**************************************************************************************
-* battcheck
+* BattCheck
 * =========
 **************************************************************************************/
-inline uint8_t battcheck()
+inline uint8_t BattCheck()
 {
    // Return an composite int, number of "blinks", for approximate battery charge
    // Uses the table above for return values
    // Return value is 3 bits of whole volts and 5 bits of tenths-of-a-volt
    uint8_t i, voltage;
 
-   voltage = get_voltage();
+   voltage = GetVoltage();
 
    // figure out how many times to blink
    for (i=0; voltage > pgm_read_byte(voltage_blinks + i); i += 2)  ;
@@ -480,14 +604,12 @@ inline void DefineModeSet()
 
 	// Set OFF mode states (index 0)
 	byPrimModes[0] = bySecModes[0] = 0;
-//	mode_pwm[0] = PHASE;
 
 	if (moonLightEnable)
 	{
 		offset = 2;
 		byPrimModes[1] = 0;
 		bySecModes[1] = moonlightLevel;	// PWM value to use for moonlight mode
-//		mode_pwm[1] = PHASE;
 	}
 
 	// Populate the RAM based current mode set
@@ -495,82 +617,94 @@ inline void DefineModeSet()
 	{
 		byPrimModes[offset+i] = pgm_read_byte(modeTableFet[modeSetIdx]+i);
 		bySecModes[offset+i] = pgm_read_byte(modeTable7135[modeSetIdx]+i);
-//		mode_pwm[offset+i] = pgm_read_byte(modeTablePwm[modeSetIdx]+i);
 	}
 
 	modesCnt += offset;		// adjust to total mode count
 }
 
 /**************************************************************************************
-* set_output
-* ==========
+* SetOutput - sets the PWM output value directly
+* =========
 **************************************************************************************/
-void set_output(byte pwm1, byte pwm2)
- {
-	// Need PHASE to properly turn off the light
-//	if ((pwm1==0) && (pwm2==0))
-//		TCCR0A = PHASE;
+void SetOutput(byte pwm1, byte pwm2)
+{
 	PWM_LVL = pwm1;
 	ALT_PWM_LVL = pwm2;
 }
 
 /**************************************************************************************
-* set_mode
-* ========
+* SetLevel - uses the ramping levels to set the PWM output
+* ========		(0 is OFF, 1..128 is the ramping index level)
 **************************************************************************************/
-void inline set_mode(byte mode)
+void SetLevel(byte level)
 {
-//   TCCR0A = mode_pwm[mode];
+	if (level == 0)
+	{
+		SetOutput(0,0);
+		if (locatorLed)
+			TurnOnBoardLed(1);
+	}
+	else
+	{
+		level -= 1;	// make it 0 based
+		SetOutput(pgm_read_byte(ramp_FET  + level), pgm_read_byte(ramp_7135 + level));
+		if (locatorLed)
+			TurnOnBoardLed(0);
+	}
+}
 
+/**************************************************************************************
+* SetMode
+* =======
+**************************************************************************************/
+void inline SetMode(byte mode)
+{
 	currOutLvl1 = byPrimModes[mode];
 	currOutLvl2 = bySecModes[mode];
 	
-	PWM_LVL = currOutLvl1;
-	ALT_PWM_LVL = currOutLvl2;
-	
-	if ((mode == 0) && locatorLedOn)
+	SetOutput(currOutLvl1, currOutLvl2);
+
+	if ((mode == 0) && locatorLed)
 		TurnOnBoardLed(1);
 	else if (last_modeIdx == 0)
 		TurnOnBoardLed(0);
 }
 
 /**************************************************************************************
-* blink - do a # of blinks with a speed in msecs
+* Blink - do a # of blinks with a speed in msecs
 * =====
 **************************************************************************************/
-void blink(byte val, word speed)
+void Blink(byte val, word speed)
 {
-//	TCCR0A = PHASE;
 	for (; val>0; val--)
 	{
 		TurnOnBoardLed(1);
-		set_output(BLINK_BRIGHTNESS);
+		SetOutput(BLINK_BRIGHTNESS);
 		_delay_ms(speed);
 		
 		TurnOnBoardLed(0);
-		set_output(0,0);
+		SetOutput(0,0);
 		_delay_ms(speed<<2);	// 4X delay OFF
 	}
 }
 
 /**************************************************************************************
-* battBlink - do a # of blinks with a speed in msecs
+* BattBlink - do a # of blinks with a speed in msecs
 * =========
 **************************************************************************************/
-void battBlink(byte val)
+void BattBlink(byte val)
 {
-//	TCCR0A = PHASE;
 	for (; val>0; val--)
 	{
 		TurnOnBoardLed(1);
 		
-		if (bvldLedOnly == 0)
-			set_output(BLINK_BRIGHTNESS);
+		if ((onboardLedEnable == 0) || (bvldLedOnly == 0))
+			SetOutput(BLINK_BRIGHTNESS);
 			
 		_delay_ms(250);
 		
 		TurnOnBoardLed(0);
-		set_output(0,0);
+		SetOutput(0,0);
 		_delay_ms(375);
 		
 		if (modeIdx != BATT_CHECK_MODE)
@@ -579,38 +713,37 @@ void battBlink(byte val)
 }
 
 /**************************************************************************************
-* configBlink - do 2 quick blinks, followed by num count of long blinks
+* ConfigBlink - do 2 quick blinks, followed by num count of long blinks
 * ===========
 **************************************************************************************/
-void configBlink(byte num)
+void ConfigBlink(byte num)
 {
-	blink(2, 40);
+	Blink(2, 40);
 	_delay_ms(240);
-	blink(num, 100);
+	Blink(num, 100);
 
 	configIdleTime = 0;		// reset the timeout after the blinks complete
 }
 
 /**************************************************************************************
-* clickBlink
+* ClickBlink
 * ==========
 **************************************************************************************/
-inline static void clickBlink()
+inline static void ClickBlink()
 {
-//	TCCR0A = PHASE;
-	set_output(0,20);
+	SetOutput(0,20);
 	_delay_ms(100);
-	set_output(0,0);
+	SetOutput(0,0);
 }
 
 
 /**************************************************************************************
-* is_pressed - debounce the switch release, not the switch press
+* IsPressed - debounce the switch release, not the switch press
 * ==========
 **************************************************************************************/
 // Debounce switch press value
 #ifdef DEBOUNCE_BOTH
-int is_pressed()
+int IsPressed()
 {
 	static byte pressed = 0;
 	// Keep track of last switch values polled
@@ -629,7 +762,7 @@ int is_pressed()
 	return pressed;
 }
 #else
-static int is_pressed()
+static int IsPressed()
 {
 	// Keep track of last switch values polled
 	static byte buffer = 0x00;
@@ -641,10 +774,10 @@ static int is_pressed()
 #endif
 
 /**************************************************************************************
-* next_mode - switch's to next mode, higher output mode
+* NextMode - switch's to next mode, higher output mode
 * =========
 **************************************************************************************/
-void next_mode()
+void NextMode()
 {
 	if (modeIdx < 16)	// 11/16/14 TE: bug fix to exit strobe mode when doing a long press in strobe mode
 		prevModeIdx	 = modeIdx;
@@ -657,10 +790,10 @@ void next_mode()
 }
 
 /**************************************************************************************
-* prev_mode - switch's to previous mode, lower output mode
+* PrevMode - switch's to previous mode, lower output mode
 * =========
 **************************************************************************************/
-void prev_mode()
+void PrevMode()
 {
 	prevModeIdx	 = modeIdx;
 
@@ -674,7 +807,8 @@ void prev_mode()
 * PCINT_on - Enable pin change interrupts
 * ========
 **************************************************************************************/
-inline void PCINT_on() {
+inline void PCINT_on()
+{
 	// Enable pin change interrupts
 	GIMSK |= (1 << PCIE);
 }
@@ -683,7 +817,8 @@ inline void PCINT_on() {
 * PCINT_off - Disable pin change interrupts
 * =========
 **************************************************************************************/
-inline void PCINT_off() {
+inline void PCINT_off()
+{
 	// Disable pin change interrupts
 	GIMSK &= ~(1 << PCIE);
 }
@@ -696,7 +831,8 @@ EMPTY_INTERRUPT(PCINT0_vect);
 * WDT_on - Setup watchdog timer to only interrupt, not reset, every 16ms
 * ======
 **************************************************************************************/
-inline void WDT_on() {
+inline void WDT_on()
+{
 	// Setup watchdog timer to only interrupt, not reset, every 16ms.
 	cli();							// Disable interrupts
 	wdt_reset();					// Reset the WDT
@@ -723,8 +859,9 @@ inline void WDT_off()
 * ADC_on - Turn the AtoD Converter ON
 * ======
 **************************************************************************************/
-inline void ADC_on() {
-// For 13A:	ADMUX  = (1 << REFS0) | (1 << ADLAR) | ADC_CHANNEL; // 1.1v reference, left-adjust, ADC1/PB2
+inline void ADC_on()
+{
+	// For 13A:	ADMUX  = (1 << REFS0) | (1 << ADLAR) | ADC_CHANNEL; // 1.1v reference, left-adjust, ADC1/PB2
 	ADMUX  = (1 << REFS1) | (1 << ADLAR) | ADC_CHANNEL; // 1.1v reference, left-adjust, ADC1/PB2
    DIDR0 |= (1 << ADC_DIDR);							// disable digital input on ADC pin to reduce power consumption
 	ADCSRA = (1 << ADEN ) | (1 << ADSC ) | ADC_PRSCL;   // enable, start, pre-scale
@@ -734,39 +871,50 @@ inline void ADC_on() {
 * ADC_off - Turn the AtoD Converter OFF
 * =======
 **************************************************************************************/
-inline void ADC_off() {
+inline void ADC_off()
+{
 	ADCSRA &= ~(1<<7); //ADC off
 }
 
 /**************************************************************************************
-* sleep_until_switch_press - only called with the light OFF
-* ========================
+* SleepUntilSwitchPress - only called with the light OFF
+* =====================
 **************************************************************************************/
-void sleep_until_switch_press()
+void SleepUntilSwitchPress()
 {
 	// This routine takes up a lot of program memory :(
-	// Turn the WDT off so it doesn't wake us from sleep
-	// Will also ensure interrupts are on or we will never wake up
+	
+	//  Turn the WDT off so it doesn't wake us from sleep. Will also ensure interrupts
+	// are on or we will never wake up.
 	WDT_off();
+	
+	ADC_off();		// Save more power -- turn the AtoD OFF
+	
 	// Need to reset press duration since a button release wasn't recorded
-	pressDuration = 0;
-	// Enable a pin change interrupt to wake us up
-	// However, we have to make sure the switch is released otherwise we will wake when the user releases the switch
-	while (is_pressed()) {
+	wPressDuration = 0;
+	
+	//  Enable a pin change interrupt to wake us up. However, we have to make sure the switch
+	// is released otherwise we will wake when the user releases the switch
+	while (IsPressed()) {
 		_delay_ms(16);
 	}
 	PCINT_on();
-	// Enable sleep mode set to Power Down that will be triggered by the sleep_mode() command.
-	//set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-	// Now go to sleep
-	sleep_mode();
-	// Hey, someone must have pressed the switch!!
-	// Disable pin change interrupt because it's only used to wake us up
-	PCINT_off();
-	// Turn the WDT back on to check for switch presses
-	WDT_on();
-	// Go back to main program
-}
+	
+	//-----------------------------------------
+	sleep_mode();	// Now go to sleep
+	//-----------------------------------------
+						// Alternate method? --> set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+	
+						// Hey, someone must have pressed the switch!!
+	
+	
+	PCINT_off();	// Disable pin change interrupt because it's only used to wake us up
+
+	ADC_on();		// Turn the AtoD back ON
+	
+	WDT_on();		// Turn the WDT back on to check for switch presses
+	
+}	// Go back to main program
 
 /**************************************************************************************
 * LoadConfig - gets the configuration settings from EEPROM
@@ -774,6 +922,7 @@ void sleep_until_switch_press()
 *  config1 - 1st byte of stored configuration settings:
 *   bits 0-2: mode index (0..7), for clicky mode switching
 *   bits 3-6: selected mode set (0..11)
+*   bit 7:    ramping mode
 *
 *  config2 - 2nd byte of stored configuration settings:
 *   bit    0: mode ordering, 1=hi to lo, 0=lo to hi
@@ -787,11 +936,11 @@ void sleep_until_switch_press()
 *   bit    2: Locator LED feature (ON when light is OFF) - 1=enabled, 0=disabled
 *   bit    3: BVLD LED Only - 1=BVLD only w/onboard LED, 0=both primary and onboard LED's are used
 *   bit    4: 1: moonlight mode - 1=enabled, 0=disabled
+*   bit  5-6: blinky mode config: 1=strobe only, 2=all blinkies, 0=disable
 *
 **************************************************************************************/
 inline void LoadConfig()
 {
-   byte config1, config2, config3;
 
    // find the config data
    for (eepos=0; eepos < 128; eepos+=3)
@@ -810,6 +959,7 @@ inline void LoadConfig()
 	{
 	   modeIdx = config1 & 0x7;
 		modeSetIdx = (config1 >> 3) & 0x0f;
+		ramping = (config1 >> 7);
 		
 	   highToLow = config2 & 1;
 	   modeMemoryEnabled = (config2 >> 1) & 1;
@@ -821,9 +971,12 @@ inline void LoadConfig()
 		locatorLedOn = (config3 >> 2) & 1;
 		bvldLedOnly = (config3 >> 3) & 1;
 		moonLightEnable = (config3 >> 4) & 1;
+		blinkyMode = (config3 >> 5) & 0x03;
 	}
 	else
 		eepos = 0;
+
+	locatorLed = locatorLedOn;
 }
 
 /**************************************************************************************
@@ -834,6 +987,7 @@ inline void LoadConfig()
 *  config1 - 1st byte of stored configuration settings:
 *   bits 0-2: mode index (0..7), for clicky mode switching
 *   bits 3-6: selected mode set (0..11)
+*   bit 7:    ramping mode
 *
 *  config2 - 2nd byte of stored configuration settings:
 *   bit    0: mode ordering, 1=hi to lo, 0=lo to hi
@@ -847,14 +1001,15 @@ inline void LoadConfig()
 *   bit    2: Locator LED feature (ON when light is OFF) - 1=enabled, 0=disabled
 *   bit    3: BVLD LED Only - 1=BVLD only w/onboard LED, 0=both primary and onboard LED's are used
 *   bit    4: 1: moonlight mode - 1=enabled, 0=disabled
+*   bit  5-6: blinky mode config: 1=strobe only, 2=all blinkies, 0=disable
 *
 **************************************************************************************/
 void SaveConfig()
 {  
 	// Pack all settings into one byte
-	byte config1 = (byte)(word)(modeIdx | (modeSetIdx << 3));
-	byte config2 = (byte)(word)(highToLow | (modeMemoryEnabled << 1) | (moonlightLevel << 2) | (turboTimeoutMode << 5));
-	byte config3 = (byte)(word)(OffTimeEnable | (onboardLedEnable << 1) | (locatorLedOn << 2) | (bvldLedOnly << 3) | (moonLightEnable << 4));
+	config1 = (byte)(word)(modeIdx | (modeSetIdx << 3) | (ramping << 7));
+	config2 = (byte)(word)(highToLow | (modeMemoryEnabled << 1) | (moonlightLevel << 2) | (turboTimeoutMode << 5));
+	config3 = (byte)(word)(OffTimeEnable | (onboardLedEnable << 1) | (locatorLedOn << 2) | (bvldLedOnly << 3) | (moonLightEnable << 4) | (blinkyMode << 5));
 	
 	byte oldpos = eepos;
 	
@@ -895,12 +1050,27 @@ ISR(WDT_vect)
   #endif
 
 	//---------------------------------------------------------------------------------------
+	//---------------------------------------------------------------------------------------
    // Button is pressed
 	//---------------------------------------------------------------------------------------
-	if (is_pressed())
+	//---------------------------------------------------------------------------------------
+	if (IsPressed())
 	{
-		if (pressDuration < 255)
-			pressDuration++;
+		if (wPressDuration < 2000)
+			wPressDuration++;
+
+			
+		//---------------------------------------------------------------------------------------
+		// Handle "button stuck" safety timeout
+		//---------------------------------------------------------------------------------------
+		if (wPressDuration == 1250)	// 20 seconds
+		{
+			modeIdx = outLevel = rampingLevel = 0;
+			rampState = 0;
+			byLockOutSet = 1;		// set "LOCK OUT"
+			ConfigMode = 0;
+			return;
+		}
 		
 		//---------------------------------------------------------------------------------------
 		// Handle config mode specially right here:
@@ -911,12 +1081,12 @@ ISR(WDT_vect)
 			
 			if (!holdHandled)
 			{
-				if (pressDuration == 35)		// hold time for skipping: 35*16 = 560 msecs
+				if (wPressDuration == 35)		// hold time for skipping: 35*16 = 560 msecs
 					++ConfigMode;
-				else if (pressDuration == 70)	// hold time for bailing out: 70*16 = 1.1 secs
+				else if (wPressDuration == 70)	// hold time for bailing out: 70*16 = 1.1 secs
 				{
 					holdHandled = 1;		// suppress more hold events on this hold
-					ConfigMode = 8;		// Exit Config mode
+					ConfigMode = 10;		// Exit Config mode
 				}
 			}
 			return;
@@ -924,18 +1094,95 @@ ISR(WDT_vect)
 
 		if (!holdHandled)
 		{
+			//------------------------------------------------------------------------------
+			//	Ramping - pressed button
+			//------------------------------------------------------------------------------
+			if (ramping)
+			{
+				if ((wPressDuration > SHORT_CLICK_DUR) && !byLockOutSet && !byForceLockOut && (modeIdx != BATT_CHECK_MODE))
+				{
+					switch (rampState)
+					{
+					 case 0:		// ramping not initialized yet
+						if (rampingLevel == 0)
+						{
+							rampState = 1;
+							rampPauseCntDn = RAMP_MOON_PAUSE;		// delay a little on moon
+
+							SetOutput(0,moonlightLevel);
+							if (locatorLed)
+								TurnOnBoardLed(0);
+								
+							// set this to the 1st level for the current mode
+							outLevel = rampingLevel = 255;
+						}
+						else
+						{
+							rampState = 2;
+							if (rampingLevel == MAX_RAMP_LEVEL)
+							{
+								rampState = 3;	// hi->lo
+								outLevel = rampingLevel = MAX_RAMP_LEVEL;
+								SetLevel(outLevel);
+							}
+							else if (rampingLevel == 255)	// If stopped in ramping moon mode, start from lowest
+							{
+								outLevel = rampingLevel = 1;
+								SetLevel(outLevel);
+							}
+						}
+						break;
+						
+					 case 1:		// in moon mode
+						if (--rampPauseCntDn == 0)
+						{
+							rampState = 2;
+							outLevel = rampingLevel = 1;
+							SetLevel(outLevel);
+						}
+						break;
+						
+					 case 2:		// lo->hi
+						if (rampingLevel < MAX_RAMP_LEVEL)
+						{
+							outLevel = ++rampingLevel;
+						}
+						else
+							rampState = 4;
+						SetLevel(outLevel);
+						break;
+						
+					 case 3:		// hi->lo
+						if (rampingLevel > 1)
+						{
+							outLevel = --rampingLevel;
+						}
+						else
+							rampState = 4;
+						SetLevel(outLevel);
+						break;
+					
+					 case 4:		// ramping ended - 0 or max reached
+						break;
+						
+					} // switch on rampState
+					
+				} // switch help longer than single click
+				
+			} // ramping
+			
 			//---------------------------------------------------------------------------------------
 			// LONG hold - for previous mode
 			//---------------------------------------------------------------------------------------
-			if ((pressDuration == LONG_PRESS_DUR) && (byLockOutSet == 0))
+			if (!ramping && (wPressDuration == LONG_PRESS_DUR) && !byLockOutSet)
 			{
 				if (modeIdx < 16)
 				{
 					// Long press
 					if (highToLow)
-						next_mode();
+						NextMode();
 					else
-						prev_mode();
+						PrevMode();
 				}
 				else if (modeIdx > SPECIAL_MODES)
 				{
@@ -952,18 +1199,33 @@ ISR(WDT_vect)
 			//---------------------------------------------------------------------------------------
 			// XLONG hold - for strobes, battery check, or lock-out (depending on preceding quick clicks)
 			//---------------------------------------------------------------------------------------
-			if (pressDuration == XLONG_PRESS_DUR)
+			if (wPressDuration == XLONG_PRESS_DUR)
 			{
 				if ((byLockOutEnable == 1) && (quickClicks == 2) && (wIdleTicks < LOCK_OUT_TICKS))
 				{
-					modeIdx = 0;
-					byLockOutSet = 1 - byLockOutSet;		// invert "LOCK OUT"
+				  #ifndef ADV_RAMP_OPTIONS
+					if (!ramping || (byLockOutSet == 1))
+				  #endif
+					{
+						modeIdx = outLevel = rampingLevel = 0;
+						rampState = 0;
+						byLockOutSet = 1 - byLockOutSet;		// invert "LOCK OUT"
+						byForceLockOut = 1;		// force lockout button actions
+					}
 				}
 				else if (byLockOutSet == 0)
 				{
 					if ((quickClicks == 1) && (wIdleTicks < LOCK_OUT_TICKS))
 					{
-						modeIdx = BATT_CHECK_MODE;
+					  #ifndef ADV_RAMP_OPTIONS
+						if (!ramping)
+					  #endif
+						{
+							modeIdx = BATT_CHECK_MODE;
+							byForceLockOut = 1;		// force lockout button actions
+							PWM_LVL = 0;				// suppress main LED output
+							ALT_PWM_LVL = 0;
+						}
 					}
 					else if (modeIdx > SPECIAL_MODES)
 					{
@@ -974,17 +1236,17 @@ ISR(WDT_vect)
 						modeIdx = 0;		// clear main mode
 						PWM_LVL = 0;		// suppress main LED output
 						ALT_PWM_LVL = 0;
-				
+			
 						ConfigMode = 21;		// Initialize Advanced Config mode
 						configClicks = 0;
 						holdHandled = 1;		// suppress more hold events on this hold
 					}
-					else
+					else if (!ramping && (blinkyMode > 0))
 					{
 						// Engage first special mode!
 						specModeIdx = 0;
 						modeIdx = specialModes[specModeIdx];
-							
+						
 						TurnOnBoardLed(0);	// be sure the on board LED is OFF here
 					}
 				}
@@ -993,16 +1255,23 @@ ISR(WDT_vect)
 			//---------------------------------------------------------------------------------------
 			// CONFIG hold - if it is not locked out or lock-out was just exited on this hold
 			//---------------------------------------------------------------------------------------
-			if ((pressDuration == CONFIG_ENTER_DUR) && (byLockOutSet == 0) && (quickClicks != 2))
+			if (byLockOutSet == 0)
 			{
-				modeIdx = 0;
-				// turn the light off initially
-//				TCCR0A = PHASE;
-				PWM_LVL = 0;
-				ALT_PWM_LVL = 0;
+				if ((!ramping && (wPressDuration == CONFIG_ENTER_DUR) && (quickClicks != 2))
+											||
+					 (ramping && (wPressDuration == 500)))	// 8 secs in ramping mode
+				{
+					modeIdx = 0;
+					rampingLevel = 0;
+					rampState = 0;
 					
-				ConfigMode = 1;
-				configClicks = 0;
+					// turn the light off initially
+					PWM_LVL = 0;
+					ALT_PWM_LVL = 0;
+				
+					ConfigMode = 1;
+					configClicks = 0;
+				}
 			}
 		}
 
@@ -1016,7 +1285,9 @@ ISR(WDT_vect)
 	}
 	
 	//---------------------------------------------------------------------------------------
+	//---------------------------------------------------------------------------------------
    // Not pressed (debounced qualified)
+	//---------------------------------------------------------------------------------------
 	//---------------------------------------------------------------------------------------
 	else
 	{
@@ -1024,9 +1295,9 @@ ISR(WDT_vect)
 
 		if (ConfigMode > 0)
 		{
-			if (pressDuration > 0)
+			if (wPressDuration > 0)
 			{
-				if (pressDuration < LONG_PRESS_DUR)
+				if (wPressDuration < LONG_PRESS_DUR)
 					++configClicks;
 				configIdleTime = 0;
 			}
@@ -1034,13 +1305,91 @@ ISR(WDT_vect)
 			{
 				++configIdleTime;
 			}
-			pressDuration = 0;
+			wPressDuration = 0;
 		} // config mode
 		
-		else if (pressDuration > 0)
+		else if (wPressDuration > 0)
 		{
    		// Was previously pressed
-			if (pressDuration < LONG_PRESS_DUR)
+
+			//------------------------------------------------------------------------------
+			//	Ramping - button released
+			//------------------------------------------------------------------------------
+			if (ramping)
+			{
+				rampState = 0;	// reset state to not ramping
+				
+				if (wPressDuration < SHORT_CLICK_DUR)
+				{
+					// normal short click
+					if (modeIdx == BATT_CHECK_MODE)		// battery check - reset to OFF
+						modeIdx = 0;
+					else
+					{
+						// track quick clicks in a row from OFF or ON (doesn't matter in ramping)
+						++quickClicks;
+					}
+
+					if (!byLockOutSet)
+					{
+					  #ifdef TRIPLE_CLICK_LOC	
+						if (quickClicks == 3)	// triple click: toggle the locator LED
+						{
+							locatorLed = 1 - locatorLed;
+							TurnOnBoardLed(locatorLed);
+						}
+					  #endif
+
+					  #ifdef TRIPLE_CLICK_BATT
+					  if (quickClicks == 3)		// triple click: display battery check/status
+					  {
+							modeIdx = BATT_CHECK_MODE;
+							byForceLockOut = 1;		// force lockout button actions
+							PWM_LVL = 0;				// suppress main LED output
+							ALT_PWM_LVL = 0;
+					  }
+					  #endif
+
+						if (quickClicks == 2)		// double click: set to MAX level
+						{
+							rampingLevel = MAX_RAMP_LEVEL;
+							outLevel = rampingLevel;
+							SetLevel(outLevel);
+						}
+
+						else if (!byForceLockOut)
+						{
+							if (rampingLevel == 0)  // light is OFF, turn it ON
+							{
+								if (savedLevel == 0)
+									savedLevel = 1;
+								
+								// Restore the saved level (last mode memory)
+								outLevel = rampingLevel = savedLevel;
+							}
+							else        				// light is ON, turn it OFF
+							{
+								savedLevel = rampingLevel;
+								outLevel = rampingLevel = 0;
+							}
+							if (outLevel == 255)
+							{
+								SetOutput(0,moonlightLevel);
+								if (locatorLed)
+								TurnOnBoardLed(1);
+							}
+							else
+								SetLevel(outLevel);
+						}
+					} // !byLockOutSet
+				} // short click
+				else
+					quickClicks = 0;	// reset quick clicks for long holds
+				
+				wPressDuration = 0;
+			} // ramping
+
+			else if (wPressDuration < LONG_PRESS_DUR)
 			{
 				// normal short click
 				if (modeIdx == BATT_CHECK_MODE)		// battery check - reset to OFF
@@ -1072,34 +1421,56 @@ ISR(WDT_vect)
 							{
 								// Short press - normal modes
 								if (highToLow)
-									prev_mode();
+									PrevMode();
 								else
-									next_mode();
+									NextMode();
 							}
 						}
 						else  // special modes
 						{
+							// Bail out if timed out the click
 							if (wIdleTicks >= IDLE_TIME)
 								modeIdx = prevModeIdx;
+								
+							// Bail out if configured for only one blinky mode
+							else if (blinkyMode == 1)
+								modeIdx = prevModeIdx;
+								
+							// Bail out if at last blinky mode
 							else if (++specModeIdx > specialModesCnt)
-								modeIdx = prevModeIdx;  // bail out of special modes
+								modeIdx = prevModeIdx;
 							else
 								modeIdx = specialModes[specModeIdx];
 						}
 					}
 				} // ...
 
-				pressDuration = 0;
+				wPressDuration = 0;
 			} // short click
+			else
+			{
+				if (wPressDuration < XLONG_PRESS_DUR)
+				{
+					// Special Locator LED toggle sequence: quick click then click&hold
+					if ((quickClicks == 1) && (wIdleTicks < LOCK_OUT_TICKS) && (modeIdx == 0))
+					{
+						locatorLed = 1 - locatorLed;
+						TurnOnBoardLed(locatorLed);
+					}
+				}
+				quickClicks = 0;	// reset quick clicks for long holds
+			}
 			
 			wIdleTicks = 0;	// reset idle time
 
 		} // previously pressed
 		else
 		{
-			//------------------------------------
+			//---------------------------------------------------------------------------------------
+			//---------------------------------------------------------------------------------------
 			// Not previously pressed
-			//------------------------------------
+			//---------------------------------------------------------------------------------------
+			//---------------------------------------------------------------------------------------
 			if (++wIdleTicks == 0)
 				wIdleTicks = 30000;		// max it out at 30,000 (8 minutes)
 
@@ -1107,13 +1478,28 @@ ISR(WDT_vect)
 				quickClicks = 0;
 
 			// Only do turbo check when switch isn't pressed
-			if ((turboTimeoutMode > 0) && (modeIdx < 16))
-				if (byPrimModes[modeIdx] == 255)
+			if (turboTimeoutMode > 0)
+			{
+				if (ramping)  // ramping
 				{
-					if (++wTurboTicks > wTurboTickLimit)
-						prev_mode();		// Go to the previous mode
+					if (outLevel > TURBO_DROP_MIN)
+						if (++wTurboTicks > wTurboTickLimit)
+						{
+							outLevel = rampingLevel = TURBO_DROP_SET;
+							SetLevel(outLevel);
+						}
 				}
-
+				else          // regular modes
+				{
+					if (modeIdx < 16)
+						if (byPrimModes[modeIdx] == 255)
+						{
+							if (++wTurboTicks > wTurboTickLimit)
+								PrevMode();		// Go to the previous mode
+						}
+				}
+			}
+			
 			// Only do voltage monitoring when the switch isn't pressed
 		  #ifdef VOLTAGE_MON
 			if (adc_ticks > 0)
@@ -1123,8 +1509,14 @@ ISR(WDT_vect)
 				// See if conversion is done
 				if (ADCSRA & (1 << ADIF))
 				{
+					byte atLowLimit;
+					if (ramping)
+						atLowLimit = (outLevel == 1);
+					else
+						atLowLimit = (modeIdx == 1);
+					
 					// See if voltage is lower than what we were looking for
-					if (ADCH < ((modeIdx == 1) ? ADC_CRIT : ADC_LOW))
+					if (ADCH < (atLowLimit ? ADC_CRIT : ADC_LOW))
 						++lowbatt_cnt;
 					else
 						lowbatt_cnt = 0;
@@ -1159,7 +1551,7 @@ ISR(WDT_vect)
 		  #endif
 		} // not previously pressed
 		
-		pressDuration = 0;
+		wPressDuration = 0;
 	} // Not pressed
 }
 
@@ -1204,12 +1596,12 @@ int main(void)
 
 	wTurboTickLimit = pgm_read_word(turboTimeOutVals+turboTimeoutMode);
 	
-	if (OffTimeEnable)
+	if (OffTimeEnable && !ramping)
 	{
 		if (!noinit_decay)
 		{
 			// Indicates they did a short press, go to the next mode
-			next_mode(); // Will handle wrap arounds
+			NextMode(); // Will handle wrap arounds
 			SaveConfig();
 		}
 	}
@@ -1220,8 +1612,7 @@ int main(void)
 		
 	if (modeIdx == 0)
 	{
-//	   TCCR0A = PHASE;
-		blink(2, 80);
+		Blink(2, 80);
 	}
 
 	// set noinit data for next boot
@@ -1234,10 +1625,14 @@ int main(void)
    byte prevConfigClicks = 0;
 
 	WDT_on();		// Turn it on now (mode can be non-zero on startup)
-	
-    //  We will never leave this loop.  The WDT will interrupt to check for switch presses
-    // and will change the mode if needed. If this loop detects that the mode has changed,
-    // run the logic for that mode while continuing to check for a mode change.
+
+	//------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------	
+	//  We will never leave this loop.  The WDT will interrupt to check for switch presses
+	// and will change the mode if needed. If this loop detects that the mode has changed,
+	// run the logic for that mode while continuing to check for a mode change.
+	//------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------
 	while(1)		// run forever
 	{
       //---------------------------------------------------------------------------------------
@@ -1248,19 +1643,26 @@ int main(void)
 			{
 				byPrevLockOutSet = byLockOutSet;
 
-				set_output(0,0);
+				SetOutput(0,0);
 				_delay_ms(250);
-				blink(4, 60);
+				Blink(4, 60);
+				
+				byForceLockOut = 0;		// release the forced lockout
+				
+				if (byLockOutSet)
+					last_modeIdx = modeIdx;	// entering - no need to configure mode 0 (keep the locator LED off)
+				else
+					last_modeIdx = 255;		// exiting - force a mode handling to turn on locator LED
 			}
 
+			//---------------------------------------------------
+			// Mode Handling - did the WDT change the mode?
+			//---------------------------------------------------
 			if (modeIdx != last_modeIdx)
 			{
-				//---------------------------------------------------
-				// Mode Handling - The WDT changed the mode
-				//---------------------------------------------------
 				if (modeIdx < 16)
 				{
-					set_mode(modeIdx);      // Set a solid mode here!!
+					SetMode(modeIdx);      // Set a solid mode here!!
 					last_modeIdx = modeIdx;
 				}
 				else
@@ -1272,15 +1674,23 @@ int main(void)
 
 					if (modeIdx == BATT_CHECK_MODE)
 					{
-//						TCCR0A = PHASE;   // set all output for PHASE mode
+						if (ramping)
+						{
+							PWM_LVL = 0;				// suppress main LED output
+							ALT_PWM_LVL = 0;
+							_delay_ms(250);
+						}
+						byForceLockOut = 0;		// release the forced lockout
+
+						
 						while (modeIdx == BATT_CHECK_MODE)	// Battery Check
 						{
 							// blink out volts and tenths
-							uint8_t result = battcheck();
-							battBlink(result >> 5);
+							uint8_t result = BattCheck();
+							BattBlink(result >> 5);
 							if (modeIdx != BATT_CHECK_MODE)		break;
 							_delay_ms(800);
-							battBlink(result & 0b00011111);
+							BattBlink(result & 0b00011111);
 							if (modeIdx != BATT_CHECK_MODE)		break;
 							_delay_ms(2000);
 						}
@@ -1288,56 +1698,52 @@ int main(void)
 
 					else if (modeIdx == STROBE_MODE)
 					{
-//						TCCR0A = PHASE;   // set all output for PHASE mode
 						while (modeIdx == STROBE_MODE)      // strobe at 16 Hz
 						{
-							strobe(16,47);		// 20,60 is 12.5 Hz
+							Strobe(16,47);		// 20,60 is 12.5 Hz
 						}
 					}
 
 #if RANDOM_STROBE
 					else if (modeIdx == RANDOM_STROBE)
 					{
-//						TCCR0A = PHASE;   // set all output for PHASE mode
 						while (modeIdx == RANDOM_STROBE)		// pseudo-random strobe
 						{
 							byte ms = 34 + (pgm_rand() & 0x3f);
-							strobe(ms, ms);
-							strobe(ms, ms);
+							Strobe(ms, ms);
+							Strobe(ms, ms);
 						}
 					}
 #endif
 
 					else if (modeIdx == POLICE_STROBE)
 					{
-//						TCCR0A = PHASE;   // set all output for PHASE mode
 						while (modeIdx == POLICE_STROBE)		// police strobe
 						{
 							for(i=0;i<8;i++)
 							{
 								if (modeIdx != POLICE_STROBE)		break;
-								strobe(20,40);
+								Strobe(20,40);
 							}
 							for(i=0;i<8;i++)
 							{
 								if (modeIdx != POLICE_STROBE)		break;
-								strobe(40,80);
+								Strobe(40,80);
 							}
 						}
 					}
 
 					else if (modeIdx == BIKING_STROBE)
 					{
-//						TCCR0A = PHASE;   // set all output for PHASE mode
 						while (modeIdx == BIKING_STROBE)		// police strobe
 						{
 							// normal version
 							for(i=0;i<4;i++)
 							{
 								if (modeIdx != BIKING_STROBE)		break;
-								set_output(255,0);
+								SetOutput(255,0);
 								_delay_ms(5);
-								set_output(0,255);
+								SetOutput(0,255);
 								_delay_ms(65);
 							}
 							for(i=0;i<10;i++)
@@ -1346,18 +1752,17 @@ int main(void)
 								_delay_ms(72);
 							}
 						}
-						set_output(0,0);
+						SetOutput(0,0);
 					}
 
 					else if (modeIdx == BEACON_2S_MODE)
 					{
-//						TCCR0A = PHASE;   // set all output for PHASE mode
 						while (modeIdx == BEACON_2S_MODE)		// Beacon 2 sec mode
 						{
 							_delay_ms(300);	// pause a little initially
 						
-							strobe(125,125);		// two flash's
-							strobe(125,125);
+							Strobe(125,125);		// two flash's
+							Strobe(125,125);
 						
 							for (i=0; i < 15; i++)	// 1.5 secs delay
 							{
@@ -1370,12 +1775,10 @@ int main(void)
 					else if (modeIdx == BEACON_10S_MODE)
 						while (modeIdx == BEACON_10S_MODE)		// Beacon 10 sec mode
 						{
-//							TCCR0A = PHASE;   // set all output for PHASE mode
-
 							_delay_ms(300);	// pause a little initially
 
-							strobe(240,240);		// two slow flash's
-							strobe(240,240);
+							Strobe(240,240);		// two slow flash's
+							Strobe(240,240);
 
 							for (i=0; i < 100; i++)	// 10 secs delay
 							{
@@ -1390,23 +1793,51 @@ int main(void)
 			// Perform low battery indicator tests
 			if (LowBattSignal)
 			{
-				if (modeIdx > 0)
+				if (ramping)
 				{
-					// Flash 3 times before lowering
-					byte i = 0;
-					while (i++<3)
+					if (outLevel > 0)
 					{
-						set_output(0,0);
-						_delay_ms(250);
-						TurnOnBoardLed(1);
-						set_output(currOutLvl1, currOutLvl2);
-						_delay_ms(500);
-						TurnOnBoardLed(0);
-					}
+						// Flash 3 times before lowering
+						byte i = 0;
+						while (i++<3)
+						{
+							SetOutput(0,0);
+							_delay_ms(250);
+							TurnOnBoardLed(1);
+							SetLevel(outLevel);
+							_delay_ms(500);
+							TurnOnBoardLed(0);
+						}
 					
-					if (modeIdx < 16)
-						prev_mode();
+						if (outLevel == 1)
+							outLevel = 0;
+						else if (outLevel > MAX_RAMP_LEVEL/8)
+							outLevel -= MAX_RAMP_LEVEL/8;
+						else
+							outLevel = 1;
+						SetLevel(outLevel);
+					}
 				}
+				else   // Not ramping
+				{
+					if (modeIdx > 0)
+					{
+						// Flash 3 times before lowering
+						byte i = 0;
+						while (i++<3)
+						{
+							SetOutput(0,0);
+							_delay_ms(250);
+							TurnOnBoardLed(1);
+							SetOutput(currOutLvl1, currOutLvl2);
+							_delay_ms(500);
+							TurnOnBoardLed(0);
+						}
+						if (modeIdx < 16)
+							PrevMode();
+					}
+				}
+				
 				LowBattSignal = 0;
 			}
 			else if (LowBattBlinkSignal)
@@ -1414,7 +1845,7 @@ int main(void)
 				// Blink the Indicator LED twice
 				if (onboardLedEnable)
 				{
-					if ((modeIdx > 0) || (locatorLedOn == 0))
+					if ((modeIdx > 0) || (locatorLed == 0))
 					{
 						TurnOnBoardLed(1);
 						_delay_ms(500);
@@ -1444,17 +1875,19 @@ int main(void)
 			if (LowBattState)
 				wWaitTicks = 22500;	// 6 minutes
 			
-			if ((modeIdx == 0) && !is_pressed() && (wIdleTicks > wWaitTicks))
+			if (((!ramping && (modeIdx == 0)) || (ramping && outLevel == 0))
+									 &&
+				 !IsPressed() && (wIdleTicks > wWaitTicks))
 			{
 				// If the battery is currently low, then turn OFF the indicator LED before going to sleep
 				//  to help in saving the battery
-				if (get_voltage() < ADC_LOW)
-					if (locatorLedOn)
+				if (GetVoltage() < ADC_LOW)
+					if (locatorLed)
 						TurnOnBoardLed(0);
 				
 				wIdleTicks = 0;
 				_delay_ms(1); // Need this here, maybe instructions for PWM output not getting executed before shutdown?
-				sleep_until_switch_press();	// Go to sleep
+				SleepUntilSwitchPress();	// Go to sleep
 			}
 		}
 		
@@ -1466,7 +1899,7 @@ int main(void)
 			{
 				prevConfigClicks = configClicks;
 				if (configClicks > 0)
-					clickBlink();
+					ClickBlink();
 			}
 			
 			if (ConfigMode != prevConfigMode)
@@ -1479,51 +1912,61 @@ int main(void)
 					case 1:
 						_delay_ms(400);
 
-						configBlink(1);
+						ConfigBlink(1);
 						++ConfigMode;
 						configClicks = 0;
 						break;
 						
-					case 3:	// 1 - exiting mode set selection
+					case 3:	// 1 - exiting ramping mode selection
+						if ((configClicks > 0) && (configClicks <= 8))
+						{
+							ramping = 1 - (configClicks & 1);
+							SaveConfig();
+						}
+						ConfigBlink(2);
+						configIdleTime = 0;
+						break;
+
+					case 4:	// 2 - exiting mode set selection
 						if ((configClicks > 0) && (configClicks <= 8))
 						{
 							modeSetIdx = configClicks - 1;
 							DefineModeSet();
 							SaveConfig();
 						}
-						configBlink(2);
+						ConfigBlink(3);
 						configIdleTime = 0;
 						break;
 
-					case 4:	// 2 - exiting moonlight enabling
+					case 5:	// 3 - exiting moonlight enabling
 						if (configClicks)
 						{
 							moonLightEnable = 1 - (configClicks & 1);
 							DefineModeSet();
 							SaveConfig();
 						}
-						configBlink(3);
+						ConfigBlink(4);
 						break;
 
-					case 5:	// 3 - exiting mode order setting
+					case 6:	// 4 - exiting mode order setting
 						if (configClicks)
 						{
 							highToLow = 1 - (configClicks & 1);
 							SaveConfig();
 						}
-						configBlink(4);
+						ConfigBlink(5);
 						break;
 
-					case 6:	// 4 - exiting mode memory setting
+					case 7:	// 5 - exiting mode memory setting
 						if (configClicks)
 						{
 							modeMemoryEnabled = 1 - (configClicks & 1);
 							SaveConfig();
 						}
-						configBlink(5);
+						ConfigBlink(6);
 						break;
 						
-					case 7:	// 5 - exiting turbo timeout setting
+					case 8:	// 6 - exiting turbo timeout setting
 						if ((configClicks > 0) && (configClicks <= 8))
 						{
 							turboTimeoutMode = configClicks - 1;
@@ -1532,12 +1975,22 @@ int main(void)
 							wTurboTickLimit = pgm_read_word(turboTimeOutVals+turboTimeoutMode);
 							SaveConfig();
 						}
-						ConfigMode = 8;			// all done, go to exit
+						ConfigBlink(7);
 						break;
-
-					case 8:	// exiting config mode
+						
+					case 9:	// 7 - exiting blinky mode setting (0=disable, 1=strobe only, 2=all blinkies)
+						if ((configClicks > 0) && (configClicks <= 3))
+						{
+							blinkyMode = configClicks - 1;
+							SaveConfig();
+						}
+						ConfigMode = 10;			// all done, go to exit
+						break;
+					
+					case 10:	// exiting config mode
 						ConfigMode = 0;		// Exit Config mode
-						blink(5, 40);
+						Blink(5, 40);
+						outLevel = rampingLevel = 0;
 						modeIdx = 0;
 						break;
 
@@ -1548,7 +2001,7 @@ int main(void)
 					case 21:	// Start Adv Config mode
 						_delay_ms(400);
 
-						configBlink(1);
+						ConfigBlink(1);
 						++ConfigMode;
 						configClicks = 0;
 						break;
@@ -1557,9 +2010,10 @@ int main(void)
 						if (configClicks)
 						{
 							locatorLedOn = 1 - (configClicks & 1);
+							locatorLed = locatorLedOn;
 							SaveConfig();
 						}
-						configBlink(2);
+						ConfigBlink(2);
 						break;
 						
 					case 24:	// 2 - exiting moonlight level selection
@@ -1569,7 +2023,7 @@ int main(void)
 							DefineModeSet();
 							SaveConfig();
 						}
-						configBlink(3);
+						ConfigBlink(3);
 						break;
 
 					case 25:	// 3 - exiting BVLD LED config selection
@@ -1578,7 +2032,7 @@ int main(void)
 							bvldLedOnly = 1 - (configClicks & 1);
 							SaveConfig();
 						}
-						configBlink(4);
+						ConfigBlink(4);
 						break;
 					
 					case 26:	// 4 - exiting Indicator LED enable selection
@@ -1587,7 +2041,7 @@ int main(void)
 							onboardLedEnable = 1 - (configClicks & 1);
 							SaveConfig();
 						}
-						configBlink(5);
+						ConfigBlink(5);
 						break;
 					
 					case 27:	// 5 - power tail switch modes w/mem selection
@@ -1596,7 +2050,7 @@ int main(void)
 							OffTimeEnable = 1 - (configClicks & 1);
 							SaveConfig();
 						}
-						ConfigMode = 8;			// all done, go to exit
+						ConfigMode = 10;			// all done, go to exit
 						break;
 					
 				} // switch on new config mode
