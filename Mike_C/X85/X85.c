@@ -31,10 +31,11 @@
 	#define MODE3				0,2
 	#define BOOST				0,MAX											//	MAX for max output. Differs depending on driver, defined per driver type.
 	#define	RAMP1				15,0											//	Default output in UI 3.
-	#define	RAMP2				15,0											//	Default output in UI 4.
+	#define	RAMP2				10,0											//	Default output in UI 4.
 
 	#define	BOOSTTIMER			5												//	0, 10, 20, 30, 45, 1:00, 1:30, 2:00, 3:00 ,5:00.
 	#define GENERICSETTINGS		0b111111										//	CRITSHUTDOWN, LOWVOLTMON, TEMPMONITOR, MODEDIRL2H, BOOSTMEM, MODEMEM
+
 
 // ======================== DUAL SWITCH INTERFACE ==========================
 /*
@@ -55,17 +56,15 @@
 	Adjust mode:		Short P press enables mode adjustment.
 	Boost:				E press. Hold for 1.5 seconds to lock.
 
-	UI 4 & 5
+	UI 4
 	--------
-	Adjust mode:		Constant adjustable.
+	Adjust mode:		Constantly adjustable.
 	Boost:				N/A.
 
 	Adjusting output
 	----------------
 	Increase:			E press and hold.
 	Decrease:			Double E press, hold on second press.
-	Increase 1 step:	Short E press.
-	Decrease 1 step:	Double short E press.
 
 // ======================== OFF SWITCH INTERFACE ===========================
 
@@ -86,9 +85,9 @@
 	Adjust mode:		Long P press enables mode adjustment.
 	Boost:				Short P press.
 
-	UI 4 & 5
+	UI 4
 	--------
-	Adjust mode:		Constant adjustable.
+	Adjust mode:		Constantly adjustable.
 	Boost:				N/A.
 
 	Adjusting output
@@ -112,7 +111,7 @@
 
 1   LOCK / UI      L = Safety lock.
                    1-4 = UI.
-                   9 = Noob mode toggle on/off.
+                   9 = Noob mode on/off.
 
 2   SPECIALMODES   1 = Beacon.
                    2 = Strobe.
@@ -127,7 +126,6 @@
                    3 = BoostTimer:   1-9 = 10, 20, 30, 45, 1:00, 1:30, 2:00, 3:00, 5:00.
                                      L = No timer.
                                      0 = Readout timer.
-                   0 = SOS on/off    Confirmation required.
 
 4   MONITORING     1 = MaxTemp:      1 = Start (turn off at max temp).
                                      L = Toggle Temp Monitor on/off.
@@ -141,15 +139,15 @@
 
 5   CALIBRATIONS   1 = VoltCalib:    XXX = X.XX Volt, readout, confirm.
                                      L = Reset INTREFVOLT to default.
-									 0 = Readout INTREFVOLT.
+                                     0 = Readout INTREFVOLT.
                    2 = TempCalib:    XX = Temp, readout, confirm.
                                      L = Reset TEMPOFFSET to default.
-									 0 = Readout TEMPOFFSET.
+                                     0 = Readout TEMPOFFSET.
                    3 = TempProfile:  1 = Starts temp profiling.
                                      L = Reset TEMPPROFILE to default.
-									 0 = Readout TEMPPROFILE.
+                                     0 = Readout TEMPPROFILE.
 
-6   RESET2DEFAULT  1 = Reset modes & settings, not calibrations or offsets.
+6   RESET2DEFAULT  1 = Reset modes and settings but not calibrations or offsets.
                    L = Full reset.
                    Additional confirmation required.
 
@@ -197,19 +195,19 @@
 
 7   CALIBRATIONS   1 = VoltCalib:    XXX = X.XX Volt, readout, confirm.
                                      L = Reset INTREFVOLT to default.
-									 0 = Readout INTREFVOLT.
+                                     0 = Readout INTREFVOLT.
                    2 = TempCalib:    XX = Temp, readout, confirm.
                                      L = Reset TEMPOFFSET to default.
-									 0 = Readout TEMPOFFSET.
+                                     0 = Readout TEMPOFFSET.
                    3 = TempProfile:  1 = Starts temp profiling.
                                      L = Reset TEMPPROFILE to default.
-									 0 = Readout TEMPPROFILE.
+                                     0 = Readout TEMPPROFILE.
 
-8   RESET2DEFAULT  1 = Reset modes & settings.
+8   RESET2DEFAULT  1 = Reset modes and settings but not calibrations or offsets.
                    L = Full reset.
                    Additional confirmation required.
 
-9   NOOB MODE      Noob mode toggle on/off.
+9   NOOB MODE      Noob mode on/off.
 
 
 // ======================== COMMON SHARED INTERFACE ========================
@@ -225,17 +223,16 @@
 	No memory:			Always starts in lowest mode on cold start.
 	Mode memory:		Mode restored on cold start. Does not include boost by default.
 	Boost memory:		Includes boost mode in mode memory.
-	UI change:			Lowest mode set on UI change.
+	UI change:			Lowest mode set on UI change, regardless of mode memory setting.
 
 	Low voltage or high temp
 	------------------------
-	On low voltage, high temperature or critical levels the light steps down to a
-	mode or mode level that is at or below the allowed limit for low/high or
-	critical levels after blinking warning.
+	On low voltage, high temperature or critical levels the light steps down to a mode
+	or level that is at or below the defined allowed limits after blinking warning.
 	2 blinks for voltage, 3 blinks for temperature, followed by 3 quick flashes if critical.
 	The light continues to warn every 30 seconds without interaction.
-	If critical and the critical shutdown setting is enabled the light will enter sleep mode.
-	A power off cycle will wake up the light from sleep mode.
+	If levels are critical and the critical shutdown setting is enabled the light will enter
+	sleep mode. A power off cycle will wake up the light from sleep.
 
 */
 // =========================================================================
@@ -1467,7 +1464,7 @@ inline uint8_t EswPressCounter() {												//	Detect and return number of sho
 
 uint16_t EswGetValue(uint8_t iDigits) {											//	Overly complicated routine to allow different results depending on conditions.
 																				//	1,2 or 3 expects 1,2 or 3 digits to be entered. Exceptions:
-	uint8_t i = iDigits;														//	Long press on first digit returns 255 (except if code), is 0 on following digits.
+	uint8_t i = iDigits;														//	Long press on first digit returns 255, returns 0 on following digits.
 																				//	No press on first returns 0. No press on following returns error (except if Temperature).
 
 	if (iDigits == TEMP) i = 2;													//	Temperature takes 1 or 2 digits.
@@ -1476,7 +1473,7 @@ uint16_t EswGetValue(uint8_t iDigits) {											//	Overly complicated routine 
 
 	while (i--) {
 		uint8_t iEswDigit = EswPressCounter();
-		if (iEswDigit == 255 && i == iFirst) return 255;						//	First long press exits and returns 255 (if not a code).
+		if (iEswDigit == 255 && i == iFirst) return 255;						//	First long press exits and returns 255.
 		if (!iEswDigit) {														//	No input for digit:
 			if (i == iFirst) return 0;											//	Was first digit, return 0.
 			else {																//	Was a following digit when no input.
@@ -1624,7 +1621,7 @@ int main(void) {
 
 	void Readout_Calibrations() {
 		ClearSwitch();
-		while (1) {
+		while (1) {																//	Endless loop, easier to count and write down.
 			Delay(DELAY_SW);
 			BlinkNumValue(sINTREFVOLT,5);
 			Delay(DELAY_SW);
@@ -1756,7 +1753,7 @@ int main(void) {
 					else {
 						bPROGSTATUS = 6;
 						#ifdef OFFSWITCH
-							sMODE = (uint8_t)bMODE;								//	Copy stored mode to keep mode for level programming when memory disabled.
+							sMODE = (uint8_t)bMODE;								//	Copy stored mode to keep current mode even if mode memory is disabled.
 							eeWrite();
 						#endif
 						BlinkConfirm();
@@ -2000,8 +1997,10 @@ int main(void) {
 			else BlinkValue(0,0);												//	Low voltage monitoring is deactivated.
 		}
 		if (swSETUP == sSETCRITVMON) BlinkNumValue(sCRITVOLT,2);				//	Readout current critical voltage threshold.
-		if (swSETUP == sTEMPCALIB) BlinkMinusValue(sTEMPOFFSET);
-		if (swSETUP == sTEMPCALIB) BlinkError();
+		if (swSETUP == sTEMPCALIB) {
+			if (sTEMPMONITOR) BlinkMinusValue(sTEMPOFFSET);						//	Readout temperature offset if monitoring active.
+			else BlinkValue(0,0);												//	Except if temperature monitor is off.
+		}
 
 		swStartup = STARTDELAY_LONG;
 	}
