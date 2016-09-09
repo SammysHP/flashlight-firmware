@@ -68,16 +68,31 @@ The interface is as follows:
 
       4. Mode order.  Low to high, or high to low.
 
-      5. Mode group.  Choice of 1 to 8 regular modes from low to turbo.
-         After clicking, the light should come on in a special 
-         group-select mode.  In this mode, it slowly blinks 8 times, 
-         pauses, then repeats.  Turn the light off after N blinks to 
-         select mode group N.  The number of levels in each group is 
-         equal to the group number, and all levels within are 
-         evenly-spaced.
+      5. Mode group.  Choice of 1 to 6 regular modes from low to turbo, 
+         or one of 3 special groups.  After clicking, the light should 
+         come on in a special group-select mode.  In this mode, it 
+         slowly blinks 9 times, pauses, then repeats.  Turn the light 
+         off after N blinks to select mode group N.
+         The mode groups are: (output is approximate)
 
-         Example: To select low-med-high, let it blink three times then 
-         click the button.
+         1. 1300 lm only
+         2. 8, 1300 lm
+         3. 8, 235, 1300
+         4. 8, 104, 506, 1300
+         5. 8, 75, 254, 642, 1300
+         6. 8, 50, 167, 366, 757, 1300
+         7. 140, 1300, strobe
+            (police modes)
+         8. bike flasher, battcheck, 8, 140, 1300
+            (biking modes)
+         9. 4, 36, 140, 500, 1300
+            (like group 5 but lower)
+
+         Example: To select group 3 (low-med-high), let it blink three 
+         times then click the button.
+
+         Note: 140 lm means 100% on the 7135 channel, while 1300 means 
+         100% on the FET channel.  Both are no-PWM modes.
 
       6. Medium-press.  Off or on.  If on, a medium-press will allow 
          going backward through the mode sequence, and hidden blinky 

@@ -67,6 +67,9 @@ Summary of each project
     ToyKeeper/bistro:
         "Bistro" firmware for clicky-switch lights
 
+    ToyKeeper/bistro/tripledown:
+        "Bistro tripledown" firmware for clicky-switch lights
+
     ToyKeeper/blf-a6:
         BLF EE A6 special edition (FET+1) firmware and derivatives
 
@@ -169,6 +172,7 @@ Authors
         ToyKeeper/STAR_noinit
         ToyKeeper/battcheck
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
@@ -219,6 +223,7 @@ Button-Type
         ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
@@ -259,6 +264,7 @@ Extras
     LVP:
         Tamagotchi/7135x8v2
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
 
     battery indicator LEDs:
         ToyKeeper/Ferrero_Rocher
@@ -287,6 +293,7 @@ Extras
     hidden modes:
         JonnyC/STAR/STAR_momentary
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
@@ -298,12 +305,14 @@ Extras
     mode groups:
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         odd/MGdriver
         pilotdog68/xintd-x3
 
     offtime-3:
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
@@ -326,6 +335,7 @@ Extras
 
     soft start:
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
 
     special effect demo:
         DrJones/heartbeat
@@ -348,10 +358,14 @@ Extras
 
     thermal regulation:
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
 
     thermal step-down:
         JonnyC/STAR/MTN_momentary_temp
         Tamagotchi/7135x8v2
+
+    triple PWM:
+        ToyKeeper/bistro/tripledown
 
 License
 
@@ -360,6 +374,7 @@ License
 
     GPLv3:
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
 
@@ -404,15 +419,18 @@ MCU
     attiny25:
         ToyKeeper/battcheck
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
 
     attiny45:
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
 
     attiny85:
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
 
     pic10f322:
         tterev3/pic10f322-examples
@@ -423,6 +441,7 @@ Memory
     OTC:
         JonnyC/STAR/STAR_off_time
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
@@ -434,6 +453,7 @@ Memory
     configurable:
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
 
     mem decay:
         ToyKeeper/STAR_noinit
@@ -465,6 +485,7 @@ Memory
         JonnyC/STAR/STAR_off_time
         ToyKeeper/STAR_noinit
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
@@ -531,6 +552,7 @@ Modes
         Tom_E/narsil
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
@@ -556,6 +578,7 @@ Modes
         Tamagotchi/7135x8v2
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
@@ -569,6 +592,7 @@ Modes
         DrJones/luxdrv
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         pilotdog68/xintd-x3
         tterev3/power_cycle_light
@@ -590,6 +614,7 @@ Modes
 
     muggle:
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
 
     party strobe:
         ToyKeeper/blf-a6/cypreus2
@@ -603,6 +628,7 @@ Modes
     police strobe:
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
 
     ramp:
         DrJones/luxdrv
@@ -611,6 +637,7 @@ Modes
 
     random strobe:
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
 
     soft lock:
         ToyKeeper/Ferrero_Rocher
@@ -625,6 +652,7 @@ Modes
         Tom_E/eswitch-13
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/starry-offtime
         _the_/TheStar
@@ -641,6 +669,7 @@ Modes
     voltage readout:
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/tripledown
 
 TODO
 

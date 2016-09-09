@@ -52,7 +52,8 @@
 //#define ATTINY 13
 //#define ATTINY 25
 // FIXME: make 1-channel vs 2-channel power a single #define option
-#define FET_7135_LAYOUT  // specify an I/O pin layout
+//#define FET_7135_LAYOUT  // specify an I/O pin layout
+#define TRIPLEDOWN_LAYOUT  // specify an I/O pin layout
 // Also, assign I/O pins in this file:
 #include "tk-attiny.h"
 
@@ -73,7 +74,7 @@
                             // instead of just short/long
 
 // ../../bin/level_calc.py 64 1 10 1300 y 3 0.23 140
-#define RAMP_SIZE  64
+#define RAMP_SIZE  40
 // log curve
 //#define RAMP_7135  3,3,3,3,3,3,4,4,4,4,4,5,5,5,6,6,7,7,8,9,10,11,12,13,15,16,18,21,23,27,30,34,39,44,50,57,65,74,85,97,111,127,145,166,190,217,248,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 //#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,6,11,17,23,30,39,48,59,72,86,103,121,143,168,197,255
@@ -81,8 +82,23 @@
 //#define RAMP_7135  3,5,8,12,17,24,32,41,51,63,75,90,105,121,139,158,178,200,223,247,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 //#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,6,9,12,16,19,22,26,30,33,37,41,45,50,54,59,63,68,73,78,84,89,94,100,106,111,117,123,130,136,142,149,156,162,169,176,184,191,198,206,214,221,255
 // x**3 curve
-#define RAMP_7135  3,3,4,5,6,8,10,12,15,19,23,28,33,40,47,55,63,73,84,95,108,122,137,153,171,190,210,232,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
-#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,5,8,11,14,18,22,26,30,34,39,44,49,54,59,65,71,77,84,91,98,105,113,121,129,137,146,155,164,174,184,194,205,216,255
+// ../../bin/level_calc.py 3 40 7135 3 0.25 140 7135 3 1.5 840 FET 1 10 3000
+// (with some manual tweaks to exactly hit 1x7135 and Nx7135 in the middle)
+//#define ONE7135 14
+//#define ALL7135s 27
+//#define RAMP_7135  3,4,7,11,18,27,40,57,77,103,133,169,211,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+//#define RAMP_7135s 0,0,0,0,0,0,0,0,0,0,0,0,0,0,11,22,35,49,64,82,101,122,144,169,195,224,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+//#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,24,39,55,73,91,111,132,154,177,202,228,255
+// testing only: First 3 modes show each channel individually
+//#define RAMP_7135  255,0,0,11,18,27,40,57,77,103,133,169,211,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+//#define RAMP_7135s 0,255,0,0,0,0,0,0,0,0,0,0,0,0,11,22,35,49,64,82,101,122,144,169,195,224,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+//#define RAMP_FET   0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,24,39,55,73,91,111,132,154,177,202,228,255
+// 1200-lm single LED: ../../bin/level_calc.py 3 40 7135 3 0.25 160 7135 3 1.5 760 FET 1 3 1200
+#define RAMP_7135   3,4,5,7,10,14,19,25,33,43,54,67,83,101,121,144,170,198,230,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+#define RAMP_7135s  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,18,28,40,52,65,78,92,107,124,143,163,184,207,230,255,255,255,255,0
+#define RAMP_FET    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,33,103,177,255
+#define ONE7135 20
+#define ALL7135s 36
 // x**5 curve
 //#define RAMP_7135  3,3,3,4,4,5,5,6,7,8,10,11,13,15,18,21,24,28,33,38,44,50,57,66,75,85,96,108,122,137,154,172,192,213,237,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 //#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,6,9,13,17,21,25,30,35,41,47,53,60,67,75,83,91,101,111,121,132,144,156,169,183,198,213,255
@@ -105,7 +121,8 @@
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,TURBO .
-#define HIDDENMODES         BIKING_STROBE,BATTCHECK,POLICE_STROBE,TURBO
+//#define HIDDENMODES         BIKING_STROBE,BATTCHECK,POLICE_STROBE,TURBO
+#define HIDDENMODES         BATTCHECK,RAMP,TURBO
 
 #define TURBO     RAMP_SIZE       // Convenience code for turbo mode
 #define BATTCHECK 254       // Convenience code for battery check mode
@@ -114,11 +131,11 @@
 // Uncomment to enable tactical strobe mode
 //#define STROBE    251       // Convenience code for strobe mode
 // Uncomment to unable a 2-level stutter beacon instead of a tactical strobe
-#define BIKING_STROBE 250   // Convenience code for biking strobe mode
+//#define BIKING_STROBE 250   // Convenience code for biking strobe mode
 // comment out to use minimal version instead (smaller)
 #define FULL_BIKING_STROBE
-//#define RAMP 249       // ramp test mode for tweaking ramp shape
-#define POLICE_STROBE 248
+#define RAMP 249       // ramp test mode for tweaking ramp shape
+//#define POLICE_STROBE 248
 //#define RANDOM_STROBE 247
 
 // thermal step-down
@@ -159,7 +176,7 @@
 // Config option variables
 #define FIRSTBOOT 0b01010101
 uint8_t firstboot = FIRSTBOOT;  // detect initial boot or factory reset
-uint8_t modegroup = 5;     // which mode group (set above in #defines)
+uint8_t modegroup = 8;     // which mode group
 uint8_t enable_moon = 1;   // Should we add moon to the set of modes?
 uint8_t reverse_modes = 0; // flip the mode order?
 uint8_t memory = 0;        // mode memory, or not (set via soldered star)
@@ -192,21 +209,23 @@ PROGMEM const uint8_t hiddenmodes[] = { HIDDENMODES };
 // Each group must be 8 values long, but can be cut short with a zero.
 #define NUM_MODEGROUPS 9  // don't count muggle mode
 PROGMEM const uint8_t modegroups[] = {
-    64,  0,  0,  0,  0,  0,  0,  0,
-    11, 64,  0,  0,  0,  0,  0,  0,
-    11, 35, 64,  0,  0,  0,  0,  0,
-    11, 26, 46, 64,  0,  0,  0,  0,
-    11, 23, 36, 50, 64,  0,  0,  0,
-    11, 20, 31, 41, 53, 64,  0,  0,
-    29, 64,POLICE_STROBE,0,0,0,0,0,  // 7: special group A
-    BIKING_STROBE,BATTCHECK,11,29,64,0,0,0,  // 8: special group B
-     9, 18, 29, 46, 64,  0,  0,  0,  // 9: special group C
-    11, 29, 50,  0,                  // muggle mode, exception to "must be 8 bytes long"
+     //1,  2,  3,  BATTCHECK,  RAMP,  0,  0,  0,
+    40,  0,  0,  0,  0,  0,  0,  0,
+     6, 40,  0,  0,  0,  0,  0,  0,
+     6, 23, 40,  0,  0,  0,  0,  0,
+     6, 17, 28, 40,  0,  0,  0,  0,
+     6, 14, 23, 31, 40,  0,  0,  0,
+     6, 12, 19, 26, 33, 40,  0,  0,
+    ONE7135, TURBO, RAMP,0,0,0,0,0,  // 7: special group A
+    RAMP,BATTCHECK,6,ONE7135,TURBO,0,0,0,  // 8: special group B
+    RAMP, 6, 12, 19, 29, 40,  0,  0,  // 9: special group C
+     6, 19, 32,  0,                  // muggle mode, exception to "must be 8 bytes long"
 };
 uint8_t modes[] = { 1,2,3,4,5,6,7,8,9, HIDDENMODES };  // make sure this is long enough...
 
 // Modes (gets set when the light starts up based on saved config values)
 PROGMEM const uint8_t ramp_7135[] = { RAMP_7135 };
+PROGMEM const uint8_t ramp_7135s[] = { RAMP_7135s };
 PROGMEM const uint8_t ramp_FET[]  = { RAMP_FET };
 
 void save_mode() {  // save the current mode index (with wear leveling)
@@ -377,24 +396,26 @@ void count_modes() {
     }
 }
 
-inline void set_output(uint8_t pwm1, uint8_t pwm2) {
+inline void set_output(uint8_t pwm1, uint8_t pwm2, uint8_t pwm3) {
     /* This is no longer needed since we always use PHASE mode.
     // Need PHASE to properly turn off the light
     if ((pwm1==0) && (pwm2==0)) {
         TCCR0A = PHASE;
     }
     */
-    PWM_LVL = pwm1;
-    ALT_PWM_LVL = pwm2;
+    FET_PWM_LVL = pwm1;
+    PWM_LVL = pwm2;
+    ALT_PWM_LVL = pwm3;
 }
 
 void set_level(uint8_t level) {
     if (level == 0) {
-        set_output(0,0);
+        set_output(0,0,0);
     } else {
         level -= 1;
-        set_output(pgm_read_byte(ramp_FET  + level),
-                   pgm_read_byte(ramp_7135 + level));
+        set_output(pgm_read_byte(ramp_FET   + level),
+                   pgm_read_byte(ramp_7135s + level),
+                   pgm_read_byte(ramp_7135  + level));
     }
 }
 
@@ -499,9 +520,16 @@ int main(void)
     // check the OTC immediately before it has a chance to charge or discharge
     uint8_t cap_val = read_otc();  // save it for later
 
+    // Charge up the capacitor by setting CAP_PIN to output
+    DDRB  |= (1 << CAP_PIN);    // Output
+    PORTB |= (1 << CAP_PIN);    // High
+
     // Set PWM pin to output
     DDRB |= (1 << PWM_PIN);     // enable main channel
     DDRB |= (1 << ALT_PWM_PIN); // enable second channel
+
+    // enable second PWM counter (OC1B) and third channel (FET, PB4)
+    DDRB |= (1 << FET_PWM_PIN); // enable third channel (DDB4)
 
     // Set timer to do PWM for correct output pin and set prescaler timing
     //TCCR0A = 0x23; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
@@ -509,6 +537,17 @@ int main(void)
     TCCR0A = PHASE;
     // Set timer to do PWM for correct output pin and set prescaler timing
     TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
+
+    // Second PWM counter is ... weird
+    //GTCCR = (1<<PWM1B) | (2<<COM1B0);  // enable pwm on pb4, clear output
+    //GTCCR |= (1<<PWM1B | 1<<COM1B0);  // enable pwm on pb4, toggle output
+    //TCCR1 = 1<<COM1A0 | 1<<CS10;  // toggle, pre-scaler=1
+    //TCCR1 = (2<<COM1A0) | (1<<CS10);  // clear, pre-scaler=1
+    //TCCR1 = 3<<COM1A0 | 1<<CS10;  // set, pre-scaler=1
+    //TCCR1 = (1<<PWM1A) | (2<<COM1A0) | (1<<CS10);  // pre-scaler=1
+    TCCR1 = _BV (CS10);
+    GTCCR = _BV (COM1B1) | _BV (PWM1B);
+    OCR1C = 255;  // Set ceiling value to maximum
 
     // Read config values and saved state
     restore_state();
@@ -553,10 +592,6 @@ int main(void)
         }
     }
     save_mode();
-
-    // Charge up the capacitor by setting CAP_PIN to output
-    DDRB  |= (1 << CAP_PIN);    // Output
-    PORTB |= (1 << CAP_PIN);    // High
 
     // Turn features on or off as needed
     #ifdef VOLTAGE_MON
@@ -656,17 +691,21 @@ int main(void)
 #ifdef FULL_BIKING_STROBE
             // normal version
             for(i=0;i<4;i++) {
-                set_output(255,0);
+                set_level(TURBO);
+                //set_output(255,0,0);
                 _delay_ms(5);
-                set_output(0,255);
+                set_level(ONE7135);
+                //set_output(0,0,255);
                 _delay_ms(65);
             }
             _delay_ms(720);
 #else
             // small/minimal version
-            set_output(255,0);
+            set_level(TURBO);
+            //set_output(255,0,0);
             _delay_ms(10);
-            set_output(0,255);
+            set_level(ONE7135);
+            //set_output(0,0,255);
             _delay_s();
 #endif
         }
@@ -677,11 +716,11 @@ int main(void)
             // simple ramping test
             for(r=1; r<=RAMP_SIZE; r++) {
                 set_level(r);
-                _delay_ms(25);
+                _delay_ms(40);
             }
             for(r=RAMP_SIZE; r>0; r--) {
                 set_level(r);
-                _delay_ms(25);
+                _delay_ms(40);
             }
         }
 #endif  // ifdef RAMP
