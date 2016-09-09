@@ -1,5 +1,5 @@
-"Bistro Mini" firmware for Convoy brand lights
-==============================================
+"Biscotti" firmware for Convoy brand lights
+===========================================
 
 This is designed for the Nanjg 105D drivers used in Convoy lights.
 
@@ -44,8 +44,7 @@ The interface is as follows:
 
     The config mode has several options.  It will blink out a number to 
     show which option is active, then "buzz" or "stutter" for a bit.  
-    Click during the "buzz" to select that option.  Some options may 
-    enter a secondary config mode after the light turns back on.
+    Click during the "buzz" to select that option.
 
     Options include:
 

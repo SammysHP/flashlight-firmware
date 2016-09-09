@@ -1,7 +1,7 @@
 /*
- * "Bistro" firmware
- * This code runs on a single-channel or dual-channel driver (FET+7135)
- * with an attiny25/45/85 MCU and a capacitor to measure offtime (OTC).
+ * "Biscotti" firmware (attiny13a version of "Bistro")
+ * This code runs on a single-channel driver with attiny13a MCU.
+ * It is intended specifically for nanjg 105d drivers from Convoy.
  *
  * Copyright (C) 2015 Selene Scriven
  *
@@ -19,25 +19,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  *
- * ATTINY25/45/85 Diagram
+ * ATTINY13 Diagram
  *           ----
  *         -|1  8|- VCC
- *     OTC -|2  7|- Voltage ADC
- *  Star 3 -|3  6|- PWM (FET, optional)
- *     GND -|4  5|- PWM (1x7135)
+ *         -|2  7|- Voltage ADC
+ *         -|3  6|-
+ *     GND -|4  5|- PWM (Nx7135)
  *           ----
  *
  * FUSES
- *      I use these fuse settings on attiny25
- *      Low:  0xd2
- *      High: 0xde
- *      Ext:  0xff
- *
- *      For more details on these settings:
- *      http://www.engbedded.com/cgi-bin/fcx.cgi?P_PREV=ATtiny25&P=ATtiny25&M_LOW_0x3F=0x12&M_HIGH_0x07=0x06&M_HIGH_0x20=0x00&B_SPIEN=P&B_SUT0=P&B_CKSEL3=P&B_CKSEL2=P&B_CKSEL0=P&B_BODLEVEL0=P&V_LOW=E2&V_HIGH=DE&V_EXTENDED=FF
- *
- * STARS
- *      Star 3 = unused
+ *      I use these fuse settings on attiny13
+ *      Low:  0x75
+ *      High: 0xff
  *
  * CALIBRATION
  *
