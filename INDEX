@@ -67,6 +67,9 @@ Summary of each project
     ToyKeeper/bistro:
         "Bistro" firmware for clicky-switch lights
 
+    ToyKeeper/bistro/biscotti:
+        "Biscotti" firmware for Convoy S-series and C8 lights
+
     ToyKeeper/bistro/tripledown:
         "Bistro tripledown" firmware for clicky-switch lights
 
@@ -172,6 +175,7 @@ Authors
         ToyKeeper/STAR_noinit
         ToyKeeper/battcheck
         ToyKeeper/bistro
+        ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
@@ -223,6 +227,7 @@ Button-Type
         ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
         ToyKeeper/bistro
+        ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
@@ -264,6 +269,7 @@ Extras
     LVP:
         Tamagotchi/7135x8v2
         ToyKeeper/bistro
+        ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
 
     battery indicator LEDs:
@@ -305,6 +311,7 @@ Extras
     mode groups:
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         odd/MGdriver
@@ -374,6 +381,7 @@ License
 
     GPLv3:
         ToyKeeper/bistro
+        ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
@@ -382,6 +390,9 @@ MCU
 
     attiny10:
         tterev3/attiny10_starter_code
+
+    attiny13:
+        ToyKeeper/bistro/biscotti
 
     attiny13a:
         DrJones/MiniDrv
@@ -419,17 +430,20 @@ MCU
     attiny25:
         ToyKeeper/battcheck
         ToyKeeper/bistro
+        ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
 
     attiny45:
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
 
     attiny85:
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
 
     pic10f322:
@@ -453,6 +467,7 @@ Memory
     configurable:
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
 
     mem decay:
@@ -485,6 +500,7 @@ Memory
         JonnyC/STAR/STAR_off_time
         ToyKeeper/STAR_noinit
         ToyKeeper/bistro
+        ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
@@ -542,6 +558,7 @@ Modes
     SOS:
         Tamagotchi/7135x8v2
         Tido/BLF-VLD
+        ToyKeeper/bistro/biscotti
 
     alpine beacon:
         Tom_E/narsil
@@ -552,6 +569,7 @@ Modes
         Tom_E/narsil
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/bistro
+        ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
@@ -578,6 +596,7 @@ Modes
         Tamagotchi/7135x8v2
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
@@ -592,6 +611,7 @@ Modes
         DrJones/luxdrv
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         pilotdog68/xintd-x3
@@ -652,6 +672,7 @@ Modes
         Tom_E/eswitch-13
         Tom_E/narsil
         ToyKeeper/bistro
+        ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/starry-offtime
