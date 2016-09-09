@@ -64,6 +64,8 @@ def parse(path, results):
         if k.strip() in ('', 'Description', ):
             description = v
             continue
+        v = v.replace('\n', '')
+        v = v.replace('  ', ' ')
         for v2 in v.split(', '):
             if v2.strip() in ('', ):
                 continue

@@ -689,6 +689,7 @@ int main(void)
         else if (output == BATTCHECK) {
 #ifdef BATTCHECK_VpT
             // blink out volts and tenths
+            _delay_ms(50);
             uint8_t result = battcheck();
             blink(result >> 5, BLINK_SPEED/8);
             _delay_ms(BLINK_SPEED);

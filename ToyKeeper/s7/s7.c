@@ -58,7 +58,7 @@
  *
  */
 #define NANJG_LAYOUT
-#include "../tk-attiny.h"
+#include "tk-attiny.h"
 #undef BOGOMIPS  // this particular driver runs slower
 #define BOGOMIPS 890
 
@@ -79,33 +79,36 @@
 #define MODE_HIGH           120     // 120: 155 lm
 #define MODE_HIGHER         255     // 255: 342 lm
 // If you change these, you'll probably want to change the "modes" array below
-#define SOLID_MODES         5       // How many non-blinky modes will we have?
-#define DUAL_BEACON_MODES   5+3     // How many beacon modes will we have (with background light on)?
-#define SINGLE_BEACON_MODES 5+3+1   // How many beacon modes will we have (without background light on)?
-#define FIXED_STROBE_MODES  5+3+1+3 // How many constant-speed strobe modes?
-#define VARIABLE_STROBE_MODES 5+3+1+3+2 // How many variable-speed strobe modes?
-#define BATT_CHECK_MODE     5+3+1+3+2+1 // battery check mode index
-// Note: don't use more than 32 modes, or it will interfere with the mechanism used for mode memory
-#define TOTAL_MODES         BATT_CHECK_MODE
+// How many non-blinky modes will we have?
+#define SOLID_MODES           5
+// battery check mode index
+#define BATT_CHECK_MODE       1+SOLID_MODES
+// How many beacon modes will we have (without background light on)?
+#define SINGLE_BEACON_MODES   1+BATT_CHECK_MODE
+// How many constant-speed strobe modes?
+#define FIXED_STROBE_MODES    3+SINGLE_BEACON_MODES
+// How many variable-speed strobe modes?
+#define VARIABLE_STROBE_MODES 2+FIXED_STROBE_MODES
+// How many beacon modes will we have (with background light on)?
+#define DUAL_BEACON_MODES     3+VARIABLE_STROBE_MODES
 
 #define USE_BATTCHECK
 #define BATTCHECK_VpT  // Use the volts+tenths battcheck style
 //#define BATTCHECK_4bars  // Use the volts+tenths battcheck style
 
-#include "../tk-calibration.h"
+#include "tk-calibration.h"
 
 /*
  * =========================================================================
  */
 
-#include "../tk-delay.h"
+#include "tk-delay.h"
 
 #include <avr/pgmspace.h>
 #include <avr/interrupt.h>
-#include <avr/eeprom.h>
 #include <avr/sleep.h>
 
-#include "../tk-voltage.h"
+#include "tk-voltage.h"
 
 /*
  * global variables
@@ -123,13 +126,13 @@ volatile uint8_t noinit_mode __attribute__ ((section (".noinit")));
 #define memory 0
 
 // Modes (hardcoded to save space)
-static uint8_t modes[TOTAL_MODES] = { // high enough to handle all
+const uint8_t modes[] = { // high enough to handle all
     MODE_MOON, MODE_LOW, MODE_MED, MODE_HIGH, MODE_HIGHER, // regular solid modes
-    MODE_MOON, MODE_LOW, MODE_MED, // dual beacon modes (this level and this level + 2)
-    MODE_HIGHER, // heartbeat beacon
-    79, 41, 15, // constant-speed strobe modes (12.5 Hz, 24 Hz, 60 Hz)
-    MODE_HIGHER, MODE_HIGHER, // variable-speed strobe modes
     MODE_MED, // battery check mode
+    MODE_HIGHER, // heartbeat beacon
+    82, 41, 15, // constant-speed strobe modes (12 Hz, 24 Hz, 60 Hz)
+    MODE_HIGHER, MODE_HIGHER, // variable-speed strobe modes
+    MODE_MOON, MODE_LOW, MODE_MED, // dual beacon modes (this level and this level + 2)
 };
 volatile uint8_t mode_idx = 0;
 // 1 or -1. Do we increase or decrease the idx when moving up to a higher mode?
@@ -138,7 +141,7 @@ volatile uint8_t mode_idx = 0;
 
 inline void next_mode() {
     mode_idx += mode_dir;
-    if (mode_idx > (TOTAL_MODES - 1)) {
+    if (mode_idx > (sizeof(modes) - 1)) {
         // Wrap around
         mode_idx = 0;
     }
@@ -229,14 +232,20 @@ int main(void)
     while(1) {
         if(mode_idx < SOLID_MODES) { // Just stay on at a given brightness
             sleep_mode();
-        } else if (mode_idx < DUAL_BEACON_MODES) { // two-level fast strobe pulse at about 1 Hz
-            for(i=0; i<4; i++) {
-                PWM_LVL = modes[mode_idx-SOLID_MODES+2];
-                _delay_ms(5);
-                PWM_LVL = modes[mode_idx];
-                _delay_ms(65);
-            }
-            _delay_ms(720);
+        } else if (mode_idx < BATT_CHECK_MODE) {
+            PWM_LVL = 0;
+            get_voltage();  _delay_ms(200);  // the first reading is junk
+#ifdef BATTCHECK_VpT
+            uint8_t result = battcheck();
+            blink(result >> 5, BLINK_SPEED/8);
+            _delay_ms(BLINK_SPEED);
+            blink(1,5);
+            _delay_ms(BLINK_SPEED*3/2);
+            blink(result & 0b00011111, BLINK_SPEED/8);
+#else
+            blink(battcheck());
+#endif  // BATTCHECK_VpT
+            _delay_ms(2000);  // wait at least 2 seconds between readouts
         } else if (mode_idx < SINGLE_BEACON_MODES) { // heartbeat flasher
             PWM_LVL = modes[SOLID_MODES-1];
             _delay_ms(1);
@@ -272,19 +281,14 @@ int main(void)
                 else { strobe_len = 100-j; }
                 _delay_ms(strobe_len+9);
             }
-        } else if (mode_idx < BATT_CHECK_MODE) {
-            get_voltage();  _delay_ms(50);  // the first reading is junk
-#ifdef BATTCHECK_VpT
-            uint8_t result = battcheck();
-            blink(result >> 5, BLINK_SPEED/8);
-            _delay_ms(BLINK_SPEED);
-            blink(1,5);
-            _delay_ms(BLINK_SPEED*3/2);
-            blink(result & 0b00011111, BLINK_SPEED/8);
-#else
-            blink(battcheck());
-#endif  // BATTCHECK_VpT
-            _delay_ms(2000);  // wait at least 2 seconds between readouts
+        } else if (mode_idx < DUAL_BEACON_MODES) { // two-level fast strobe pulse at about 1 Hz
+            for(i=0; i<4; i++) {
+                PWM_LVL = modes[mode_idx-SOLID_MODES+2];
+                _delay_ms(5);
+                PWM_LVL = modes[mode_idx];
+                _delay_ms(65);
+            }
+            _delay_ms(720);
         }
 #ifdef VOLTAGE_MON
         if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
