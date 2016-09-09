@@ -37,6 +37,9 @@ Summary of each project
     JonnyC/STAR/STAR_off_time:
         STAR off-time
 
+    Mike_C/X85:
+        "X85" flexible firmware from Mike C
+
     Tamagotchi/7135x8v2:
         Very flexible clicky firmware with hidden modes, from fonarevka.ru
 
@@ -159,6 +162,9 @@ Authors
         Werner/STAR_improvements
         dthoang
 
+    Mike C:
+        Mike_C/X85
+
     Tamagotchi:
         Tamagotchi/7135x8v2
 
@@ -222,6 +228,7 @@ Button-Type
         JonnyC/STAR/STAR
         JonnyC/STAR/STAR_dual_switch
         JonnyC/STAR/STAR_off_time
+        Mike_C/X85
         Tamagotchi/7135x8v2
         Tido/BLF-VLD
         ToyKeeper/STAR_1mode
@@ -249,6 +256,7 @@ Button-Type
         JonnyC/STAR/MTN_momentary_temp
         JonnyC/STAR/STAR_dual_switch
         JonnyC/STAR/STAR_momentary
+        Mike_C/X85
         Tom_E/eswitch-13
         Tom_E/narsil
         ToyKeeper/Ferrero_Rocher
@@ -261,6 +269,9 @@ Extras
 
     4 power channels?:
         Tamagotchi/7135x8v2
+
+    ?:
+        Mike_C/X85
 
     Baton UI:
         ToyKeeper/Ferrero_Rocher
@@ -380,6 +391,7 @@ License
         Tido/BLF-VLD
 
     GPLv3:
+        Mike_C/X85
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
@@ -441,6 +453,7 @@ MCU
         ToyKeeper/bistro/tripledown
 
     attiny85:
+        Mike_C/X85
         Tom_E/narsil
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
@@ -454,6 +467,7 @@ Memory
 
     OTC:
         JonnyC/STAR/STAR_off_time
+        Mike_C/X85
         ToyKeeper/bistro
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
@@ -465,6 +479,7 @@ Memory
         pilotdog68/xintd-x3
 
     configurable:
+        Mike_C/X85
         Tom_E/narsil
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
@@ -498,6 +513,7 @@ Memory
 
     offtime:
         JonnyC/STAR/STAR_off_time
+        Mike_C/X85
         ToyKeeper/STAR_noinit
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
@@ -551,6 +567,9 @@ Modes
 
     5-minute timer:
         DrJones/luxdrv
+
+    ?:
+        Mike_C/X85
 
     OTC calibrator:
         ToyKeeper/battcheck
