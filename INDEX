@@ -115,6 +115,9 @@ Summary of each project
     dthoang:
         Olight Baton-like UI
 
+    gchart/babka:
+        "Babka" firmware for nanjg-style drivers
+
     hello_world:
         quick example to help test if flashing hardware works
 
@@ -190,6 +193,7 @@ Authors
         ToyKeeper/starry-offtime
         ToyKeeper/tail-light
         ToyKeeper/uv
+        gchart/babka
         pilotdog68/xintd-x3
 
     Werner:
@@ -204,6 +208,9 @@ Authors
 
     dthoang:
         dthoang
+
+    gchart:
+        gchart/babka
 
     odd:
         odd/MGdriver
@@ -246,6 +253,7 @@ Button-Type
         Werner/STAR_improvements
         _the_/TheStar
         alexvh/basic_off_time_driver
+        gchart/babka
         odd/MGdriver
         pilotdog68/xintd-x3
         tterev3/pic10f322-examples
@@ -282,6 +290,7 @@ Extras
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
+        gchart/babka
 
     battery indicator LEDs:
         ToyKeeper/Ferrero_Rocher
@@ -325,6 +334,7 @@ Extras
         ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
+        gchart/babka
         odd/MGdriver
         pilotdog68/xintd-x3
 
@@ -397,6 +407,7 @@ License
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
+        gchart/babka
 
 MCU
 
@@ -405,6 +416,7 @@ MCU
 
     attiny13:
         ToyKeeper/bistro/biscotti
+        gchart/babka
 
     attiny13a:
         DrJones/MiniDrv
@@ -484,6 +496,7 @@ Memory
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
+        gchart/babka
 
     mem decay:
         ToyKeeper/STAR_noinit
@@ -527,6 +540,7 @@ Memory
         Werner/STAR_improvements
         _the_/TheStar
         alexvh/basic_off_time_driver
+        gchart/babka
         odd/MGdriver
         pilotdog68/xintd-x3
         tterev3/pic10f322-examples
@@ -578,6 +592,7 @@ Modes
         Tamagotchi/7135x8v2
         Tido/BLF-VLD
         ToyKeeper/bistro/biscotti
+        gchart/babka
 
     alpine beacon:
         Tom_E/narsil
@@ -597,6 +612,7 @@ Modes
         ToyKeeper/starry-offtime
         ToyKeeper/tail-light
         ToyKeeper/uv
+        gchart/babka
 
     battcheck calibrator:
         ToyKeeper/battcheck
@@ -608,6 +624,7 @@ Modes
         ToyKeeper/tail-light
         ToyKeeper/uv
         _the_/TheStar
+        gchart/babka
         odd/MGdriver
         tterev3/power_cycle_light
 
@@ -633,6 +650,7 @@ Modes
         ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
+        gchart/babka
         pilotdog68/xintd-x3
         tterev3/power_cycle_light
 
@@ -696,6 +714,7 @@ Modes
         ToyKeeper/blf-a6
         ToyKeeper/starry-offtime
         _the_/TheStar
+        gchart/babka
         tterev3/pic10f322-examples
 
     variable heartbeat:
