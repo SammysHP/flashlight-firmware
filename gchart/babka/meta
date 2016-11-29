@@ -1,0 +1,10 @@
+Description: "Babka" firmware for nanjg-style drivers
+  Based on biscotti.
+  (needs more details here)
+Button-Type: clicky
+Memory: offtime, configurable
+MCU: attiny13
+Authors: gchart, ToyKeeper
+Modes: battcheck, tactical strobe, beacon, config, SOS
+Extras: mode groups, LVP
+License: GPLv3
