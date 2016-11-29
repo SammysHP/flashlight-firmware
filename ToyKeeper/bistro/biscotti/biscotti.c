@@ -156,6 +156,7 @@
  */
 
 // Config option variables
+//#define USE_FIRSTBOOT
 #ifdef USE_FIRSTBOOT
 #define FIRSTBOOT 0b01010101
 uint8_t firstboot = FIRSTBOOT;  // detect initial boot or factory reset
@@ -208,7 +209,7 @@ PROGMEM const uint8_t modegroups[] = {
      7,  4, STROBE,0,0,  0,  0,  0,
      7,  0,
 };
-uint8_t modes[] = { 0,0,0,0,0,0,0,0, };  // make sure this is long enough...
+uint8_t modes[8];  // make sure this is long enough...
 
 // Modes (gets set when the light starts up based on saved config values)
 //PROGMEM const uint8_t ramp_7135[] = { RAMP_7135 };
@@ -257,11 +258,13 @@ void save_state() {  // central method for writing complete state
     //eeprom_write_byte((uint8_t *)OPT_muggle, muggle_mode);
 }
 
+#ifndef USE_FIRSTBOOT
 inline void reset_state() {
     mode_idx = 0;
     modegroup = 0;
     save_state();
 }
+#endif
 
 void restore_state() {
     uint8_t eep;
@@ -275,23 +278,28 @@ void restore_state() {
         save_state();
         return;
     }
+#else
+    uint8_t first = 1;
 #endif
 
-    uint8_t first = 1;
     // find the mode index data
     for(eepos=0; eepos<(EEPSIZE-6); eepos++) {
         eep = eeprom_read_byte((const uint8_t *)eepos);
         if (eep != 0xff) {
             mode_idx = eep;
+#ifndef USE_FIRSTBOOT
             first = 0;
+#endif
             break;
         }
     }
+#ifndef USE_FIRSTBOOT
     // if no mode_idx was found, assume this is the first boot
     if (first) {
         reset_state();
         return;
     }
+#endif
 
     // load other config values
     modegroup = eeprom_read_byte((uint8_t *)OPT_modegroup);
@@ -311,7 +319,9 @@ void restore_state() {
     // (and we don't really care about it skipping cell 0 once in a while)
     //else eepos=0;
 
+#ifndef USE_FIRSTBOOT
     if (modegroup >= NUM_MODEGROUPS) reset_state();
+#endif
 }
 
 inline void next_mode() {
@@ -556,7 +566,7 @@ uint8_t get_temperature() {
 }
 #endif  // TEMPERATURE_MON
 
-#if 0  // there is no OTC
+#ifdef OFFTIM3
 inline uint8_t read_otc() {
     // Read and return the off-time cap value
     // Start up ADC for capacitor pin
@@ -582,7 +592,9 @@ inline uint8_t read_otc() {
 int main(void)
 {
     // check the OTC immediately before it has a chance to charge or discharge
-    //uint8_t cap_val = read_otc();  // save it for later
+#ifdef OFFTIM3
+    uint8_t cap_val = read_otc();  // save it for later
+#endif
 
     // Set PWM pin to output
     DDRB |= (1 << PWM_PIN);     // enable main channel
@@ -613,8 +625,11 @@ int main(void)
 
     // check button press time, unless the mode is overridden
     if (! mode_override) {
-        //if (cap_val > CAP_SHORT) {
+#ifdef OFFTIM3
+        if (cap_val > CAP_SHORT) {
+#else
         if (fast_presses < 0x20) {
+#endif
             // Indicates they did a short press, go to the next mode
             // We don't care what the fast_presses value is as long as it's over 15
             fast_presses = (fast_presses+1) & 0x1f;
@@ -740,7 +755,7 @@ int main(void)
             // pseudo-random strobe
             uint8_t ms = 34 + (pgm_rand() & 0x3f);
             strobe(ms, ms);
-            strobe(ms, ms);
+            //strobe(ms, ms);
         }
 #endif // ifdef RANDOM_STROBE
 #ifdef BIKING_STROBE
