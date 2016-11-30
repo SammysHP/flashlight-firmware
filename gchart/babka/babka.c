@@ -216,13 +216,16 @@ void restore_state() {
 inline void next_mode() {
 	mode_idx += 1;
 	
-	// if we hit the end of the solid modes or the blinkies (or battcheck if disabled), go to first solid mode
-	if ( (mode_idx == solid_modes) || (mode_idx > LAST_BLINKY) || (mode_idx == BATT_CHECK && !((modegroup >> 4) & 0x01))) mode_idx = 0;
-	
-	if(fast_presses == 3 && mode_idx < solid_modes) {  // triple-tap from a solid mode
+	if(fast_presses == 3 && mode_idx <= solid_modes) {  // triple-tap from a solid mode
 		if((modegroup >> 3) & 0x01) mode_idx = FIRST_BLINKY; // if blinkies enabled, go to first one
 		else if((modegroup >> 4) & 0x01) mode_idx = BATT_CHECK; // else if battcheck enabled, go to it
 	}
+	
+	// if we hit the end of the solid modes or the blinkies (or battcheck if disabled), go to first solid mode
+	if ( (mode_idx == solid_modes) || (mode_idx > LAST_BLINKY) || (mode_idx == BATT_CHECK && !((modegroup >> 4) & 0x01))) {
+		mode_idx = 0;
+	}
+	
 }
 
 void count_modes() {
