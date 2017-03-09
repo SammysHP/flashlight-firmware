@@ -79,7 +79,7 @@
 //#define RAMP_FET   6,12,34,108,255
 // level_calc.py 1 4 7135 9 8 700
 // level_calc.py 1 3 7135 9 8 700
-#define RAMP_FET   1,10,42,75,122,133,255
+#define RAMP_FET   4,9,36,63,107,127,255
 // x**5 curve
 //#define RAMP_7135  3,3,3,4,4,5,5,6,7,8,10,11,13,15,18,21,24,28,33,38,44,50,57,66,75,85,96,108,122,137,154,172,192,213,237,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 //#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,6,9,13,17,21,25,30,35,41,47,53,60,67,75,83,91,101,111,121,132,144,156,169,183,198,213,255
@@ -161,24 +161,25 @@
 #define FIRSTBOOT 0b01010101
 uint8_t firstboot = FIRSTBOOT;  // detect initial boot or factory reset
 #endif
-uint8_t modegroup = 0;     // which mode group (set above in #defines)
+uint8_t modegroup;     // which mode group (set above in #defines)
 #define enable_moon 0   // Should we add moon to the set of modes?
 #define reverse_modes 0 // flip the mode order?
-uint8_t memory = 0;        // mode memory, or not (set via soldered star)
+uint8_t memory;        // mode memory, or not (set via soldered star)
 #ifdef OFFTIM3
-uint8_t offtim3 = 1;       // enable medium-press?
+uint8_t offtim3;       // enable medium-press?
 #endif
 #ifdef TEMPERATURE_MON
 uint8_t maxtemp = 79;      // temperature step-down threshold
 #endif
 #define muggle_mode 0   // simple mode designed for muggles
 // Other state variables
-uint8_t mode_override = 0; // do we need to enter a special mode?
-uint8_t mode_idx = 0;      // current or last-used mode number
-uint8_t eepos = 0;
+uint8_t mode_override; // do we need to enter a special mode?
+uint8_t mode_idx;      // current or last-used mode number
+uint8_t eepos;
 // counter for entering config mode
 // (needs to be remembered while off, but only for up to half a second)
 uint8_t fast_presses __attribute__ ((section (".noinit")));
+uint8_t long_press __attribute__ ((section (".noinit")));
 
 // total length of current mode group's array
 #ifdef OFFTIM3
@@ -215,10 +216,11 @@ uint8_t modes[8];  // make sure this is long enough...
 //PROGMEM const uint8_t ramp_7135[] = { RAMP_7135 };
 PROGMEM const uint8_t ramp_FET[]  = { RAMP_FET };
 
+#define WEAR_LVL_LEN (EEPSIZE/2)  // must be a power of 2
 void save_mode() {  // save the current mode index (with wear leveling)
     uint8_t oldpos=eepos;
 
-    eepos = (eepos+1) & ((EEPSIZE/2)-1);  // wear leveling, use next cell
+    eepos = (eepos+1) & (WEAR_LVL_LEN-1);  // wear leveling, use next cell
     /*
     eepos ++;
     if (eepos > (EEPSIZE-4)) {
@@ -262,6 +264,7 @@ void save_state() {  // central method for writing complete state
 inline void reset_state() {
     mode_idx = 0;
     modegroup = 0;
+    mode_override = 0;
     save_state();
 }
 #endif
@@ -283,7 +286,7 @@ void restore_state() {
 #endif
 
     // find the mode index data
-    for(eepos=0; eepos<(EEPSIZE-6); eepos++) {
+    for(eepos=0; eepos<WEAR_LVL_LEN; eepos++) {
         eep = eeprom_read_byte((const uint8_t *)eepos);
         if (eep != 0xff) {
             mode_idx = eep;
@@ -361,7 +364,7 @@ void count_modes() {
      */
     // copy config to local vars to avoid accidentally overwriting them in muggle mode
     // (also, it seems to reduce overall program size)
-    uint8_t my_modegroup = modegroup;
+    //uint8_t my_modegroup = modegroup;
     //uint8_t my_enable_moon = enable_moon;
     //uint8_t my_reverse_modes = reverse_modes;
 
@@ -375,19 +378,22 @@ void count_modes() {
 #endif
 
     uint8_t *dest;
-    const uint8_t *src = modegroups + (my_modegroup<<3);
+    //const uint8_t *src = modegroups + (my_modegroup<<3);
+    const uint8_t *src = modegroups + (modegroup<<3);
     dest = modes;
 
     // Figure out how many modes are in this group
     //solid_modes = modegroup + 1;  // Assume group N has N modes
     // No, how about actually counting the modes instead?
     // (in case anyone changes the mode groups above so they don't form a triangle)
-    for(solid_modes=0;
-        (solid_modes<8) && pgm_read_byte(src);
-        solid_modes++, src++ )
+    uint8_t count;
+    for(count=0;
+        (count<8) && pgm_read_byte(src);
+        count++, src++ )
     {
         *dest++ = pgm_read_byte(src);
     }
+    solid_modes = count;
 
     // add moon mode (or not) if config says to add it
 #if 0
@@ -454,23 +460,25 @@ void set_level(uint8_t level) {
         set_output(0);
     } else {
         level -= 1;
+        /* apparently not needed on the newer drivers
         if (level == 0) {
             // divide PWM speed by 8 for moon,
             // because the nanjg 105d chips are SLOW
             TCCR0B = 0x02;
         }
+        */
         if (level < 2) {
             // divide PWM speed by 2 for moon and low,
             // because the nanjg 105d chips are SLOW
             TCCR0A = PHASE;
         }
-        //set_output(pgm_read_byte(ramp_FET  + level), 0);
-        set_output(pgm_read_byte(ramp_FET  + level));
+        //set_output(pgm_read_byte(ramp_FET + level), 0);
+        set_output(pgm_read_byte(ramp_FET + level));
     }
 }
 
-void set_mode(uint8_t mode) {
 #ifdef SOFT_START
+void set_mode(uint8_t mode) {
     static uint8_t actual_level = 0;
     uint8_t target_level = mode;
     int8_t shift_amount;
@@ -483,11 +491,11 @@ void set_mode(uint8_t mode) {
         //_delay_ms(RAMP_SIZE/20);  // slow ramp
         _delay_ms(RAMP_SIZE/4);  // fast ramp
     } while (target_level != actual_level);
+}
 #else
 #define set_mode set_level
     //set_level(mode);
 #endif  // SOFT_START
-}
 
 void blink(uint8_t val, uint16_t speed)
 {
@@ -628,7 +636,7 @@ int main(void)
 #ifdef OFFTIM3
         if (cap_val > CAP_SHORT) {
 #else
-        if (fast_presses < 0x20) {
+        if (! long_press) {
 #endif
             // Indicates they did a short press, go to the next mode
             // We don't care what the fast_presses value is as long as it's over 15
@@ -656,6 +664,7 @@ int main(void)
             }
         }
     }
+    long_press = 0;
     save_mode();
 
     #ifdef CAP_PIN
