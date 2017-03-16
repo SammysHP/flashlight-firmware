@@ -1,0 +1,46 @@
+Long press:
+
+  - Reset to first mode.
+
+Short press:
+
+  - In most modes: Advance to next mode.
+  - In normal steady output mode:
+    - If on for less than 0.5s, advance to next mode.
+    - If on more more than 0.5s, go back to ramp mode.
+      - If between 0.5s and 2.0s, reverse ramp direction.
+      - If more than 2.0s, keep original ramp direction.
+
+Mode list:
+
+  - Smooth auto-ramp.
+  - Steady output at last-used ramp level.
+    (remembered via noinit var)
+  - Turbo.
+  - Battcheck.
+  - Night light mode?
+  - Whatever blinkies.
+
+Noinit vars:
+
+  - Last ramp level.
+  - Last ramp direction.
+  - Current mode number.
+
+EEPROM vars:
+
+  - ... none?
+
+Ramp mode:
+
+  - On start, stay at current level for ~0.5s.  Then start ramping.
+    (allows access to moon)
+  - If less than 0.5s and current level not moon, reverse ramp direction 
+    and set next mode to also ramp?  Then re-reverse ramp at 0.5s and 
+    set next mode to steady?
+
+
+Names:
+  - clicky ramp
+  - cramp
+  - crescendo
