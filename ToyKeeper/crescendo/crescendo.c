@@ -74,8 +74,8 @@
 #define USE_BATTCHECK
 // Choose a battery indicator style
 //#define BATTCHECK_4bars  // up to 4 blinks
-//#define BATTCHECK_8bars  // up to 8 blinks
-#define BATTCHECK_VpT  // Volts + tenths
+#define BATTCHECK_8bars  // up to 8 blinks
+//#define BATTCHECK_VpT  // Volts + tenths
 
 // output to use for blinks on battery check (and other modes)
 #define BLINK_BRIGHTNESS    RAMP_SIZE/4
@@ -83,22 +83,26 @@
 // ms per normal-speed blink
 #define BLINK_SPEED         (500/4)
 
-#define TURBO     255
-#define RAMP      254
-#define STEADY    253
-#define BATTCHECK 252
-//#define GROUP_SELECT_MODE 253
-//#define TEMP_CAL_MODE 252
+// 255 is the default eeprom state, don't use
+#define DONOTUSE  255
+// Modes start at 254 and count down
+// Lowest mode must be higher than RAMP_SIZE
+#define TURBO     254
+#define RAMP      253
+#define STEADY    252
+#define MEMORY    251
+#define MEMTOGGLE 250
+#define BATTCHECK 249
+//#define TEMP_CAL_MODE 248
 // Uncomment to enable tactical strobe mode
-//#define STROBE    251       // Convenience code for strobe mode
+//#define STROBE    248       // Convenience code for strobe mode
 // Uncomment to unable a 2-level stutter beacon instead of a tactical strobe
-#define BIKING_STROBE 250   // Convenience code for biking strobe mode
+//#define BIKING_STROBE 247   // Convenience code for biking strobe mode
 // comment out to use minimal version instead (smaller)
-#define FULL_BIKING_STROBE
-//#define RAMP 249       // ramp test mode for tweaking ramp shape
-//#define POLICE_STROBE 248
-//#define RANDOM_STROBE 247
-#define SOS 246
+//#define FULL_BIKING_STROBE
+//#define POLICE_STROBE 246
+//#define RANDOM_STROBE 245
+//#define SOS 244
 
 // thermal step-down
 //#define TEMPERATURE_MON
@@ -137,13 +141,16 @@
  */
 
 // Config option variables
-//#define USE_FIRSTBOOT
-uint8_t memory;        // mode memory, or not (set via soldered star)
+#ifdef MEMORY
+uint8_t memory;        // mode memory, or not
+#endif
 #ifdef TEMPERATURE_MON
 uint8_t maxtemp = 79;      // temperature step-down threshold
 #endif
 // Other state variables
 uint8_t eepos;
+uint8_t saved_mode_idx = 0;
+uint8_t saved_ramp_level = 1;
 // counter for entering config mode
 // (needs to be remembered while off, but only for up to half a second)
 uint8_t fast_presses __attribute__ ((section (".noinit")));
@@ -155,7 +162,11 @@ int8_t ramp_dir __attribute__ ((section (".noinit")));
 uint8_t next_mode_num __attribute__ ((section (".noinit")));
 
 uint8_t modes[] = {
-    RAMP, STEADY, TURBO, BATTCHECK, BIKING_STROBE, SOS,
+    #ifdef MEMORY
+    RAMP, STEADY, TURBO, BATTCHECK, MEMTOGGLE,
+    #else
+    RAMP, STEADY, TURBO, BATTCHECK,
+    #endif
 };
 
 // Modes (gets set when the light starts up based on saved config values)
@@ -164,52 +175,50 @@ PROGMEM const uint8_t ramp_ch1[]  = { RAMP_CH1 };
 PROGMEM const uint8_t ramp_ch2[] = { RAMP_CH2 };
 #endif
 
-#if 0
+void _delay_500ms() {
+    _delay_4ms(500/4);
+}
+
+#ifdef MEMORY
 #define WEAR_LVL_LEN (EEPSIZE/2)  // must be a power of 2
 void save_mode() {  // save the current mode index (with wear leveling)
-    uint8_t oldpos=eepos;
+    eeprom_write_byte((uint8_t *)(eepos), 0xff);     // erase old state
+    eeprom_write_byte((uint8_t *)(++eepos), 0xff);     // erase old state
 
     eepos = (eepos+1) & (WEAR_LVL_LEN-1);  // wear leveling, use next cell
-    eeprom_write_byte((uint8_t *)(eepos), mode_idx);  // save current state
-    eeprom_write_byte((uint8_t *)(oldpos), 0xff);     // erase old state
+    // save current mode
+    eeprom_write_byte((uint8_t *)(eepos), mode_idx);
+    // save current brightness
+    eeprom_write_byte((uint8_t *)(eepos+1), ramp_level);
 }
 
-#define save_state save_mode
-/*
+//#define save_state save_mode
+#define OPT_memory (EEPSIZE-1)
 void save_state() {  // central method for writing complete state
     save_mode();
-}
-*/
-#endif
-
-#if 0
-inline void reset_state() {
-    mode_idx = 0;
-    save_state();
+    eeprom_write_byte((uint8_t *)OPT_memory, memory);
 }
 
 void restore_state() {
-    uint8_t eep;
-    uint8_t first = 1;
+    // memory is either 1 or 0
+    // (if it's unconfigured, 0xFF, clip it)
+    memory = eeprom_read_byte((uint8_t *)OPT_memory) & 0x01;
 
-    // find the mode index data
-    for(eepos=0; eepos<WEAR_LVL_LEN; eepos++) {
+    // find the mode index and last brightness level
+    uint8_t eep;
+    for(eepos=0; eepos<WEAR_LVL_LEN; eepos+=2) {
         eep = eeprom_read_byte((const uint8_t *)eepos);
         if (eep != 0xff) {
-            mode_idx = eep;
-            first = 0;
+            saved_mode_idx = eep;
+            eep = eeprom_read_byte((const uint8_t *)(eepos+1));
+            if (eep != 0xff) {
+                saved_ramp_level = eep;
+            }
             break;
         }
     }
-    // if no mode_idx was found, assume this is the first boot
-    if (first) {
-        reset_state();
-        return;
-    }
-
-    // load other config values
 }
-#endif
+#endif  // ifdef MEMORY
 
 inline void next_mode() {
     // allow an override, if it exists
@@ -221,9 +230,7 @@ inline void next_mode() {
 
     mode_idx += 1;
     if (mode_idx >= sizeof(modes)) {
-        // Wrap around, skipping the hidden modes
-        // (note: this also applies when going "forward" from any hidden mode)
-        // FIXME? Allow this to cycle through hidden modes?
+        // Wrap around
         mode_idx = 0;
     }
 }
@@ -302,33 +309,6 @@ inline void SOS_mode() {
 }
 #endif
 
-#if 0
-void toggle(uint8_t *var, uint8_t num) {
-    // Used for config mode
-    // Changes the value of a config option, waits for the user to "save"
-    // by turning the light off, then changes the value back in case they
-    // didn't save.  Can be used repeatedly on different options, allowing
-    // the user to change and save only one at a time.
-    blink(num, BLINK_SPEED/4);  // indicate which option number this is
-    *var ^= 1;
-    save_state();
-    // "buzz" for a while to indicate the active toggle window
-    blink(32, 500/4/32);
-    /*
-    for(uint8_t i=0; i<32; i++) {
-        set_level(BLINK_BRIGHTNESS * 3 / 4);
-        _delay_4ms(30);
-        set_level(0);
-        _delay_4ms(30);
-    }
-    */
-    // if the user didn't click, reset the value and return
-    *var ^= 1;
-    save_state();
-    _delay_s();
-}
-#endif
-
 #ifdef TEMPERATURE_MON
 uint8_t get_temperature() {
     ADC_on_temperature();
@@ -360,8 +340,11 @@ int main(void)
     // Set timer to do PWM for correct output pin and set prescaler timing
     TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
 
+    #ifdef MEMORY
+    uint8_t mode_override = 0;
     // Read config values and saved state
-    //restore_state();
+    restore_state();
+    #endif
 
     // check button press time, unless the mode is overridden
     if (! long_press) {
@@ -370,20 +353,26 @@ int main(void)
         fast_presses = (fast_presses+1) & 0x1f;
         next_mode(); // Will handle wrap arounds
     } else {
-        // Long press, keep the same mode
+        // Long press, use memorized level
         // ... or reset to the first mode
         fast_presses = 0;
-        //if (muggle_mode  || (! memory)) {
-        if (! memory) {
-            // Reset to the first mode
-            mode_idx = 0;
-            ramp_level = 1;
-            ramp_dir = 1;
-            next_mode_num = 255;
+        ramp_level = 1;
+        ramp_dir = 1;
+        next_mode_num = 255;
+        mode_idx = 0;
+        #ifdef MEMORY
+        if (memory) {
+            mode_override = MEMORY;
         }
+        #endif  // ifdef MEMORY
     }
     long_press = 0;
-    //save_mode();
+    #ifdef MEMORY
+    save_mode();
+    //if (memory) {
+    //    save_state();
+    //}
+    #endif
 
     // Turn features on or off as needed
     #ifdef VOLTAGE_MON
@@ -393,7 +382,6 @@ int main(void)
     #endif
 
     uint8_t mode;
-    uint8_t actual_level;
 #ifdef TEMPERATURE_MON
     uint8_t overheat_count = 0;
 #endif
@@ -403,12 +391,48 @@ int main(void)
     // Make sure voltage reading is running for later
     ADCSRA |= (1 << ADSC);
 #endif
-    //mode = pgm_read_byte(modes + mode_idx);
-    mode = modes[mode_idx];
     while(1) {
+        //mode = pgm_read_byte(modes + mode_idx);
+        mode = modes[mode_idx];
 
-        if (mode == 0) {  // This shouldn't happen
+        if (0) {  // This can't happen
         }
+
+        #ifdef MEMORY
+        // memorized level
+        else if (mode_override == MEMORY) {
+            // only do this once
+            mode_override = 0;
+
+            // moon mode for half a second
+            set_mode(1);
+            // if the user taps quickly, go to the real moon mode
+            next_mode_num = 1;
+
+            _delay_500ms();
+
+            // if they didn't tap quickly, go to the memorized mode/level
+            mode_idx = saved_mode_idx;
+            ramp_level = saved_ramp_level;
+            save_mode();
+        }
+
+        // turn memory on/off
+        // (click during the "buzz" to change the setting)
+        else if (mode == MEMTOGGLE) {
+            /*
+            blink(16, 12/4);
+            _delay_500ms();
+            */
+            mode_idx = 1;
+            memory ^= 1;
+            save_state();
+            blink(64, 12/4);
+            memory ^= 1;
+            save_state();
+            _delay_s();
+        }
+        #endif
 
         // smooth ramp mode, lets user select any output level
         else if (mode == RAMP) {
@@ -431,7 +455,7 @@ int main(void)
 
             // wait a bit before actually ramping
             // (give the user a chance to select moon, or double-tap)
-            _delay_4ms(500/4);
+            _delay_500ms();
 
             // if we got through the delay, assume normal operation
             // (not trying to double-tap or triple-tap)
@@ -473,7 +497,7 @@ int main(void)
             set_mode(ramp_level);
             // User has 0.5s to tap again to advance to the next mode
             //next_mode_num = 255;
-            _delay_4ms(500/4);
+            _delay_500ms();
             // After a delay, assume user wants to adjust ramp
             // instead of going to next mode (unless they're
             // tapping rapidly, in which case we should advance to turbo)
@@ -484,8 +508,7 @@ int main(void)
 
         // turbo is special because it's easier
         else if (mode == TURBO) {
-            actual_level = RAMP_SIZE;
-            set_mode(actual_level);
+            set_mode(RAMP_SIZE);
             _delay_s();
         }
 
@@ -537,8 +560,8 @@ int main(void)
             // small/minimal version
             set_mode(RAMP_SIZE);
             //set_output(255,0);
-            _delay_4ms(8);
-            set_mode(3);
+            _delay_4ms(5);
+            set_mode(RAMP_SIZE/2);
             //set_output(0,255);
             _delay_s();
             #endif  // ifdef FULL_BIKING_STROBE
@@ -552,9 +575,9 @@ int main(void)
         #ifdef BATTCHECK
         // battery check mode, show how much power is left
         else if (mode == BATTCHECK) {
+            _delay_500ms();
             #ifdef BATTCHECK_VpT
             // blink out volts and tenths
-            _delay_4ms(200/4);
             uint8_t result = battcheck();
             blink(result >> 5, BLINK_SPEED/4);
             _delay_4ms(BLINK_SPEED);
@@ -577,6 +600,7 @@ int main(void)
         fast_presses = 0;
 
 #ifdef VOLTAGE_MON
+#if 1
         if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
             voltage = ADCH;  // get the waiting value
             // See if voltage is lower than what we were looking for
@@ -625,6 +649,7 @@ int main(void)
             // Make sure conversion is running for next time through
             ADCSRA |= (1 << ADSC);
         }
+#endif
 #endif  // ifdef VOLTAGE_MON
     }
 
