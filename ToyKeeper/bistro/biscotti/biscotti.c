@@ -3,7 +3,7 @@
  * This code runs on a single-channel driver with attiny13a MCU.
  * It is intended specifically for nanjg 105d drivers from Convoy.
  *
- * Copyright (C) 2015 Selene Scriven
+ * Copyright (C) 2017 Selene Scriven
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -110,13 +110,14 @@
 #define GROUP_SELECT_MODE 253
 //#define TEMP_CAL_MODE 252
 // Uncomment to enable tactical strobe mode
-#define STROBE    251       // Convenience code for strobe mode
+#define ANY_STROBE  // required for strobe or police_strobe
+//#define STROBE    251       // Convenience code for strobe mode
 // Uncomment to unable a 2-level stutter beacon instead of a tactical strobe
 #define BIKING_STROBE 250   // Convenience code for biking strobe mode
 // comment out to use minimal version instead (smaller)
 #define FULL_BIKING_STROBE
 //#define RAMP 249       // ramp test mode for tweaking ramp shape
-//#define POLICE_STROBE 248
+#define POLICE_STROBE 248
 //#define RANDOM_STROBE 247
 #define SOS 246
 
@@ -198,17 +199,17 @@ uint8_t solid_modes;
 // Each group must be 8 values long, but can be cut short with a zero.
 #define NUM_MODEGROUPS 12  // don't count muggle mode
 PROGMEM const uint8_t modegroups[] = {
-     1,  2,  3,  5,  7,  STROBE, BIKING_STROBE, BATTCHECK,
+     1,  2,  3,  5,  7,  POLICE_STROBE, BIKING_STROBE, BATTCHECK,
      1,  2,  3,  5,  7,  0,  0,  0,
      7,  5,  3,  2,  1,  0,  0,  0,
-     2,  4,  7,  STROBE, BIKING_STROBE, BATTCHECK, SOS,  0,
+     2,  4,  7,  POLICE_STROBE, BIKING_STROBE, BATTCHECK, SOS,  0,
      2,  4,  7,  0,  0,  0,  0,  0,
      7,  4,  2,  0,  0,  0,  0,  0,
-     1,  2,  3,  6,  STROBE, BIKING_STROBE, BATTCHECK, SOS,
+     1,  2,  3,  6,  POLICE_STROBE, BIKING_STROBE, BATTCHECK, SOS,
      1,  2,  3,  6,  0,  0,  0,  0,
      6,  3,  2,  1,  0,  0,  0,  0,
      2,  3,  5,  7,  0,  0,  0,  0,
-     7,  4, STROBE,0,0,  0,  0,  0,
+     7,  4, POLICE_STROBE,0,0,  0,  0,  0,
      7,  0,
 };
 uint8_t modes[8];  // make sure this is long enough...
@@ -511,7 +512,7 @@ void blink(uint8_t val, uint8_t speed)
     }
 }
 
-#ifdef STROBE
+#ifdef ANY_STROBE
 inline void strobe(uint8_t ontime, uint8_t offtime) {
     uint8_t i;
     for(i=0;i<8;i++) {
@@ -821,7 +822,7 @@ int main(void)
             blink(result >> 5, BLINK_SPEED/8);
             _delay_4ms(BLINK_SPEED);
             blink(1,5/4);
-            _delay_4ms(BLINK_SPEED*3/2);
+            _delay_4ms(254);
             blink(result & 0b00011111, BLINK_SPEED/8);
 #else  // ifdef BATTCHECK_VpT
             // blink zero to five times to show voltage
