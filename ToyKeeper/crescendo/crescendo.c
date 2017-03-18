@@ -97,11 +97,12 @@
 // comment out to use minimal version instead (smaller)
 //#define FULL_BIKING_MODE
 // Required for any of the strobes below it
-#define ANY_STROBE
-#define STROBE    247       // Simple tactical strobe
+//#define ANY_STROBE
+//#define STROBE    247       // Simple tactical strobe
 //#define POLICE_STROBE 246   // 2-speed tactical strobe
 //#define RANDOM_STROBE 245   // variable-speed tactical strobe
 //#define SOS 244             // distress signal
+#define HEART_BEACON 243    // 1Hz heartbeat-pattern beacon
 
 // thermal step-down
 //#define TEMPERATURE_MON
@@ -158,7 +159,7 @@ int8_t ramp_dir __attribute__ ((section (".noinit")));
 uint8_t next_mode_num __attribute__ ((section (".noinit")));
 
 uint8_t modes[] = {
-    RAMP, STEADY, TURBO, BATTCHECK, BIKING_MODE, STROBE,
+    RAMP, STEADY, TURBO, BATTCHECK, BIKING_MODE, HEART_BEACON,
 };
 
 // Modes (gets set when the light starts up based on saved config values)
@@ -396,6 +397,8 @@ int main(void)
             // if they didn't tap quickly, go to the memorized mode/level
             mode_idx = saved_mode_idx;
             ramp_level = saved_ramp_level;
+            // ... and skip the rest of the blinkies
+            next_mode_num = 0;
             save_mode();
         }
         #endif
@@ -537,6 +540,19 @@ int main(void)
         #ifdef SOS
         else if (mode == SOS) { SOS_mode(); }
         #endif // ifdef SOS
+
+        #ifdef HEART_BEACON
+        else if (mode == HEART_BEACON) {
+            set_mode(RAMP_SIZE);
+            _delay_4ms(1);
+            set_mode(0);
+            _delay_4ms(250/4);
+            set_mode(RAMP_SIZE);
+            _delay_4ms(1);
+            set_mode(0);
+            _delay_4ms(750/4);
+        }
+        #endif
 
         #ifdef BATTCHECK
         // battery check mode, show how much power is left
