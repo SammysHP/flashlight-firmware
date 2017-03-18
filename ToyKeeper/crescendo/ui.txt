@@ -1,46 +1,85 @@
-Long press:
+Crescendo: A ramping UI for reverse-clicky switch lights
+--------------------------------------------------------
 
-  - Reset to first mode.
+Instead of having specific modes and mode groups, this UI works based on 
+a smooth ramp of all possible brightnesses.  It gives direct access to 
+moon and maximum, plus optional memory.  The idea is that you turn it 
+on, it ramps up, and you stop it when it reaches the desired level.
 
-Short press:
+The ramp follows a zigzag pattern with brief pauses at both ends.  When 
+it reaches the highest level, it also blinks very briefly since it can 
+otherwise be hard to tell when it hit maximum.
 
-  - In most modes: Advance to next mode.
-  - In normal steady output mode:
-    - If on for less than 0.5s, advance to next mode.
-    - If on more more than 0.5s, go back to ramp mode.
-      - If between 0.5s and 2.0s, reverse ramp direction.
-      - If more than 2.0s, keep original ramp direction.
-
-Mode list:
-
-  - Smooth auto-ramp.
-  - Steady output at last-used ramp level.
-    (remembered via noinit var)
-  - Turbo.
-  - Battcheck.
-  - Night light mode?
-  - Whatever blinkies.
-
-Noinit vars:
-
-  - Last ramp level.
-  - Last ramp direction.
-  - Current mode number.
-
-EEPROM vars:
-
-  - ... none?
-
-Ramp mode:
-
-  - On start, stay at current level for ~0.5s.  Then start ramping.
-    (allows access to moon)
-  - If less than 0.5s and current level not moon, reverse ramp direction 
-    and set next mode to also ramp?  Then re-reverse ramp at 0.5s and 
-    set next mode to steady?
+No eeprom is modified while ramping, so it's safe to leave the light in 
+ramp mode indefinitely.
 
 
-Names:
-  - clicky ramp
-  - cramp
-  - crescendo
+UI terms:
+
+  - Click: Fully press and release the button.  ("long press")
+    Assumes that the light was off for at least a second before 
+    clicking.  Is the same as half-pressing for a second or more.
+
+  - Tap: QUICKLY half-press and release the button.  ("short press")
+    Assumes the light was on before the tap.  Is best if you tap as 
+    quickly as possible.
+
+
+How to use
+----------
+
+From off:
+
+  - Click:
+    - Without memory: Ramp up, starting at moon.
+    - With memory: 0.5s of moon, then the memorized mode and level.
+      (memory is short-cycle, so a short-press will then go back to the 
+      ramp at the beginning of the mode sequence)
+  - Click, tap: Go directly to moon mode.
+  - Click, tap, tap: Go directly to maximum output.
+  - Click, tap, tap, tap: Battery check mode.
+
+In ramp mode:
+
+  - Tap: Stop ramping and stay steady at the current level.
+  - Tap, tap: Go to maximum output.
+
+From the normal "steady" mode:
+
+  - Tap: Ramp up.
+  - Tap, tap: Ramp down.
+  - Tap, tap, tap: Go to maximum output.
+
+From any other mode (maximum output and all blinkies):
+
+  - Tap: Advance to next mode.
+
+In any mode except "off":
+
+  - Click: Turn off.  Will reset to mem or ramp next time it's used.
+
+
+Mode list
+---------
+
+  - Memory (if enabled)
+  - Smooth auto-ramp
+  - Steady output at last-used ramp level
+  - Max/Turbo
+  - Battcheck: 4 bars, 8 bars, or volts+tenths (depends how it was compiled)
+  - Other special modes / blinkies; whatever was compiled in
+
+
+Compile-time options
+--------------------
+
+There are many options which can be enabled or disabled.  It should be 
+able to run on virtually any driver, including nanjg drivers, FET+1, and 
+FET+N+1.  It does not need an offtime capacitor.  Can also be compiled 
+for attiny13, attiny25, attiny45, and attiny85 MCUs.  On attiny13 
+though, space is limited and you may not be able to enable many special 
+modes at the same time as memory.
+
+One of the most important parts to configure is the ramp table.  This is 
+very hardware-specific, especially on multi-channel drivers, so you 
+should probably generate your own ramp with bin/level_calc.py .
