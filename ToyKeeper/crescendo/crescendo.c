@@ -91,18 +91,17 @@
 #define RAMP      253
 #define STEADY    252
 #define MEMORY    251
-#define MEMTOGGLE 250
 #define BATTCHECK 249
 //#define TEMP_CAL_MODE 248
-// Uncomment to enable tactical strobe mode
-//#define STROBE    248       // Convenience code for strobe mode
-// Uncomment to unable a 2-level stutter beacon instead of a tactical strobe
-//#define BIKING_STROBE 247   // Convenience code for biking strobe mode
+#define BIKING_MODE 248   // steady on with pulses at 1Hz
 // comment out to use minimal version instead (smaller)
-//#define FULL_BIKING_STROBE
-//#define POLICE_STROBE 246
-//#define RANDOM_STROBE 245
-//#define SOS 244
+//#define FULL_BIKING_MODE
+// Required for any of the strobes below it
+#define ANY_STROBE
+#define STROBE    247       // Simple tactical strobe
+//#define POLICE_STROBE 246   // 2-speed tactical strobe
+//#define RANDOM_STROBE 245   // variable-speed tactical strobe
+//#define SOS 244             // distress signal
 
 // thermal step-down
 //#define TEMPERATURE_MON
@@ -141,9 +140,6 @@
  */
 
 // Config option variables
-#ifdef MEMORY
-uint8_t memory;        // mode memory, or not
-#endif
 #ifdef TEMPERATURE_MON
 uint8_t maxtemp = 79;      // temperature step-down threshold
 #endif
@@ -162,11 +158,7 @@ int8_t ramp_dir __attribute__ ((section (".noinit")));
 uint8_t next_mode_num __attribute__ ((section (".noinit")));
 
 uint8_t modes[] = {
-    #ifdef MEMORY
-    RAMP, STEADY, TURBO, BATTCHECK, MEMTOGGLE,
-    #else
-    RAMP, STEADY, TURBO, BATTCHECK,
-    #endif
+    RAMP, STEADY, TURBO, BATTCHECK, BIKING_MODE, STROBE,
 };
 
 // Modes (gets set when the light starts up based on saved config values)
@@ -192,18 +184,9 @@ void save_mode() {  // save the current mode index (with wear leveling)
     eeprom_write_byte((uint8_t *)(eepos+1), ramp_level);
 }
 
-//#define save_state save_mode
-#define OPT_memory (EEPSIZE-1)
-void save_state() {  // central method for writing complete state
-    save_mode();
-    eeprom_write_byte((uint8_t *)OPT_memory, memory);
-}
+#define save_state save_mode
 
 void restore_state() {
-    // memory is either 1 or 0
-    // (if it's unconfigured, 0xFF, clip it)
-    memory = eeprom_read_byte((uint8_t *)OPT_memory) & 0x01;
-
     // find the mode index and last brightness level
     uint8_t eep;
     for(eepos=0; eepos<WEAR_LVL_LEN; eepos+=2) {
@@ -285,8 +268,12 @@ void blink(uint8_t val, uint8_t speed)
     }
 }
 
-#ifdef STROBE
+#ifdef ANY_STROBE
+#ifdef POLICE_STROBE
+void strobe(uint8_t ontime, uint8_t offtime) {
+#else
 inline void strobe(uint8_t ontime, uint8_t offtime) {
+#endif
     uint8_t i;
     for(i=0;i<8;i++) {
         set_level(RAMP_SIZE);
@@ -361,17 +348,12 @@ int main(void)
         next_mode_num = 255;
         mode_idx = 0;
         #ifdef MEMORY
-        if (memory) {
-            mode_override = MEMORY;
-        }
+        mode_override = MEMORY;
         #endif  // ifdef MEMORY
     }
     long_press = 0;
     #ifdef MEMORY
     save_mode();
-    //if (memory) {
-    //    save_state();
-    //}
     #endif
 
     // Turn features on or off as needed
@@ -415,22 +397,6 @@ int main(void)
             mode_idx = saved_mode_idx;
             ramp_level = saved_ramp_level;
             save_mode();
-        }
-
-        // turn memory on/off
-        // (click during the "buzz" to change the setting)
-        else if (mode == MEMTOGGLE) {
-            /*
-            blink(16, 12/4);
-            _delay_500ms();
-            */
-            mode_idx = 1;
-            memory ^= 1;
-            save_state();
-            blink(64, 12/4);
-            memory ^= 1;
-            save_state();
-            _delay_s();
         }
         #endif
 
@@ -540,16 +506,16 @@ int main(void)
         }
         #endif // ifdef RANDOM_STROBE
 
-        #ifdef BIKING_STROBE
-        else if (mode == BIKING_STROBE) {
+        #ifdef BIKING_MODE
+        else if (mode == BIKING_MODE) {
             // 2-level stutter beacon for biking and such
-            #ifdef FULL_BIKING_STROBE
+            #ifdef FULL_BIKING_MODE
             // normal version
             uint8_t i;
             for(i=0;i<4;i++) {
                 //set_output(255,0);
                 set_mode(RAMP_SIZE);
-                _delay_4ms(3);
+                _delay_4ms(2);
                 //set_output(0,255);
                 set_mode(RAMP_SIZE/2);
                 _delay_4ms(15);
@@ -560,13 +526,13 @@ int main(void)
             // small/minimal version
             set_mode(RAMP_SIZE);
             //set_output(255,0);
-            _delay_4ms(5);
+            _delay_4ms(4);
             set_mode(RAMP_SIZE/2);
             //set_output(0,255);
             _delay_s();
-            #endif  // ifdef FULL_BIKING_STROBE
+            #endif  // ifdef FULL_BIKING_MODE
         }
-        #endif  // ifdef BIKING_STROBE
+        #endif  // ifdef BIKING_MODE
 
         #ifdef SOS
         else if (mode == SOS) { SOS_mode(); }
