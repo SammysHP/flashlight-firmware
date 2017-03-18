@@ -61,9 +61,11 @@
 
 #define VOLTAGE_MON         // Comment out to disable LVP
 
+// ../../bin/level_calc.py 1 64 7135 1 0.25 1000
+//#define RAMP_CH1   1,1,1,1,1,2,2,2,2,3,3,4,5,5,6,7,8,9,10,11,13,14,16,18,20,22,24,26,29,32,34,38,41,44,48,51,55,60,64,68,73,78,84,89,95,101,107,113,120,127,134,142,150,158,166,175,184,193,202,212,222,233,244,255
 // ../../bin/level_calc.py 1 64 7135 4 0.25 1000
-#define RAMP_SIZE  sizeof(ramp_ch1)
 #define RAMP_CH1   4,4,4,4,4,5,5,5,5,6,6,7,7,8,9,10,11,12,13,14,16,17,19,21,23,25,27,29,32,34,37,40,43,47,50,54,58,62,66,71,75,80,86,91,97,103,109,115,122,129,136,143,151,159,167,176,184,194,203,213,223,233,244,255
+#define RAMP_SIZE  sizeof(ramp_ch1)
 
 // How many ms should it take to ramp all the way up?
 #define RAMP_TIME  2500
@@ -419,12 +421,12 @@ int main(void)
             // double-tap to ramp down
             //else if (fast_presses == 1) {
             if (fast_presses == 1) {
-                next_mode_num = mode_idx;
-                ramp_dir = -1;
+                next_mode_num = mode_idx;  // stay in ramping mode
+                ramp_dir = -1;             // ... but go down
             }
             // triple-tap to enter turbo
             else if (fast_presses == 2) {
-                next_mode_num = mode_idx + 2;
+                next_mode_num = mode_idx + 2;  // bypass "steady" mode
             }
 
             // wait a bit before actually ramping
@@ -450,7 +452,7 @@ int main(void)
                     set_mode(ramp_level);
                     _delay_4ms(RAMP_TIME/RAMP_SIZE/4);
                 }
-                ramp_dir = -1;
+                ramp_dir = -1;  // turn around afterward
                 // blink at the top
                 set_mode(0);
                 _delay_4ms(2);
@@ -462,13 +464,14 @@ int main(void)
                     set_mode(ramp_level);
                     _delay_4ms(RAMP_TIME/RAMP_SIZE/4);
                 }
-                ramp_dir = 1;
+                ramp_dir = 1;  // turn around afterward
             }
         }
 
         // normal flashlight mode
         else if (mode == STEADY) {
             set_mode(ramp_level);
+            // User has 0.5s to tap again to advance to the next mode
             //next_mode_num = 255;
             _delay_4ms(500/4);
             // After a delay, assume user wants to adjust ramp
@@ -479,7 +482,7 @@ int main(void)
             }
         }
 
-        // quick access to turbo
+        // turbo is special because it's easier
         else if (mode == TURBO) {
             actual_level = RAMP_SIZE;
             set_mode(actual_level);
