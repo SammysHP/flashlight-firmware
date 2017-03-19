@@ -42,7 +42,7 @@
 // Choose your MCU here, or in the build script
 //#define ATTINY 13
 //#define ATTINY 25
-// FIXME: make 1-channel vs 2-channel power a single #define option
+// Pick your driver type:
 //#define FET_7135_LAYOUT  // specify an I/O pin layout
 #define NANJG_LAYOUT  // specify an I/O pin layout
 // Also, assign I/O pins in this file:
@@ -53,19 +53,24 @@
  * Settings to modify per driver
  */
 
-// FIXME: make 1-channel vs 2-channel power a single #define option
-#define FAST 0x23           // fast PWM channel 1 only
-#define PHASE 0x21          // phase-correct PWM channel 1 only
-//#define FAST 0xA3           // fast PWM both channels
-//#define PHASE 0xA1          // phase-correct PWM both channels
+#define VOLTAGE_MON         // Comment out to disable LVP and battcheck
 
-#define VOLTAGE_MON         // Comment out to disable LVP
-
+// FET-only or Convoy red driver
 // ../../bin/level_calc.py 1 64 7135 1 0.25 1000
 //#define RAMP_CH1   1,1,1,1,1,2,2,2,2,3,3,4,5,5,6,7,8,9,10,11,13,14,16,18,20,22,24,26,29,32,34,38,41,44,48,51,55,60,64,68,73,78,84,89,95,101,107,113,120,127,134,142,150,158,166,175,184,193,202,212,222,233,244,255
+
+// Common nanjg driver
 // ../../bin/level_calc.py 1 64 7135 4 0.25 1000
 #define RAMP_CH1   4,4,4,4,4,5,5,5,5,6,6,7,7,8,9,10,11,12,13,14,16,17,19,21,23,25,27,29,32,34,37,40,43,47,50,54,58,62,66,71,75,80,86,91,97,103,109,115,122,129,136,143,151,159,167,176,184,194,203,213,223,233,244,255
-#define RAMP_SIZE  sizeof(ramp_ch1)
+
+// MTN17DDm FET+1 tiny25, 64 steps
+// ../../bin/level_calc.py 2 64 7135 2 0.25 140 FET 1 10 1300
+//#define RAMP_CH1 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,5,9,12,16,20,24,29,33,38,44,49,55,61,67,73,80,87,94,102,110,118,126,135,144,154,164,174,184,195,206,218,230,242,255
+//#define RAMP_CH2 2,2,3,4,5,7,9,12,15,18,23,27,33,39,46,54,63,73,84,96,109,123,138,154,172,191,211,233,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+// MTN17DDm FET+1 tiny25, 128 steps (smooth!)
+// ../../bin/level_calc.py 2 128 7135 2 0.25 140 FET 1 10 1300
+//#define RAMP_CH1 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,4,6,8,9,11,13,15,17,19,21,23,25,27,30,32,34,37,39,42,45,47,50,53,56,59,62,65,68,71,74,78,81,84,88,92,95,99,103,107,111,115,119,123,127,132,136,141,145,150,155,159,164,169,174,180,185,190,196,201,207,213,218,224,230,236,242,249,255
+//#define RAMP_CH2 2,2,2,3,3,4,4,5,5,6,7,8,9,10,11,13,14,16,18,20,22,24,27,30,32,35,39,42,46,49,53,58,62,67,72,77,82,88,94,100,106,113,120,127,135,143,151,160,168,178,187,197,207,217,228,239,251,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 
 // How many ms should it take to ramp all the way up?
 #define RAMP_TIME  2500
@@ -95,7 +100,7 @@
 //#define TEMP_CAL_MODE 248
 #define BIKING_MODE 248   // steady on with pulses at 1Hz
 // comment out to use minimal version instead (smaller)
-//#define FULL_BIKING_MODE
+#define FULL_BIKING_MODE
 // Required for any of the strobes below it
 //#define ANY_STROBE
 //#define STROBE    247       // Simple tactical strobe
@@ -167,6 +172,7 @@ PROGMEM const uint8_t ramp_ch1[]  = { RAMP_CH1 };
 #ifdef RAMP_CH2
 PROGMEM const uint8_t ramp_ch2[] = { RAMP_CH2 };
 #endif
+#define RAMP_SIZE  sizeof(ramp_ch1)
 
 void _delay_500ms() {
     _delay_4ms(500/4);
@@ -582,7 +588,6 @@ int main(void)
         fast_presses = 0;
 
 #ifdef VOLTAGE_MON
-#if 1
         if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
             voltage = ADCH;  // get the waiting value
             // See if voltage is lower than what we were looking for
@@ -591,17 +596,17 @@ int main(void)
             } else {
                 lowbatt_cnt = 0;
             }
-            // FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
             // See if it's been low for a while, and maybe step down
             if (lowbatt_cnt >= 8) {
                 // DEBUG: blink on step-down:
                 //set_level(0);  _delay_ms(100);
 
                 if (mode != STEADY) {
-                    // step "down" from special modes to medium
-                    mode = STEADY;
-                    ramp_level = RAMP_SIZE/2;
-                    break;
+                    // step "down" from special modes to medium-low
+                    mode_idx = 1;
+                    //mode = STEADY;
+                    ramp_level = RAMP_SIZE/4;
+                    //break;
                 }
                 else {
                     if (ramp_level > 1) {  // solid non-moon mode
@@ -631,7 +636,6 @@ int main(void)
             // Make sure conversion is running for next time through
             ADCSRA |= (1 << ADSC);
         }
-#endif
 #endif  // ifdef VOLTAGE_MON
     }
 
