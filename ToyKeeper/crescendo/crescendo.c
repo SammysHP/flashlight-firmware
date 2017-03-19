@@ -79,6 +79,10 @@
 // ../../bin/level_calc.py 2 128 7135 2 0.25 140 FET 1 10 1300
 //#define RAMP_CH1 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,4,6,8,9,11,13,15,17,19,21,23,25,27,30,32,34,37,39,42,45,47,50,53,56,59,62,65,68,71,74,78,81,84,88,92,95,99,103,107,111,115,119,123,127,132,136,141,145,150,155,159,164,169,174,180,185,190,196,201,207,213,218,224,230,236,242,249,255
 //#define RAMP_CH2 2,2,2,3,3,4,4,5,5,6,7,8,9,10,11,13,14,16,18,20,22,24,27,30,32,35,39,42,46,49,53,58,62,67,72,77,82,88,94,100,106,113,120,127,135,143,151,160,168,178,187,197,207,217,228,239,251,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+// MTN17DDm FET+1 tiny25, 128 steps (smooth!), 2000lm max
+// ../../bin/level_calc.py 2 128 7135 2 0.25 140 FET 1 10 2000
+// #define RAMP_CH1 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,4,5,6,7,9,10,12,13,14,16,18,19,21,23,25,26,28,30,32,34,36,39,41,43,45,48,50,53,55,58,61,63,66,69,72,75,78,81,84,88,91,94,98,101,105,109,112,116,120,124,128,132,136,141,145,149,154,158,163,168,173,177,182,187,193,198,203,209,214,220,225,231,237,243,249,255
+// #define RAMP_CH2 5,5,6,6,6,7,8,8,9,10,12,13,14,16,18,20,22,24,27,30,33,36,40,44,48,52,57,62,67,73,78,85,91,98,105,113,121,129,138,147,157,167,177,188,200,211,224,236,249,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 
 // How many ms should it take to ramp all the way up?
 #define RAMP_TIME  2500
@@ -106,15 +110,23 @@
 #define BATTCHECK 249
 //#define TEMP_CAL_MODE 248
 #define BIKING_MODE 248   // steady on with pulses at 1Hz
+//#define BIKING_MODE2 247   // steady on with pulses at 1Hz
 // comment out to use minimal version instead (smaller)
-#define FULL_BIKING_MODE
+//#define FULL_BIKING_MODE
 // Required for any of the strobes below it
 //#define ANY_STROBE
-//#define STROBE    247       // Simple tactical strobe
-//#define POLICE_STROBE 246   // 2-speed tactical strobe
-//#define RANDOM_STROBE 245   // variable-speed tactical strobe
-//#define SOS 244             // distress signal
-#define HEART_BEACON 243    // 1Hz heartbeat-pattern beacon
+//#define STROBE    247         // Simple tactical strobe
+//#define POLICE_STROBE 246     // 2-speed tactical strobe
+//#define RANDOM_STROBE 245     // variable-speed tactical strobe
+//#define SOS 244               // distress signal
+#define HEART_BEACON 243      // 1Hz heartbeat-pattern beacon
+// next line required for any of the party strobes to work
+//#define PARTY_STROBES
+//#define PARTY_STROBE12 242    // 12Hz party strobe
+//#define PARTY_STROBE24 241    // 24Hz party strobe
+//#define PARTY_STROBE60 240    // 60Hz party strobe
+//#define PARTY_VARSTROBE1 239  // variable-speed party strobe (slow)
+//#define PARTY_VARSTROBE2 238  // variable-speed party strobe (fast)
 
 // thermal step-down
 //#define TEMPERATURE_MON
@@ -139,6 +151,10 @@
 
 #define OWN_DELAY           // Don't use stock delay functions.
 #define USE_DELAY_4MS
+#ifdef PARTY_STROBES
+#define USE_DELAY_MS
+#define USE_FINE_DELAY
+#endif
 #define USE_DELAY_S         // Also use _delay_s(), not just _delay_ms()
 #include "tk-delay.h"
 
@@ -171,7 +187,11 @@ int8_t ramp_dir __attribute__ ((section (".noinit")));
 uint8_t next_mode_num __attribute__ ((section (".noinit")));
 
 uint8_t modes[] = {
-    RAMP, STEADY, TURBO, BATTCHECK, BIKING_MODE, HEART_BEACON,
+    RAMP, STEADY, TURBO, BATTCHECK,
+    BIKING_MODE, HEART_BEACON,
+//    BIKING_MODE2, BIKING_MODE, HEART_BEACON,
+//    PARTY_STROBE12, PARTY_STROBE24, PARTY_STROBE60,
+//    PARTY_VARSTROBE1, PARTY_VARSTROBE2,
 };
 
 // Modes (gets set when the light starts up based on saved config values)
@@ -298,6 +318,26 @@ inline void strobe(uint8_t ontime, uint8_t offtime) {
 }
 #endif
 
+#ifdef PARTY_STROBES
+void party_strobe(uint8_t ontime, uint8_t offtime) {
+    set_level(RAMP_SIZE);
+    if (ontime) {
+        _delay_ms(ontime);
+    } else {
+        _delay_zero();
+    }
+    set_level(0);
+    _delay_ms(offtime);
+}
+
+void party_strobe_loop(uint8_t ontime, uint8_t offtime) {
+    uint8_t i;
+    for(i=0;i<32;i++) {
+        party_strobe(ontime, offtime);
+    }
+}
+#endif
+
 #ifdef SOS
 inline void SOS_mode() {
 #define SOS_SPEED (200/4)
@@ -411,7 +451,7 @@ int main(void)
             mode_idx = saved_mode_idx;
             ramp_level = saved_ramp_level;
             // ... and skip the rest of the blinkies
-            next_mode_num = 0;
+            next_mode_num = 1;
             save_mode();
         }
         #endif
@@ -484,14 +524,21 @@ int main(void)
             // instead of going to next mode (unless they're
             // tapping rapidly, in which case we should advance to turbo)
             if (fast_presses < 2) {
-                next_mode_num = mode_idx - 1;
+                next_mode_num = 0;
             }
         }
 
         // turbo is special because it's easier
         else if (mode == TURBO) {
             set_mode(RAMP_SIZE);
-            _delay_s();
+            _delay_500ms();
+            // go back to the previously-memorized level
+            // if the user taps after a delay,
+            // instead of advancing to blinkies
+            // (allows something similar to "momentary" turbo)
+            if (fast_presses < 3) {
+                next_mode_num = 1;
+            }
         }
 
         #ifdef STROBE
@@ -550,6 +597,22 @@ int main(void)
         }
         #endif  // ifdef BIKING_MODE
 
+        #ifdef BIKING_MODE2
+        else if (mode == BIKING_MODE2) {
+            // 2-level stutter beacon for biking and such
+            // normal version
+            uint8_t i;
+            for(i=0;i<4;i++) {
+                set_mode(RAMP_SIZE/2);
+                _delay_4ms(2);
+                set_mode(RAMP_SIZE/4);
+                _delay_4ms(15);
+            }
+            _delay_4ms(720/4);
+            //_delay_s();
+        }
+        #endif  // ifdef BIKING_MODE
+
         #ifdef SOS
         else if (mode == SOS) { SOS_mode(); }
         #endif // ifdef SOS
@@ -567,6 +630,46 @@ int main(void)
         }
         #endif
 
+        #ifdef PARTY_STROBE12
+        else if (mode == PARTY_STROBE12) {
+            party_strobe(1,79);
+        }
+        #endif
+
+        #ifdef PARTY_STROBE24
+        else if (mode == PARTY_STROBE24) {
+            party_strobe(0,41);
+        }
+        #endif
+
+        #ifdef PARTY_STROBE60
+        else if (mode == PARTY_STROBE60) {
+            party_strobe(0,15);
+        }
+        #endif
+
+        #ifdef PARTY_VARSTROBE1
+        else if (mode == PARTY_VARSTROBE1) {
+            uint8_t j, speed;
+            for(j=0; j<66; j++) {
+                if (j<33) { speed = j; }
+                else { speed = 66-j; }
+                party_strobe(1,(speed+33-6)<<1);
+            }
+        }
+        #endif
+
+        #ifdef PARTY_VARSTROBE2
+        else if (mode == PARTY_VARSTROBE2) {
+            uint8_t j, speed;
+            for(j=0; j<100; j++) {
+                if (j<50) { speed = j; }
+                else { speed = 100-j; }
+                party_strobe(0, speed+9);
+            }
+        }
+        #endif
+
         #ifdef BATTCHECK
         // battery check mode, show how much power is left
         else if (mode == BATTCHECK) {
@@ -574,11 +677,11 @@ int main(void)
             #ifdef BATTCHECK_VpT
             // blink out volts and tenths
             uint8_t result = battcheck();
-            blink(result >> 5, BLINK_SPEED/4);
-            _delay_4ms(BLINK_SPEED);
+            blink(result >> 5, BLINK_SPEED/5);
+            _delay_4ms(BLINK_SPEED*2/3);
             blink(1,8/4);
-            _delay_4ms(BLINK_SPEED*3/2);
-            blink(result & 0b00011111, BLINK_SPEED/4);
+            _delay_4ms(BLINK_SPEED*4/3);
+            blink(result & 0b00011111, BLINK_SPEED/5);
             #else  // ifdef BATTCHECK_VpT
             // blink zero to five times to show voltage
             // (or zero to nine times, if 8-bar mode)

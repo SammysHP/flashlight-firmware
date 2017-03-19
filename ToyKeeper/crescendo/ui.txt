@@ -43,14 +43,26 @@ In ramp mode:
 
   - Tap: Stop ramping and stay steady at the current level.
   - Tap, tap: Go to maximum output.
+  - Tap, tap: Go to battery check mode.
 
 From the normal "steady" mode:
+
+  - Tap (immediately): Go to turbo.
+    All other actions below happen after "steady" mode has been active 
+    for at least 0.5s.
 
   - Tap: Ramp up.
   - Tap, tap: Ramp down.
   - Tap, tap, tap: Go to maximum output.
+  - Tap, tap, tap, tap: Go to battery check mode.
 
-From any other mode (maximum output and all blinkies):
+From the "turbo" mode:
+
+  - Tap (immediately): Advance to the next mode.
+  - Tap (after 0.5s or longer): Go back to "steady" mode at the 
+    previously-used level.
+
+From any other mode (all blinkies and specials):
 
   - Tap: Advance to next mode.
 
