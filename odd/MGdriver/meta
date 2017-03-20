@@ -7,7 +7,7 @@ Description: Off-time multigroup driver by odd, based on luxdrv030 by DrJones
      - ADDED: Memory or nomemory selectable for each group
      - ADDED: Simple UI for switching groups
 Authors: odd, DrJones
-MCU: attiny13a
+MCU: attiny13
 Button-Type: clicky
 Memory: offtime, none
 Modes: beacon, strobe

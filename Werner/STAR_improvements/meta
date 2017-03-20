@@ -8,7 +8,7 @@ Description: STAR improved by Werner
    shorter, after turbotimeout ramp down and this in 2 highest modes,
    removed config stars
 Authors: Werner, JonnyC
-MCU: attiny13a
+MCU: attiny13
 Button-Type: momentary, clicky
 Memory: offtime, OTC, none
 Modes:

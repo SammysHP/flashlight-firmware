@@ -2,7 +2,7 @@ Description: XinTD X3 FET+1 firmware supporting both li-ion and 3xAA batteries
   (LVP and turbo step-down enabled only for li-ion mode group)
 Button-Type: clicky
 Memory: offtime, OTC
-MCU: attiny13a
+MCU: attiny13
 Authors: pilotdog68, ToyKeeper
 Modes: config
 Extras: dual PWM, mode groups
