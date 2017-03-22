@@ -61,7 +61,9 @@
 
 // Common nanjg driver
 // ../../bin/level_calc.py 1 64 7135 4 0.25 1000
-#define RAMP_CH1   4,4,4,4,4,5,5,5,5,6,6,7,7,8,9,10,11,12,13,14,16,17,19,21,23,25,27,29,32,34,37,40,43,47,50,54,58,62,66,71,75,80,86,91,97,103,109,115,122,129,136,143,151,159,167,176,184,194,203,213,223,233,244,255
+//#define RAMP_CH1   4,4,4,4,4,5,5,5,5,6,6,7,7,8,9,10,11,12,13,14,16,17,19,21,23,25,27,29,32,34,37,40,43,47,50,54,58,62,66,71,75,80,86,91,97,103,109,115,122,129,136,143,151,159,167,176,184,194,203,213,223,233,244,255
+// ../../bin/level_calc.py 1 128 7135 4 0.25 1000
+#define RAMP_CH1   4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,6,6,6,6,7,7,7,7,8,8,8,9,9,10,10,11,11,12,12,13,13,14,15,15,16,17,18,19,19,20,21,22,23,24,25,26,27,29,30,31,32,34,35,36,38,39,41,42,44,46,47,49,51,53,55,57,59,61,63,65,67,69,72,74,76,79,81,84,86,89,92,95,98,100,103,106,109,113,116,119,122,126,129,133,136,140,144,148,152,155,159,164,168,172,176,181,185,189,194,199,203,208,213,218,223,228,233,239,244,249,255
 
 // MTN17DDm FET+1 tiny25, 36 steps
 // ../../bin/level_calc.py 2 36 7135 2 0.25 140 FET 1 10 1300
@@ -85,7 +87,16 @@
 //#define RAMP_CH2 6,6,7,7,7,8,9,9,10,11,12,14,15,17,19,21,23,25,28,31,34,37,41,45,49,53,58,63,68,73,79,85,92,99,106,114,122,130,139,148,157,167,178,188,200,211,224,236,249,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 
 // How many ms should it take to ramp all the way up?
-#define RAMP_TIME  2500
+// (recommended values 2000 to 5000 depending on personal preference)
+#define RAMP_TIME  3000
+
+// How long to wait at ramp ends, and
+// how long the user has to continue multi-taps after the light comes on
+// (higher makes it slower and easier to do double-taps / triple-taps,
+//  lower makes the UI faster)
+// (recommended values 250 to 750)
+//#define HALF_SECOND 500
+#define HALF_SECOND 333
 
 // Enable battery indicator mode?
 #define USE_BATTCHECK
@@ -100,36 +111,39 @@
 #define BLINK_SPEED         (500/4)
 
 // 255 is the default eeprom state, don't use
+// (actually, no longer applies...  using a different algorithm now)
+// (previously tried to store mode type plus ramp level in a single byte
+//  for mode memory purposes, but it was a bad idea)
 #define DONOTUSE  255
-// Modes start at 254 and count down
-// Lowest mode must be higher than RAMP_SIZE
+// Modes start at 255 and count down
 #define TURBO     254
 #define RAMP      253
 #define STEADY    252
-#define MEMORY    251
-#define BATTCHECK 249
-//#define TEMP_CAL_MODE 248
+//#define MEMORY    251
+#define BATTCHECK 250
+//#define TEMP_CAL_MODE 249  FIXME: NOT IMPLEMENTED YET
 #define BIKING_MODE 248   // steady on with pulses at 1Hz
 //#define BIKING_MODE2 247   // steady on with pulses at 1Hz
 // comment out to use minimal version instead (smaller)
 #define FULL_BIKING_MODE
 // Required for any of the strobes below it
-//#define ANY_STROBE
-//#define STROBE    247         // Simple tactical strobe
-//#define POLICE_STROBE 246     // 2-speed tactical strobe
-//#define RANDOM_STROBE 245     // variable-speed tactical strobe
-//#define SOS 244               // distress signal
-#define HEART_BEACON 243      // 1Hz heartbeat-pattern beacon
+#define ANY_STROBE
+#define STROBE    246         // Simple tactical strobe
+//#define POLICE_STROBE 245     // 2-speed tactical strobe
+// FIXME: random strobe not tested yet
+//#define RANDOM_STROBE 244     // variable-speed tactical strobe
+//#define SOS 243               // distress signal
+#define HEART_BEACON 242      // 1Hz heartbeat-pattern beacon
 // next line required for any of the party strobes to work
-//#define PARTY_STROBES
-//#define PARTY_STROBE12 242    // 12Hz party strobe
-//#define PARTY_STROBE24 241    // 24Hz party strobe
-//#define PARTY_STROBE60 240    // 60Hz party strobe
-//#define PARTY_VARSTROBE1 239  // variable-speed party strobe (slow)
-//#define PARTY_VARSTROBE2 238  // variable-speed party strobe (fast)
+#define PARTY_STROBES
+#define PARTY_STROBE12 241    // 12Hz party strobe
+#define PARTY_STROBE24 240    // 24Hz party strobe
+#define PARTY_STROBE60 239    // 60Hz party strobe
+//#define PARTY_VARSTROBE1 238  // variable-speed party strobe (slow)
+//#define PARTY_VARSTROBE2 237  // variable-speed party strobe (fast)
 
 // thermal step-down
-//#define TEMPERATURE_MON
+//#define TEMPERATURE_MON  FIXME: NOT IMPLEMENTED YET
 
 // Calibrate voltage and OTC in this file:
 #include "tk-calibration.h"
@@ -188,10 +202,42 @@ uint8_t next_mode_num __attribute__ ((section (".noinit")));
 
 uint8_t modes[] = {
     RAMP, STEADY, TURBO, BATTCHECK,
-    BIKING_MODE, HEART_BEACON,
-//    BIKING_MODE2, BIKING_MODE, HEART_BEACON,
-//    PARTY_STROBE12, PARTY_STROBE24, PARTY_STROBE60,
-//    PARTY_VARSTROBE1, PARTY_VARSTROBE2,
+#ifdef RANDOM_STROBE
+    RANDOM_STROBE,
+#endif
+#ifdef POLICE_STROBE
+    POLICE_STROBE,
+#endif
+#ifdef STROBE
+    STROBE,
+#endif
+#ifdef BIKING_MODE2
+    BIKING_MODE2,
+#endif
+#ifdef BIKING_MODE
+    BIKING_MODE,
+#endif
+#ifdef HEART_BEACON
+    HEART_BEACON,
+#endif
+#ifdef PARTY_STROBE12
+    PARTY_STROBE12,
+#endif
+#ifdef PARTY_STROBE24
+    PARTY_STROBE24,
+#endif
+#ifdef PARTY_STROBE60
+    PARTY_STROBE60,
+#endif
+#ifdef PARTY_VARSTROBE1
+    PARTY_VARSTROBE1,
+#endif
+#ifdef PARTY_VARSTROBE2
+    PARTY_VARSTROBE2,
+#endif
+#ifdef SOS
+    SOS,
+#endif
 };
 
 // Modes (gets set when the light starts up based on saved config values)
@@ -202,7 +248,7 @@ PROGMEM const uint8_t ramp_ch2[] = { RAMP_CH2 };
 #define RAMP_SIZE  sizeof(ramp_ch1)
 
 void _delay_500ms() {
-    _delay_4ms(500/4);
+    _delay_4ms(HALF_SECOND/4);
 }
 
 #ifdef MEMORY
@@ -452,6 +498,7 @@ int main(void)
             ramp_level = saved_ramp_level;
             // ... and skip the rest of the blinkies
             next_mode_num = 1;
+            fast_presses = 0;
             save_mode();
         }
         #endif
