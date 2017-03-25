@@ -42,14 +42,12 @@ From off:
 In ramp mode:
 
   - Tap: Stop ramping and stay steady at the current level.
-  - Tap, tap: Go to maximum output.
-  - Tap, tap: Go to battery check mode.
+
+  - These work too, but likely won't be used much:
+    - Tap, tap: Go to maximum output.
+    - Tap, tap, tap: Go to battery check mode.
 
 From the normal "steady" mode:
-
-  - Tap (immediately): Go to turbo.
-    All other actions below happen after "steady" mode has been active 
-    for at least 0.5s.
 
   - Tap: Ramp up.
   - Tap, tap: Ramp down.
@@ -95,3 +93,4 @@ modes at the same time as memory.
 One of the most important parts to configure is the ramp table.  This is 
 very hardware-specific, especially on multi-channel drivers, so you 
 should probably generate your own ramp with bin/level_calc.py .
+
