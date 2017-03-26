@@ -110,6 +110,11 @@
 // ms per normal-speed blink
 #define BLINK_SPEED         (500/4)
 
+// Uncomment this if you want the ramp to stop when it reaches maximum
+//#define STOP_AT_TOP     HOP_ON_POP
+// Uncomment this if you want it to blink when it reaches maximum
+#define BLINK_AT_TOP
+
 // 255 is the default eeprom state, don't use
 // (actually, no longer applies...  using a different algorithm now)
 // (previously tried to store mode type plus ramp level in a single byte
@@ -130,7 +135,6 @@
 #define ANY_STROBE
 #define STROBE    246         // Simple tactical strobe
 //#define POLICE_STROBE 245     // 2-speed tactical strobe
-// FIXME: random strobe not tested yet
 //#define RANDOM_STROBE 244     // variable-speed tactical strobe
 //#define SOS 243               // distress signal
 #define HEART_BEACON 242      // 1Hz heartbeat-pattern beacon
@@ -141,6 +145,7 @@
 #define PARTY_STROBE60 239    // 60Hz party strobe
 //#define PARTY_VARSTROBE1 238  // variable-speed party strobe (slow)
 //#define PARTY_VARSTROBE2 237  // variable-speed party strobe (fast)
+//#define GOODNIGHT 236         // hour-long ramp down then poweroff
 
 // thermal step-down
 //#define TEMPERATURE_MON  FIXME: NOT IMPLEMENTED YET
@@ -202,6 +207,9 @@ uint8_t next_mode_num __attribute__ ((section (".noinit")));
 
 uint8_t modes[] = {
     RAMP, STEADY, TURBO, BATTCHECK,
+#ifdef GOODNIGHT
+    GOODNIGHT,
+#endif
 #ifdef RANDOM_STROBE
     RANDOM_STROBE,
 #endif
@@ -396,6 +404,33 @@ inline void SOS_mode() {
 }
 #endif
 
+#ifdef BIKING_MODE
+inline void biking_mode(uint8_t lo, uint8_t hi) {
+    #ifdef FULL_BIKING_MODE
+    // normal version
+    uint8_t i;
+    for(i=0;i<4;i++) {
+        //set_output(255,0);
+        set_mode(hi);
+        _delay_4ms(2);
+        //set_output(0,255);
+        set_mode(lo);
+        _delay_4ms(15);
+    }
+    //_delay_ms(720);
+    _delay_s();
+    #else  // smaller bike mode
+    // small/minimal version
+    set_mode(hi);
+    //set_output(255,0);
+    _delay_4ms(4);
+    set_mode(lo);
+    //set_output(0,255);
+    _delay_s();
+    #endif  // ifdef FULL_BIKING_MODE
+}
+#endif
+
 #ifdef TEMPERATURE_MON
 uint8_t get_temperature() {
     ADC_on_temperature();
@@ -411,6 +446,19 @@ uint8_t get_temperature() {
     return temp;
 }
 #endif  // TEMPERATURE_MON
+
+#ifdef GOODNIGHT
+void poweroff() {
+#else
+inline void poweroff() {
+#endif
+    // Turn off main LED
+    set_level(0);
+    // Power down as many components as possible
+    ADCSRA &= ~(1<<7); //ADC off
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    sleep_mode();
+}
 
 int main(void)
 {
@@ -546,9 +594,16 @@ int main(void)
                     _delay_4ms(RAMP_TIME/RAMP_SIZE/4);
                 }
                 ramp_dir = -1;  // turn around afterward
+
+                #ifdef STOP_AT_TOP
+                // go to steady mode
+                mode_idx += 1;
+                #endif
+                #ifdef BLINK_AT_TOP
                 // blink at the top
                 set_mode(0);
                 _delay_4ms(2);
+                #endif
                 set_mode(ramp_level);
             } else {
                 // ramp down
@@ -608,7 +663,11 @@ int main(void)
         else if (mode == RANDOM_STROBE) {
             // pseudo-random strobe
             uint8_t ms = (34 + (pgm_rand() & 0x3f))>>2;
-            strobe(ms, ms);
+            //strobe(ms, ms);
+            set_level(RAMP_SIZE);
+            _delay_4ms(ms);
+            set_level(0);
+            _delay_4ms(ms);
             //strobe(ms, ms);
         }
         #endif // ifdef RANDOM_STROBE
@@ -616,44 +675,14 @@ int main(void)
         #ifdef BIKING_MODE
         else if (mode == BIKING_MODE) {
             // 2-level stutter beacon for biking and such
-            #ifdef FULL_BIKING_MODE
-            // normal version
-            uint8_t i;
-            for(i=0;i<4;i++) {
-                //set_output(255,0);
-                set_mode(RAMP_SIZE);
-                _delay_4ms(2);
-                //set_output(0,255);
-                set_mode(RAMP_SIZE/2);
-                _delay_4ms(15);
-            }
-            //_delay_ms(720);
-            _delay_s();
-            #else  // smaller bike mode
-            // small/minimal version
-            set_mode(RAMP_SIZE);
-            //set_output(255,0);
-            _delay_4ms(4);
-            set_mode(RAMP_SIZE/2);
-            //set_output(0,255);
-            _delay_s();
-            #endif  // ifdef FULL_BIKING_MODE
+            biking_mode(RAMP_SIZE/2, RAMP_SIZE);
         }
         #endif  // ifdef BIKING_MODE
 
         #ifdef BIKING_MODE2
         else if (mode == BIKING_MODE2) {
             // 2-level stutter beacon for biking and such
-            // normal version
-            uint8_t i;
-            for(i=0;i<4;i++) {
-                set_mode(RAMP_SIZE/2);
-                _delay_4ms(2);
-                set_mode(RAMP_SIZE/4);
-                _delay_4ms(15);
-            }
-            _delay_4ms(720/4);
-            //_delay_s();
+            biking_mode(RAMP_SIZE/4, RAMP_SIZE/2);
         }
         #endif  // ifdef BIKING_MODE
 
@@ -737,6 +766,42 @@ int main(void)
         }
         #endif // ifdef BATTCHECK
 
+        #ifdef GOODNIGHT
+        // "good night" mode, slowly ramps down and shuts off
+        else if (mode == GOODNIGHT) {
+            uint8_t i, j;
+            #define GOODNIGHT_TOP (RAMP_SIZE/6)
+            // ramp up instead of going directly to the top level
+            // (probably pointless in this UI)
+            /*
+            for (i=1; i<=GOODNIGHT_TOP; i++) {
+                set_mode(i);
+                _delay_4ms(2*RAMP_TIME/RAMP_SIZE/4);
+            }
+            */
+            // ramp down over about an hour
+            for(i=GOODNIGHT_TOP; i>=1; i--) {
+                set_mode(i);
+                // how long the down ramp should last, in seconds
+                #define GOODNIGHT_TIME 60*60
+                // how long does _delay_s() actually last, in seconds?
+                // (calibrate this per driver, probably)
+                #define ONE_SECOND 1.03
+                #define GOODNIGHT_STEPS (1+GOODNIGHT_TOP)
+                #define GOODNIGHT_LOOPS (uint8_t)((GOODNIGHT_TIME) / ((2*ONE_SECOND) * GOODNIGHT_STEPS))
+                // NUM_LOOPS = (60*60) / ((2*ONE_SECOND) * (1+MODE_LOW-MODE_MOON))
+                // (where ONE_SECOND is how many seconds _delay_s() actually lasts)
+                // (in my case it's about 0.89)
+                for(j=0; j<GOODNIGHT_LOOPS; j++) {
+                    _delay_s();
+                    _delay_s();
+                    //_delay_ms(10);
+                }
+            }
+            poweroff();
+        }
+        #endif // ifdef GOODNIGHT
+
         else {  // shouldn't happen
         }
         fast_presses = 0;
@@ -773,10 +838,7 @@ int main(void)
                         //actual_level = (actual_level >> 1);
                     } else { // Already at the lowest mode
                         // Turn off the light
-                        set_level(0);
-                        // Power down as many components as possible
-                        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-                        sleep_mode();
+                        poweroff();
                     }
                     set_mode(ramp_level);
                 }
