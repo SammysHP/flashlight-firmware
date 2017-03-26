@@ -545,8 +545,10 @@ int main(void)
             mode_idx = saved_mode_idx;
             ramp_level = saved_ramp_level;
             // ... and skip the rest of the blinkies
-            next_mode_num = 1;
-            fast_presses = 0;
+            //next_mode_num = 1;  // redundant
+            // reset to avoid potential wrong state changes
+            //fast_presses = 0;  // redundant
+            // remember for next time
             save_mode();
         }
         #endif
@@ -586,15 +588,20 @@ int main(void)
             // don't want this confusing us any more
             fast_presses = 0;
 
+            // Just in case (SRAM could have partially decayed)
+            //ramp_dir = (ramp_dir == 1) ? 1 : -1;
+            // Do the actual ramp
+            for (;; ramp_level += ramp_dir) {
+                set_mode(ramp_level);
+                _delay_4ms(RAMP_TIME/RAMP_SIZE/4);
+                if (
+                    ((ramp_dir > 0) && (ramp_level >= RAMP_SIZE))
+                    ||
+                    ((ramp_dir < 0) && (ramp_level <= 1))
+                    )
+                    break;
+            }
             if (ramp_dir == 1) {
-                // ramp up
-                for(; ramp_level<RAMP_SIZE; ramp_level++)
-                {
-                    set_mode(ramp_level);
-                    _delay_4ms(RAMP_TIME/RAMP_SIZE/4);
-                }
-                ramp_dir = -1;  // turn around afterward
-
                 #ifdef STOP_AT_TOP
                 // go to steady mode
                 mode_idx += 1;
@@ -604,16 +611,8 @@ int main(void)
                 set_mode(0);
                 _delay_4ms(2);
                 #endif
-                set_mode(ramp_level);
-            } else {
-                // ramp down
-                for(; ramp_level>1; ramp_level--)
-                {
-                    set_mode(ramp_level);
-                    _delay_4ms(RAMP_TIME/RAMP_SIZE/4);
-                }
-                ramp_dir = 1;  // turn around afterward
             }
+            ramp_dir = -ramp_dir;
         }
 
         // normal flashlight mode
