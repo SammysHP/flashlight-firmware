@@ -80,6 +80,43 @@ Mode list
   - Other special modes / blinkies; whatever was compiled in
 
 
+Special modes available
+-----------------------
+
+  - Goodnight:  Slowly ramps from low to moon for an hour, then shuts 
+    off.  Useful on a night stand.
+
+  - Biking:  Pulses bright once per second but otherwise stays steady.  
+    Good when you need to both see and be seen.  Comes in both medium 
+    and bright flavors.  Can be compiled for a single pulse or a 
+    stutter.
+
+  - Tactical strobes:  For stunning or disorienting people.
+    - Random: Pseudo-random strobe, variable speed.
+    - Police: Two-speed alternating strobe.
+    - Strobe: One-speed basic strobe.
+
+  - Heart beacon:  Pulses once per second in a 2-flash heartbeat 
+    pattern.  Can run for a long time.  Useful as a long-running beacon.
+
+  - Party strobes:  Designed to freeze motion for fun visual effects.  
+    Point it at moving water or spinning fans or dancing people, or walk 
+    around while using it to make life feel like a bad horror movie.
+    - 12 Hz
+    - 24 Hz
+    - 60 Hz
+    - Variable (slow)
+    - Variable (fast)
+
+  - SOS:  Distress signal.
+
+  - Memtoggle:  Turn memory on or off.  Buzzes quickly as a warning to 
+    the user (and to help identify the mode visually), waits a second to 
+    give people some time to skip to the next mode, then buzzes again 
+    for a longer time.  To change the memory setting, turn the light off 
+    during the longer buzz.
+
+
 Compile-time options
 --------------------
 
