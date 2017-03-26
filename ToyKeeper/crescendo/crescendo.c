@@ -125,27 +125,28 @@
 #define RAMP      253
 #define STEADY    252
 //#define MEMORY    251
-#define BATTCHECK 250
-//#define TEMP_CAL_MODE 249  FIXME: NOT IMPLEMENTED YET
-#define BIKING_MODE 248   // steady on with pulses at 1Hz
-//#define BIKING_MODE2 247   // steady on with pulses at 1Hz
+//#define MEMTOGGLE    250
+#define BATTCHECK 249
+//#define TEMP_CAL_MODE 248  FIXME: NOT IMPLEMENTED YET
+#define BIKING_MODE 247   // steady on with pulses at 1Hz
+//#define BIKING_MODE2 246   // steady on with pulses at 1Hz
 // comment out to use minimal version instead (smaller)
 #define FULL_BIKING_MODE
 // Required for any of the strobes below it
 #define ANY_STROBE
-#define STROBE    246         // Simple tactical strobe
-//#define POLICE_STROBE 245     // 2-speed tactical strobe
-//#define RANDOM_STROBE 244     // variable-speed tactical strobe
-//#define SOS 243               // distress signal
-#define HEART_BEACON 242      // 1Hz heartbeat-pattern beacon
+#define STROBE    245         // Simple tactical strobe
+//#define POLICE_STROBE 244     // 2-speed tactical strobe
+//#define RANDOM_STROBE 243     // variable-speed tactical strobe
+//#define SOS 242               // distress signal
+#define HEART_BEACON 241      // 1Hz heartbeat-pattern beacon
 // next line required for any of the party strobes to work
 #define PARTY_STROBES
-#define PARTY_STROBE12 241    // 12Hz party strobe
-#define PARTY_STROBE24 240    // 24Hz party strobe
-#define PARTY_STROBE60 239    // 60Hz party strobe
-//#define PARTY_VARSTROBE1 238  // variable-speed party strobe (slow)
-//#define PARTY_VARSTROBE2 237  // variable-speed party strobe (fast)
-//#define GOODNIGHT 236         // hour-long ramp down then poweroff
+#define PARTY_STROBE12 240    // 12Hz party strobe
+#define PARTY_STROBE24 239    // 24Hz party strobe
+#define PARTY_STROBE60 238    // 60Hz party strobe
+//#define PARTY_VARSTROBE1 237  // variable-speed party strobe (slow)
+//#define PARTY_VARSTROBE2 236  // variable-speed party strobe (fast)
+//#define GOODNIGHT 235         // hour-long ramp down then poweroff
 
 // thermal step-down
 //#define TEMPERATURE_MON  FIXME: NOT IMPLEMENTED YET
@@ -190,6 +191,9 @@
 // Config option variables
 #ifdef TEMPERATURE_MON
 uint8_t maxtemp = 79;      // temperature step-down threshold
+#endif
+#ifdef MEMTOGGLE
+uint8_t memory;
 #endif
 // Other state variables
 uint8_t eepos;
@@ -246,6 +250,9 @@ uint8_t modes[] = {
 #ifdef SOS
     SOS,
 #endif
+#ifdef MEMTOGGLE
+    MEMTOGGLE,
+#endif
 };
 
 // Modes (gets set when the light starts up based on saved config values)
@@ -272,9 +279,23 @@ void save_mode() {  // save the current mode index (with wear leveling)
     eeprom_write_byte((uint8_t *)(eepos+1), ramp_level);
 }
 
+#ifdef MEMTOGGLE
+#define OPT_memory (EEPSIZE-1)
+void save_state() {
+    save_mode();
+    eeprom_write_byte((uint8_t *)OPT_memory, memory);
+}
+#else
 #define save_state save_mode
+#endif
 
 void restore_state() {
+    #ifdef MEMTOGGLE
+    // memory is either 1 or 0
+    // (if it's unconfigured, 0xFF, clip it)
+    memory = eeprom_read_byte((uint8_t *)OPT_memory) & 0x01;
+    #endif
+
     // find the mode index and last brightness level
     uint8_t eep;
     for(eepos=0; eepos<WEAR_LVL_LEN; eepos+=2) {
@@ -302,7 +323,8 @@ inline void next_mode() {
     mode_idx += 1;
     if (mode_idx >= sizeof(modes)) {
         // Wrap around
-        mode_idx = 0;
+        // (wrap to steady mode (1), not ramp (0))
+        mode_idx = 1;
     }
 }
 
@@ -496,7 +518,11 @@ int main(void)
         next_mode_num = 255;
         mode_idx = 0;
         #ifdef MEMORY
+        #ifdef MEMTOGGLE
+        if (memory) { mode_override = MEMORY; }
+        #else
         mode_override = MEMORY;
+        #endif  // ifdef MEMTOGGLE
         #endif  // ifdef MEMORY
     }
     long_press = 0;
@@ -800,6 +826,24 @@ int main(void)
             poweroff();
         }
         #endif // ifdef GOODNIGHT
+
+        #ifdef MEMTOGGLE
+        // turn memory on/off
+        // (click during the "buzz" to change the setting)
+        else if (mode == MEMTOGGLE) {
+            // warn the user and give them a moment to tap to skip this mode
+            blink(8, 12/4);
+            _delay_s();
+
+            mode_idx = 1;
+            memory ^= 1;
+            save_state();
+            blink(64, 12/4);
+            memory ^= 1;
+            save_state();
+            _delay_s();
+        }
+        #endif  // ifdef MEMTOGGLE
 
         else {  // shouldn't happen
         }
