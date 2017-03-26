@@ -62,8 +62,10 @@
 // Common nanjg driver
 // ../../bin/level_calc.py 1 64 7135 4 0.25 1000
 //#define RAMP_CH1   4,4,4,4,4,5,5,5,5,6,6,7,7,8,9,10,11,12,13,14,16,17,19,21,23,25,27,29,32,34,37,40,43,47,50,54,58,62,66,71,75,80,86,91,97,103,109,115,122,129,136,143,151,159,167,176,184,194,203,213,223,233,244,255
+// ../../bin/level_calc.py 1 96 7135 4 0.25 1000
+#define RAMP_CH1   4,4,4,4,4,4,4,5,5,5,5,5,5,6,6,6,7,7,7,8,8,9,9,10,11,11,12,13,14,15,16,17,18,19,20,21,22,24,25,26,28,30,31,33,35,37,39,41,43,45,47,49,52,54,57,60,62,65,68,71,74,78,81,84,88,92,95,99,103,107,111,116,120,124,129,134,139,144,149,154,159,165,170,176,182,188,194,200,207,213,220,226,233,240,248,255
 // ../../bin/level_calc.py 1 128 7135 4 0.25 1000
-#define RAMP_CH1   4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,6,6,6,6,7,7,7,7,8,8,8,9,9,10,10,11,11,12,12,13,13,14,15,15,16,17,18,19,19,20,21,22,23,24,25,26,27,29,30,31,32,34,35,36,38,39,41,42,44,46,47,49,51,53,55,57,59,61,63,65,67,69,72,74,76,79,81,84,86,89,92,95,98,100,103,106,109,113,116,119,122,126,129,133,136,140,144,148,152,155,159,164,168,172,176,181,185,189,194,199,203,208,213,218,223,228,233,239,244,249,255
+//#define RAMP_CH1   4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,6,6,6,6,7,7,7,7,8,8,8,9,9,10,10,11,11,12,12,13,13,14,15,15,16,17,18,19,19,20,21,22,23,24,25,26,27,29,30,31,32,34,35,36,38,39,41,42,44,46,47,49,51,53,55,57,59,61,63,65,67,69,72,74,76,79,81,84,86,89,92,95,98,100,103,106,109,113,116,119,122,126,129,133,136,140,144,148,152,155,159,164,168,172,176,181,185,189,194,199,203,208,213,218,223,228,233,239,244,249,255
 
 // MTN17DDm FET+1 tiny25, 36 steps
 // ../../bin/level_calc.py 2 36 7135 2 0.25 140 FET 1 10 1300
@@ -124,9 +126,9 @@
 #define TURBO     254
 #define RAMP      253
 #define STEADY    252
-//#define MEMORY    251
-//#define MEMTOGGLE    250
-#define BATTCHECK 249
+#define BATTCHECK 251
+//#define MEMORY    250
+//#define MEMTOGGLE 249   // Extra mode to (en/dis)able memory (requires MEMORY)
 //#define TEMP_CAL_MODE 248  FIXME: NOT IMPLEMENTED YET
 #define BIKING_MODE 247   // steady on with pulses at 1Hz
 //#define BIKING_MODE2 246   // steady on with pulses at 1Hz
@@ -146,7 +148,7 @@
 #define PARTY_STROBE60 238    // 60Hz party strobe
 //#define PARTY_VARSTROBE1 237  // variable-speed party strobe (slow)
 //#define PARTY_VARSTROBE2 236  // variable-speed party strobe (fast)
-//#define GOODNIGHT 235         // hour-long ramp down then poweroff
+#define GOODNIGHT 235         // hour-long ramp down then poweroff
 
 // thermal step-down
 //#define TEMPERATURE_MON  FIXME: NOT IMPLEMENTED YET
@@ -214,6 +216,12 @@ uint8_t modes[] = {
 #ifdef GOODNIGHT
     GOODNIGHT,
 #endif
+#ifdef BIKING_MODE2
+    BIKING_MODE2,
+#endif
+#ifdef BIKING_MODE
+    BIKING_MODE,
+#endif
 #ifdef RANDOM_STROBE
     RANDOM_STROBE,
 #endif
@@ -222,12 +230,6 @@ uint8_t modes[] = {
 #endif
 #ifdef STROBE
     STROBE,
-#endif
-#ifdef BIKING_MODE2
-    BIKING_MODE2,
-#endif
-#ifdef BIKING_MODE
-    BIKING_MODE,
 #endif
 #ifdef HEART_BEACON
     HEART_BEACON,
