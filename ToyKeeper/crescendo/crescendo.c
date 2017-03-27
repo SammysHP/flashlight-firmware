@@ -43,8 +43,9 @@
 //#define ATTINY 13
 //#define ATTINY 25
 // Pick your driver type:
-//#define FET_7135_LAYOUT  // specify an I/O pin layout
-#define NANJG_LAYOUT  // specify an I/O pin layout
+#define NANJG_LAYOUT
+//#define FET_7135_LAYOUT
+//#define TRIPLEDOWN_LAYOUT
 // Also, assign I/O pins in this file:
 #include "tk-attiny.h"
 
@@ -87,6 +88,15 @@
 // ../../bin/level_calc.py 2 128 7135 6 0.25 140 FET 1 10 2000
 //#define RAMP_CH1 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,4,5,6,7,9,10,12,13,14,16,18,19,21,23,25,26,28,30,32,34,36,39,41,43,45,48,50,53,55,58,61,63,66,69,72,75,78,81,84,88,91,94,98,101,105,109,112,116,120,124,128,132,136,141,145,149,154,158,163,168,173,177,182,187,193,198,203,209,214,220,225,231,237,243,249,255
 //#define RAMP_CH2 6,6,7,7,7,8,9,9,10,11,12,14,15,17,19,21,23,25,28,31,34,37,41,45,49,53,58,63,68,73,79,85,92,99,106,114,122,130,139,148,157,167,178,188,200,211,224,236,249,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+
+// TripleDown
+// ../../bin/level_calc.py 3 80 7135 3 0.25 140 7135 3 1.5 660 FET 1 10 1200
+// Nx7135
+//#define RAMP_CH1 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,10,15,19,24,29,34,40,46,52,58,64,71,78,85,92,100,108,116,125,133,143,152,162,172,182,192,203,215,226,238,250,255,255,255,255,255,255,255,255,255,255,0
+// 1x7135
+//#define RAMP_CH2 3,3,4,4,5,6,7,9,11,13,15,17,20,24,28,32,36,41,47,53,59,67,74,83,91,101,111,122,134,146,159,173,187,203,219,236,254,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+// FET
+//#define RAMP_CH3 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,30,52,75,99,124,149,174,200,227,255
 
 // How many ms should it take to ramp all the way up?
 // (recommended values 2000 to 5000 depending on personal preference)
@@ -262,6 +272,9 @@ PROGMEM const uint8_t ramp_ch1[]  = { RAMP_CH1 };
 #ifdef RAMP_CH2
 PROGMEM const uint8_t ramp_ch2[] = { RAMP_CH2 };
 #endif
+#ifdef RAMP_CH3
+PROGMEM const uint8_t ramp_ch3[] = { RAMP_CH3 };
+#endif
 #define RAMP_SIZE  sizeof(ramp_ch1)
 
 void _delay_500ms() {
@@ -330,25 +343,36 @@ inline void next_mode() {
     }
 }
 
+#ifdef RAMP_CH3
+inline void set_output(uint8_t pwm1, uint8_t pwm2, uint8_t pwm3) {
+#else
 #ifdef RAMP_CH2
 inline void set_output(uint8_t pwm1, uint8_t pwm2) {
 #else
 inline void set_output(uint8_t pwm1) {
 #endif
+#endif
     PWM_LVL = pwm1;
     #ifdef RAMP_CH2
     ALT_PWM_LVL = pwm2;
+    #endif
+    #ifdef RAMP_CH3
+    FET_PWM_LVL = pwm3;
     #endif
 }
 
 void set_level(uint8_t level) {
     TCCR0A = PHASE;
     if (level == 0) {
+        #ifdef RAMP_CH3
+        set_output(0,0,0);
+        #else
         #ifdef RAMP_CH2
         set_output(0,0);
         #else
         set_output(0);
-        #endif
+        #endif  // ifdef RAMP_CH2
+        #endif  // ifdef RAMP_CH3
     } else {
         /*
         if (level > 2) {
@@ -357,11 +381,17 @@ void set_level(uint8_t level) {
             TCCR0A = FAST;
         }
         */
+        #ifdef RAMP_CH3
+        set_output(pgm_read_byte(ramp_ch1 + level - 1),
+                   pgm_read_byte(ramp_ch2 + level - 1),
+                   pgm_read_byte(ramp_ch3 + level - 1));
+        #else
         #ifdef RAMP_CH2
         set_output(pgm_read_byte(ramp_ch1 + level - 1),
                    pgm_read_byte(ramp_ch2 + level - 1));
         #else
         set_output(pgm_read_byte(ramp_ch1 + level - 1));
+        #endif
         #endif
     }
 }
@@ -491,6 +521,10 @@ int main(void)
     #ifdef RAMP_CH2
     DDRB |= (1 << ALT_PWM_PIN); // enable second channel
     #endif
+    #ifdef RAMP_CH3
+    // enable second PWM counter (OC1B) and third channel (FET, PB4)
+    DDRB |= (1 << FET_PWM_PIN); // enable third channel (DDB4)
+    #endif
 
     // Set timer to do PWM for correct output pin and set prescaler timing
     //TCCR0A = 0x23; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
@@ -498,6 +532,13 @@ int main(void)
     //TCCR0A = FAST;
     // Set timer to do PWM for correct output pin and set prescaler timing
     TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
+
+    #ifdef RAMP_CH3
+    // Second PWM counter is ... weird
+    TCCR1 = _BV (CS10);
+    GTCCR = _BV (COM1B1) | _BV (PWM1B);
+    OCR1C = 255;  // Set ceiling value to maximum
+    #endif
 
     #ifdef MEMORY
     uint8_t mode_override = 0;
