@@ -28,15 +28,15 @@
     <BootSegment>2</BootSegment>
     <AsfFrameworkConfig>
       <framework-data>
-        <options />
-        <configurations />
-        <files />
-        <documentation help="" />
-        <offline-documentation help="" />
-        <dependencies>
-          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.18.1" />
-        </dependencies>
-      </framework-data>
+  <options />
+  <configurations />
+  <files />
+  <documentation help="" />
+  <offline-documentation help="" />
+  <dependencies>
+    <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.28.1" />
+  </dependencies>
+</framework-data>
     </AsfFrameworkConfig>
     <preserveEEPROM>true</preserveEEPROM>
     <avrtool />
@@ -109,7 +109,10 @@
     <Compile Include="tk-attiny.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="tk-calibration.h">
+    <Compile Include="tk-calibMTN17DDm.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="tk-calibWight.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="tk-delay.h">

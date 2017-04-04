@@ -182,6 +182,7 @@ Authors
         Tom_E/narsil
 
     ToyKeeper:
+        Tom_E/narsil
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
@@ -295,6 +296,7 @@ Extras
 
     LVP:
         Tamagotchi/7135x8v2
+        Tom_E/narsil
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
@@ -334,7 +336,7 @@ Extras
         ToyKeeper/cypreus
         _the_/TheStar
 
-    lock-out:
+    indicator LED:
         Tom_E/narsil
 
     mode groups:
@@ -365,11 +367,15 @@ Extras
         Tamagotchi/7135x8v2
 
     ramping UI:
+        Tom_E/narsil
         ToyKeeper/Ferrero_Rocher
         gchart/ramping-ui
 
     self-adjusting moon:
         ToyKeeper/cypreus
+
+    soft lock:
+        Tom_E/narsil
 
     soft start:
         ToyKeeper/bistro
@@ -401,6 +407,7 @@ Extras
     thermal step-down:
         JonnyC/STAR/MTN_momentary_temp
         Tamagotchi/7135x8v2
+        Tom_E/narsil
 
     triple PWM:
         ToyKeeper/bistro/tripledown
@@ -706,6 +713,7 @@ Modes
     ramp:
         DrJones/luxdrv
         Tamagotchi/7135x8v2
+        Tom_E/narsil
         ToyKeeper/Ferrero_Rocher
         alexvh/basic_off_time_driver
         gchart/ramping-ui
@@ -715,6 +723,7 @@ Modes
         ToyKeeper/bistro/tripledown
 
     soft lock:
+        Tom_E/narsil
         ToyKeeper/Ferrero_Rocher
 
     strobe:
