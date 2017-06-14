@@ -21,7 +21,6 @@
  */
 
 #ifdef OWN_DELAY
-#include "tk-attiny.h"
 #include <util/delay_basic.h>
 // Having own _delay_ms() saves some bytes AND adds possibility to use variables as input
 void _delay_ms(uint16_t n)

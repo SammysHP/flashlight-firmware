@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Atmel Studio Solution File, Format Version 11.00
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "Narsil", "Narsil.cproj", "{15DE09C3-0AF4-4D66-A5AF-C8CEB4C6C58E}"
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "NarsilM", "NarsilM.cproj", "{15DE09C3-0AF4-4D66-A5AF-C8CEB4C6C58E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

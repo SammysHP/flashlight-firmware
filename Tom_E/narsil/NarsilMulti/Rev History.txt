@@ -1,0 +1,39 @@
+Vers 1.0 2017-05-29
+- restored default moon level PWM value back to 3 for the 2 channel Q8. The ramping table
+  starts at level 3, so to work with the current ramping nicely, 3 should be defaulted
+Vers 1.0 2017-05-28
+- bumped up the default moon level from a PWM value of 3 to 4, just in case the low value gives
+  us problems with the 7135's in production (4 is a little better, might not be enough)
+- changed default temp stepdown from 54 to 55
+
+Vers 1.0 2017-05-20
+- in ramping, when you 3X click for battery level, or 4X click for lock-out, no more max
+  level flashing. So a 2X click to max is now slightly delayed
+- in Mode Sets, you can now access temp readings and version # readings (2X click navigate,
+  just like in ramping)
+- reset to factory defaults is now accessible from Mode Sets (non ramping) because you can
+  get into the version # blinking out state
+- in Mode Sets, slightly lengthened time it takes to get into strobe (1.1s to 1.2s): trying
+  to make it slightly harder to inadvertently access it
+- in Mode Sets, lengthened the time to get into the Config Settings UI (from 2.5s to 3.2s):
+  also attempt to make inadvertent access slightly less likely
+- Lock-Out can be exited by either 2X click and quick click&hold, or 4X clicks. This way
+  the light can be in Lock-Out and use the "Mode Sets" way to exit, or the "Ramping" way to exit
+
+Vers 1.0 2017-05-14 --> Initial Release
+- combined Narsil (2 chans) with NarsilTriple, and breaking out compile time settings
+  to a separate header file called: setups.h
+- Bug Fix: in ramping, blinky modes were unconditionally being invoked even if disabled by
+  the user -- fixed this
+- Bug Fix: in Mode Sets confoguration, the timed/thermal step down settings were not handled
+  right, mis-interpreted -- fixed this
+- New Feature: you can now reset the settings to factory defaults by press&hold while in
+  version # display mode
+- changed the intense (1st) strobe to 18 Hz from 16 Hz (made it more intense) and added
+  the setting as an option in setups.h
+- timeouts for a configuration setting of no clicks was 3.2 seconds, now 3.5 seconds:
+  slightly longer.
+- timeouts for a configuration setting with clicks was 1 second, now 2 seconds: longer
+ (this timeout was pretty quick)
+
+

@@ -1,6 +1,6 @@
 //-------------------------------------------------------------------------------------
-// Narsil.c - "the sword wielded by Isildur that cut the One Ring from Sauron's hand"
-// ========
+// NarsilM.c - "the sword wielded by Isildur that cut the One Ring from Sauron's hand"
+// =========
 //			(Narsil is reforged as Andúril for Aragorn)
 //
 //  based on STAR_momentary.c v1.6 from JonnyC as of Feb 14th, 2015, Modified by Tom E
@@ -17,157 +17,20 @@
 //  - lock-out feature - uses a special sequence to lock out the e-switch (prevent accidental turn-on's)
 //  - battery voltage level display in n.n format (ex: 4.1v blinks 4 times followed by 1 blink)
 //  - multiple strobe and beacon modes
+//  - 1, 2 or 3 output channel support
 //  - mode configuration settings:
 //			- ramping
 //			- 12 mode sets to choose from
 //			- moonlight mode on/off plus setting it's PWM level 1-7
 //			- lo->hi or hi->lo ordering
 //			- mode memory on e-switch on/off
-// 		- time/thermal stepdown setting
+// 		- timed/thermal stepdown setting
 //			- blinkie mode configuration (off, strobe only, all blinkies)
 //
-// Change History
-// --------------
-//
-// Vers 1.3 2017-04-02:
-//   - added thermal stepdown capability, and blinking out the approx. temperature reading
-//   - restructured config UI to make it ramping/mode set specific - much simpler for ramping
-//   - added option for reading of voltage via 1.1V internal reference source (no R1/R2, use R1/R2 optionally)
-//   - in ramping, if going to moon from OFF, moon won't overwrite the last saved level
-// Vers 1.3 2017-02-15:
-//   - reduced timeout from OFF to standby/sleep from 10 secs to 5 secs
-//   - implement blinking of the ind. LED when ramping completes to indicate what channel the output is on
-//   - blinks the ind. LED of output channel for click to last level
-//
-// Vers 1.2 2016-11-30:
-//   - added the USING_3807135_BANK switch for supporting 380 7135's
-// Vers 1.2 2016-09-04:
-//   - added support for 2.2V, 2.3V and 2.4V reporting (min was 2.5V)
-//   - in ramping, remove the 3X click toggle of the locator LED (4X click for lock-out turns it off anyway)
-//   - bug fix: mode sets 9-12 could not be selected!! Fixed this.
-//
-// Vers 1.1 2016-09-02:
-//   - disable default turbo-timeout
-// Vers 1.1 2016-08-28/29: (delivered to ThorFire - in Narsil 2016-08-29.zip)
-//   - default Turbo Timeout to 2 mins
-//   - re-wrote LVP handling to fix a couple bugs and handle ramping-moon mode properly
-//   - blink 8 times when shutting off the level by dropping below the critical level, 2.6v now (was 2.7v)
-//   - changed timing of LVP check to every 4 secs, not 3 secs, added a 1/4 sec delay after the drop
-// 
-// Vers 1.1 2016-08-07:
-//   - in ramping, Add Dbl-click in Batt Check: blink out vers # of firmware
-//   - in ramping, Add Dbl-click on max to enter strobe modes
-//-----------------------------------------------------------------------------------------------------------
-// Vers 1.12 2016-07-16:
-//   - in ramping, add 4X click to do a lock-out
-//   - add attempt to disable brown-out detection when going in to power saving (not working on my Attiny85's)
-//   - bug fix: sometimes, ramping up from OFF, then release, then ramp again quick - it ramps up but should ramp down
-//   - don't let a dbl-click to MAX effect the saved output level (ramping to a level is the last save level)
-//   - added a new mode set in slot #8 for 10-25-50 levels (no max), original #11 is dropped
-//   - bug fix: flaky, bad problems could have happened for the mode sets #8 to #12 -- fixed this
-//
-// Vers 1.11 2016-07-11:
-//   - bug fix: dbl-click or triple-click in Battery Check mode were being acted on (should be ignored)
-//   - in ramping, add a timeout, after which, to not toggle/change the ramping direction
-//   - bug fix: with turbo-timeout enabled and in ramping with moon mode active,
-//     the turbo-timeout kicks in and turns up the output to turbo drop down level -- fixed this
-//   - slightly speed up multiple click timing (shorten LOCK_OUT_TICKS from 16 to 14)
-//   - in ramping, if you turn the light from OFF to ON to the previous level, the direction will now default to lo->hi
-//   - add changes in an attempt to eliminate power fluctuations causing a lockup or coming on with the LED ON (lockup
-//     still happens, but doesn't seem to come up with the LED on and light still operational anymore)
-//
-// Vers 1.10 2016-07-06:
-//   - add validation marker byte (0x5d) to avoid loading erroneous config settings - might fix the power fluctuation problems
-//   - add flicker when ramping reaches the limits
-//   - bug fixes: if holding the button for entering battery check, don't allow config setting or strobe modes to be started
-//   - bug fix: in ramping, when click to last level and the last level is moon, the ind. LED was left ON -- fixed this
-//   - add a compile switch to enable reverse ramping direction (toggling)
-//
-// 2016-07-01:
-//   - replaced the tk-calibration.h header with tk-calibWight.h and tk-calibMTN17DDm.h. Use the most
-//     applicable for proper LVp and battery check reporting, depending on the driver
-//
-// 2016-06-08:
-//   - add double-click support to max when ON (already worked from OFF)
-//   - add triple-click to be configurable, currently it's battery voltage level display
-//   - add a pause at moon mode for 0.368 sec delay when ramping up from OFF (allows user to easier stop and engage moon mode)
-//   - add new 2.4 sec ramping tables (older 2.046 sec table is compiled out)
-//
-// 2016-05-19..25:
-//   - add full ramping support
-// 2016-04-06:
-//   - add a new config setting for blinky mode control: disable, 1 strobe mode only, all blinkies
-// 04/04/2016:
-//   - Bug fix: turn OFF locator LED when in lockout, restore upon exiting
-//   - add feature of toggling locator LED: from OFF, 1 quick click the click&hold til the main LED goes OFF
-//
-// 04/03/2016:
-//   - add turning OFF the AtoD during low power sleep mode - knocked the amps down by half
-//
-// 03/21/2016:
-//   - Bug fix: modes/alt_modes tables (now byPrimModes and bySecModes) was [8] -- too small for new 7 mode entry ([10] now)
-// 03/20/2016:
-//   - extend the power savings delay to 6 minutes only if the battery voltage is low, so the Indicator LED
-//     can blink every 8 secs, and after the 6 mins, shut off the Indicator LED to save power
-//
-// 03/19/2016:
-//   - add onboard LED blink for battery voltage level display (BVLD)
-//   - add a few more config settings on a new advanced config UI off of the battery voltage level display
-//   - add 4 more mode sets, total of 12
-
-// 03/05/2016:
-//   - set default settings to mode set #4, moon mode ON, order lo->hi, memory OFF, turbo-timeout OFF
-//   - Bug fix: in LoadConfig(), setting of config2 was suspect, added parens:
-//   -    from: eeprom_read_byte((const byte *)eepos+1)
-//   -      to: eeprom_read_byte((const byte *)(eepos+1))
-//   - rearranged params stored in EEPROM in LoadConfig() and SaveConfig(), added comments
-//
-// 01/31/2016:
-//   - add support for a on board LED: turn ON initially, turn OFF during config mode
-//   - increase 1st strobe mode to 16 Hz
-
-// 12/02/2015:
-//   - make lock-out easier by shortening the hold time which eliminates activation of strobe. It
-//     makes it easier to confirm if lock-out is set, because if strobe does activate, you know
-//     lock-out is not set
-//   - change the blinks for entering a setting configuration mode: it now blinks quickly twice,
-//     followed by slow blinks of 1 to 5 (1 for first setting, 5 for the 5th setting). It makes
-//     config mode slower but easier to track what setting you are in
-//   - add a long hold to exit configuration mode. A short hold will skip to the next setting, but
-//     if you continue to hold a little longer, it will exit altogether, indicated by 5 quick blinks
-//
-// 11/16/2015:
-//   - OFF mode wasn't setting PWM mode properly - fixed this (corrected moon mode flicker!)
-//   - for all strobe modes, set PWM mode to PHASE only once, not repeatedly
-// 10/30/2015 - restore 3 modes for med to 35%
-// 10/29/2015 - lengthen CONFIG_ENTER_DUR from 128 to 160
-//            - lengthen LOCK_OUT_TICKS from 12 to 16
-//            - temp change 3 modes for med to 50% for LJ
-// 10/27/2015 - bug fixes w/strobes
-// 10/26/2015 - changes:
-//   - added tk-delay.h into project (forgot it)
-//   - add multiple strobe/beacon modes
-// 
-// 10/25/2015 - added "n.n" style voltage blinking status (Battery Check)
-// 10/18/2015 - finalized config mode - checkpoint, tested in the SupFire and AS31
-// 10/11/2015 - cleanups in header
-// 10/07/2015 - full mode config options (4 options total), few bug fixes, lock-out added and working
-// 09/17/2015 - renamed to eSwitchBrownOut
-// 08/17/2015 - change over to 25/45/85 support
-//				  - bug fix: hold if in 1st mode won't engage strobe
-//      
-// 07/26/2015 - attempt to merge in NOINIT functionality to have rear tail clicky functional
-// 02/14/2015 - copied from JohnnyC, merged in mods from my earlier e-switch version
+// Change History - see Rev History.txt
 //-------------------------------------------------------------------------------------
 
 /*
- * ATtiny 25/45/85 Diagram
- *              ---
- *   Reset  1 -|   |- 8  VCC
- *  switch  2 -|   |- 7  Voltage ADC
- * Ind.LED  3 -|   |- 6  FET PWM
- *     GND  4 -|   |- 5  7135 PWM
- *              ---
  *
  * FUSES
  *  See this for fuse settings:
@@ -184,8 +47,6 @@
  *
  *  --> Note: BOD enabled fixes lockups intermittently occurring on power up fluctuations, but adds slightly to parasitic drain
  *
- * STARS  (not used)
- *
  * VOLTAGE
  *		Resistor values for voltage divider (reference BLF-VLD README for more info)
  *		Reference voltage can be anywhere from 1.0 to 1.2, so this cannot be all that accurate
@@ -194,129 +55,31 @@
  *   R1: 224  --> 220,000 ohms
  *   R2: 4702 -->  47,000 ohms
  *
- *  The higher values reduce parasitic drain - important for e-switch lights. Please see
- * the header files: tk-calibWight.h and tk-calibMTN17DDm.h for more info.
- *
+ *  The higher values reduce parasitic drain - important for e-switch lights.
  *      
  */
+#define FIRMWARE_VERS (10)	// v1.0 (in 10ths)
 
 #define FET_7135_LAYOUT
 #define ATTINY 85
-#include "tk-attiny.h"
+
+#include "setups.h"
+
+#if OUT_CHANNELS == 3
+ #ifdef VOLT_MON_R1R2
+  #ifdef ONBOARD_LED
+   #error SETUPS.H ERROR - Cannot set both R1/R2 voltage monitoring and Onboard LED for 3 channels!!
+  #endif
+ #endif
+#endif
+
+#include "RegisterSettings.h"
 
 #define byte uint8_t
 #define word uint16_t
  
-#define ADCMUX_TEMP	0b10001111	// ADCMUX register setup to read temperature
-
-#define ADCMUX_VCC_R1R2 ((1 << REFS1) | ADC_CHANNEL); // 1.1v reference, ADC1/PB2
-
-#define ADCMUX_VCC_INTREF	0b00001100	// ADCMUX register setup to read Vbg referenced to Vcc
-
-#define PHASE 0xA1          // phase-correct PWM both channels
-#define FAST 0xA3           // fast PWM both channels
-
 // Ignore a spurious warning, we did the cast on purpose
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-
-
-
-//------------- Driver Board Settings -------------------------------------
-//
-#define VOLTAGE_MON			// Comment out to disable - ramp down and eventual shutoff when battery is low
-//#define VOLT_MON_R1R2		// uses external R1/R2 voltage divider, comment out for 1.1V internal ref
-
-//#define USING_3807135_BANK	// (default OFF) sets up ramping for 380 mA 7135's instead of a FET
-
-// For voltage monitoring on pin #7, only uncomment one of the two def's below:
-#define USING_220K	// for using the 220K resistor
-//#define USING_360K	// for using a 360K resistor (LDO and 2S cells)
-
-#define D1_DIODE 3				// Drop over reverse polarity protection diode: use 0.2V normally, 0.3V for Q8
-
-//
-//------------- End Driver Board Settings ---------------------------------
-
-
-//-------------------------------------------------------------------------
-//					Settings to modify per driver
-//-------------------------------------------------------------------------
-//-------------------------------------------------------------------------
-#define FIRMWARE_VERS (13)	// v1.3 (in 10ths)
-
-#define STARTUP_2BLINKS			// enables the powerup/startup two blinks
-
-// Temperature monitoring setup
-//-----------------------------
-// Temperature Calibration Offset - 
-#define TEMP_CAL_OFFSET (3)
-//   3    about right for BLF Q8 proto #2 and #3, reads ~20 for ~68F (18C)
-//   -12  this is about right on the DEL DDm-L4 board in the UranusFire C818 light
-//   -11  On the TA22 board in SupFire M2-Z, it's bout 11-12C too high,reads 35C at room temp, 23C=73.4F
-//   -8   For the Manker U11 - at -11, reads 18C at 71F room temp (22C)
-//   -2   For the Lumintop SD26 - at -2, reading a solid 19C-20C (66.2F-68F for 67F room temp)
-
-#define DEFAULT_STEPDOWN_TEMP (52)	// default for stepdown temperature (50C=122F, 55C=131F)
-// use 50C for smaller size hosts, or a more conservative level (SD26, U11, etc.)
-// use 55C to 60C for larger size hosts, maybe C8 and above, or for a more aggressive setting
-
-#define TEMP_ADJ_PERIOD 2812	// Over Temp adjustment frequency: 45 secs (in 16 msec ticks)
-//-----------------------------
-
-
-#define RAMPING_REVERSE			// (default ON) reverses ramping direction for every click&hold
-
-#define RAMP_SWITCH_TIMEOUT 75 // make the up/dn ramp switch timeout 1.2 secs (same as IDLE_TIME)
-
-//#define ADV_RAMP_OPTIONS		// In ramping, enables "mode set" additional method for lock-out and battery voltage display, comment out to disable
-
-#define TRIPLE_CLICK_BATT		// enable a triple-click to display Battery status
-
-#define SHORT_CLICK_DUR 18		// Short click max duration - for 0.288 secs
-#define RAMP_MOON_PAUSE 23		// this results in a 0.368 sec delay, paused in moon mode
-
-// ----- 2/14 TE: One-Click Turn OFF option --------------------------------------------
-#define IDLE_TIME         75	// make the time-out 1.2 seconds (Comment out to disable)
-
-
-// Switch handling:
-#define LONG_PRESS_DUR    24	// Prev Mode time - long press, 24=0.384s (1/3s: too fast, 0.5s: too slow)
-#define XLONG_PRESS_DUR   68	// strobe mode entry hold time - 68=1.09s (any slower it can happen unintentionally too much)
-#define CONFIG_ENTER_DUR 160	// Config mode entry hold time - 160=2.5s, 128=2s
-
-#define LOCK_OUT_TICKS    14	//  fast click time for enable/disable of Lock-Out, batt check,
-										// and double/triple click timing (14=0.224s, was 16=0.256s)
-
-#ifndef VOLT_MON_R1R2
-#define BATT_LOW			32	// Cell voltage to step light down = 3.2 V
-#define BATT_CRIT			30	// Cell voltage to shut the light off = 3.0 V
-#endif
-
-#define ADC_DELAY        312	// Delay in ticks between low-batt ramp-downs (312=5secs, was 250=4secs)
-
-// output to use for blinks on battery check mode (primary PWM level, alt PWM level)
-// Use 20,0 for a single-channel driver or 0,40 for a two-channel driver
-#define BLINK_BRIGHTNESS 0,40
-
-#define BATT_CHECK_MODE		80
-#define TEMP_CHECK_MODE		81
-#define FIRM_VERS_MODE		82
-#define SPECIAL_MODES		90		// base/lowest value for special modes
-#define STROBE_MODE			SPECIAL_MODES+1
-//#define RANDOM_STROBE		SPECIAL_MODES+2	// not used for now...
-#define POLICE_STROBE		SPECIAL_MODES+2
-#define BIKING_STROBE		SPECIAL_MODES+3
-#define BEACON_2S_MODE		SPECIAL_MODES+4
-#define BEACON_10S_MODE		SPECIAL_MODES+5
-
-// Custom define your blinky mode set here:
-#define SPECIAL_MODES_SET	STROBE_MODE, POLICE_STROBE, BIKING_STROBE, BEACON_2S_MODE, BEACON_10S_MODE
-//#define SPECIAL_MODES_SET	STROBE_MODE, POLICE_STROBE, BEACON_2S_MODE, BEACON_10S_MODE
-
-//-------------------------------------------------------------------------
-//-------------------------------------------------------------------------
-
-
 
 #include <avr/pgmspace.h>
 #include <avr/io.h>
@@ -328,8 +91,10 @@
 //#include <avr/power.h>
 
 
-#define OWN_DELAY           // Don't use stock delay functions.
-#define USE_DELAY_S         // Also use _delay_s(), not just _delay_ms()
+#define F_CPU 8000000UL			// 8 Mhz
+#define BOGOMIPS (F_CPU/4000)	// set to 2000 for 8 Mhz
+#define OWN_DELAY					// Don't use stock delay functions.
+#define USE_DELAY_S				// Also use _delay_s(), not just _delay_ms()
 
 #include "tk-delay.h"
 #include "tk-random.h"
@@ -338,171 +103,17 @@
 //#include "tk-calibMTN17DDm.h"		// use this for the MtnE MTN17DDm v1.1 driver
 
 
-// MCU I/O pin assignments (most are now in tk-attiny.h):
-#define SWITCH_PIN PB3			// Star 4,  MCU pin #2 - pin the switch is connected to
+#include "RampingTables.h"
+#include "ModeSets.h"
 
-#define ONBOARD_LED_PIN PB4	// Star 3, MCU pin 3
+#define DEBOUNCE_BOTH				// Comment out if you don't want to debounce the PRESS along with the RELEASE
+											//   PRESS debounce is only needed in special cases where the switch can experience errant signals
+#define DB_PRES_DUR 0b00000001	// time before we consider the switch pressed (after first realizing it was pressed)
+#define DB_REL_DUR  0b00001111	// time before we consider the switch released. Each bit of 1 from the right equals 16ms, so 0x0f = 64ms
 
-
-#define DEBOUNCE_BOTH          // Comment out if you don't want to debounce the PRESS along with the RELEASE
-                               // PRESS debounce is only needed in special cases where the switch can experience errant signals
-#define DB_PRES_DUR 0b00000001 // time before we consider the switch pressed (after first realizing it was pressed)
-#define DB_REL_DUR  0b00001111 // time before we consider the switch released
-							   // each bit of 1 from the right equals 16ms, so 0x0f = 64ms
-
-
-//---------------------------------------------------------------------------------------
-#define RAMP_SIZE  150
-#define TIMED_STEPDOWN_MIN 115// min level in ramping the timed stepdown will engage,
-//    level 115 = 106 PWM, this is ~43%
-#define TIMED_STEPDOWN_SET 102// the level timed stepdown will set,
-//    level 102 = 71 PWM, this is ~32%
-
-//----------------------------------------------------
-// Ramping Mode Levels, 150 total entries (2.4 secs)
-//----------------------------------------------------
-#if USING_3807135_BANK
- #define FET_START_LVL 68
-
-// For MtnE 32x7135 380 driver (slight delay at transition point):
-//    level_calc.py 2 150 7135 5 0.3 180 7135 5 1 1500
-PROGMEM const byte ramp_7135[] = {
-	5,5,5,6,6,6,7,7,						 7,8,9,9,10,11,12,13,					// 1..16
-	14,15,16,17,19,20,22,24,			 26,28,30,32,34,37,40,42,
-	45,48,51,55,58,62,66,70,			 74,78,83,88,92,98,103,108,
-	114,120,126,132,139,145,152,159,	 167,174,182,190,199,207,216,225,
-	235,244,255,255,255,255,255,255,	 255,255,255,255,255,255,255,255,	// edited 254-->255 for entry #67 (1 based)
-	255,255,255,255,255,255,255,255,	 255,255,255,255,255,255,255,255,
-	255,255,255,255,255,255,255,255,	 255,255,255,255,255,255,255,255,
-	255,255,255,255,255,255,255,255,	 255,255,255,255,255,255,255,255,
-	255,255,255,255,255,255,255,255,	 255,255,255,255,255,255,255,255,	// 129..144
-	255,255,255,255,255,255																// 145..150
-	
-};
-
-PROGMEM const byte ramp_FET[]  = {
-	0,0,0,0,0,0,0,0,						 0,0,0,0,0,0,0,0,							// 1..16
-	0,0,0,0,0,0,0,0,						 0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,						 0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,						 0,0,0,0,0,0,0,0,
-	0,0,0,6,7,8,10,11,					 12,14,15,17,18,20,22,23,				// starts at entry 68
-	25,27,28,30,32,34,36,38,			 40,42,44,46,48,50,52,55,
-	57,59,62,64,67,69,72,75,			 77,80,83,86,89,91,94,97,
-	101,104,107,110,113,117,120,124,	 127,131,134,138,142,146,150,153,
-	157,161,166,170,174,178,182,187,	 191,196,200,205,210,215,219,224,	// 129..144
-	229,234,239,244,250,255																// 145..150
-};
-
-#else
- #define FET_START_LVL 66
-
-// For FET+1: FET and one 350 mA 7135 (tested/verified to be smooth):
-//    level_calc.py 2 150 7135 3 0.3 150 FET 1 1 1500
-PROGMEM const byte ramp_7135[] = {
-	3,3,3,4,4,4,5,5,  6,6,7,8,9,10,11,12,
-	13,14,15,17,18,20,22,24,  26,28,30,33,35,38,41,44,
-	47,51,54,58,62,66,70,74,  79,83,88,93,99,104,110,116,
-	122,128,135,142,149,156,164,172,  180,188,196,205,214,223,233,243,	// 49-64
-	253,255,255,255,255,255,255,255,  255,255,255,255,255,255,255,255,
-	255,255,255,255,255,255,255,255,  255,255,255,255,255,255,255,255,
-	255,255,255,255,255,255,255,255,  255,255,255,255,255,255,255,255,
-	255,255,255,255,255,255,255,255,  255,255,255,255,255,255,255,255,
-	255,255,255,255,255,255,255,255,  255,255,255,255,255,255,255,255,
-	255,255,255,255,255,0																// 145-150
-};
-
-PROGMEM const byte ramp_FET[]  = {
-	0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,												// 49-64
-	0,2,3,4,5,7,8,9,  11,12,14,15,17,18,20,22,
-	23,25,27,29,30,32,34,36,  38,40,42,44,47,49,51,53,
-	56,58,60,63,66,68,71,73,  76,79,82,85,87,90,93,96,							// 96-112
-	100,103,106,109,113,116,119,123,  126,130,134,137,141,145,149,153,	// 113-128
-	157,161,165,169,173,178,182,186,  191,196,200,205,210,214,219,224,	// 129-144
-	229,234,239,244,250,255																// 145-150
-};
-//---------------------------------------------------------------------------------------
-#endif
-
-
-//------------------- MODE SETS --------------------------
-
-// 1 mode (max)                         max
-PROGMEM const byte modeFetSet1[] =  {   255};
-PROGMEM const byte mode7135Set1[] = {     0};
-
-// 2 modes (10-max)                     ~10%   max
-PROGMEM const byte modeFetSet2[] =  {     0,   255};
-PROGMEM const byte mode7135Set2[] = {   255,     0};
-
-// 3 modes (5-35-max)                    ~5%   ~35%   max
-PROGMEM const byte modeFetSet3[] =  {     0,    70,   255 };	// Must be low to high
-PROGMEM const byte mode7135Set3[] = {   120,   255,     0 };	// for secondary (7135) output
-
-// ************************************************************
-//             ***  TEST ONLY  ***
-// ************************************************************
-//PROGMEM const byte modeFetSet3[] =  {     3,  64,  128,   255 };	// Must be low to high
-//PROGMEM const byte mode7135Set3[] = {     0,   0,   0,     0 };	// for secondary (7135) output
-// ************************************************************
-
-// 4 modes (2-10-40-max)                1-2%   ~10%   ~40%   max
-PROGMEM const byte modeFetSet4[] =  {     0,     0,    80,   255 };	// Must be low to high
-PROGMEM const byte mode7135Set4[] = {    30,   255,   255,     0 };	// for secondary (7135) output
-
-// 5 modes (2-10-40-max)                1-2%    ~5%   ~10%   ~40%   max
-PROGMEM const byte modeFetSet5[] =  {     0,     0,     0,    80,   255 };	// Must be low to high
-PROGMEM const byte mode7135Set5[] = {    30,   120,   255,   255,     0 };	// for secondary (7135) output
-//PROGMEM const byte modePwmSet5[] =  {  FAST,  FAST, PHASE,  FAST, PHASE };	// Define one per mode above
-
-// 6 modes - copy of BLF A6 7 mode set
-PROGMEM const byte modeFetSet6[] =  {     0,     0,     7,    56,   137,   255};
-PROGMEM const byte mode7135Set6[] = {    20,   110,   255,   255,   255,     0};
-
-// 7 modes (1-2.5-6-10-35-65-max)        ~1%  ~2.5%    ~6%   ~10%   ~35%   ~65%   max
-PROGMEM const byte modeFetSet7[] =  {     0,     0,     0,     0,    70,   140,   255 };	// Must be low to high
-PROGMEM const byte mode7135Set7[] = {    24,    63,   150,   255,   255,   255,     0 };	// for secondary (7135) output
-
-// #8:  3 modes (10-25-50)              ~10%   ~25%   ~50%
-PROGMEM const byte modeFetSet8[] =  {     0,    37,   110 };	// Must be low to high
-PROGMEM const byte mode7135Set8[] = {   255,   255,   255 };	// for secondary (7135) output
-
-// #9:   3 modes (2-20-max)              ~2%   ~20%   max
-PROGMEM const byte modeFetSet9[] =  {     0,    25,   255 };	// Must be low to high
-PROGMEM const byte mode7135Set9[] = {    30,   255,     0 };	// for secondary (7135) output
-
-// #10:  3 modes (2-40-max)              ~2%   ~40%   max
-PROGMEM const byte modeFetSet10[] =  {     0,    80,   255 };	// Must be low to high
-PROGMEM const byte mode7135Set10[] = {    30,   255,     0 };	// for secondary (7135) output
-
-// #11:  3 modes (10-35-max)             ~10%   ~35%   max
-PROGMEM const byte modeFetSet11[] =  {     0,    70,   255 };	// Must be low to high
-PROGMEM const byte mode7135Set11[] = {   255,   255,     0 };	// for secondary (7135) output
-	
-// #12:  4 modes - copy of BLF A6 4 mode
-PROGMEM const byte modeFetSet12[] =  {     0,     0,    90,   255};
-PROGMEM const byte mode7135Set12[] = {    20,   230,   255,     0};
-
-
-PROGMEM const byte modeSetCnts[] = {
-			sizeof(modeFetSet1), sizeof(modeFetSet2), sizeof(modeFetSet3), sizeof(modeFetSet4), sizeof(modeFetSet5), sizeof(modeFetSet6),
-			sizeof(modeFetSet7), sizeof(modeFetSet8),	sizeof(modeFetSet9), sizeof(modeFetSet10), sizeof(modeFetSet11), sizeof(modeFetSet12)};
 
 // Timed stepdown values, 16 msecs each: 60 secs, 90 secs, 120 secs, 3 mins, 5 mins, 7 mins
 PROGMEM const word timedStepdownOutVals[] = {0, 0, 3750, 5625, 7500, 11250, 18750, 26250};
-
-const byte *(modeTableFet[]) =  { modeFetSet1, modeFetSet2, modeFetSet3, modeFetSet4,  modeFetSet5,  modeFetSet6,
-											 modeFetSet7, modeFetSet8, modeFetSet9, modeFetSet10, modeFetSet11, modeFetSet12};
-const byte *modeTable7135[] =   { mode7135Set1, mode7135Set2, mode7135Set3, mode7135Set4,  mode7135Set5,  mode7135Set6,
-											 mode7135Set7, mode7135Set8, mode7135Set9, mode7135Set10, mode7135Set11, mode7135Set12};
-
-byte modesCnt;			// total count of modes based on 'modes' arrays below
-
-// Index 0 value must be zero for OFF state (up to 8 modes max, including moonlight)
-byte byPrimModes[10];	// primary output (FET)
-byte bySecModes[10];		// secondary output (7135)
 
 const byte specialModes[] =    { SPECIAL_MODES_SET };
 byte specialModesCnt = sizeof(specialModes);		// total count of modes in specialModes above
@@ -511,31 +122,27 @@ byte specModeIdx;
 //----------------------------------------------------------------
 // Config Settings via UI, with default values:
 //----------------------------------------------------------------
-volatile byte ramping = 1;				// ramping mode in effect
+volatile byte ramping;					// 1: ramping mode in effect, 0: mode sets
 #if USING_3807135_BANK
-volatile byte moonlightLevel = 5;	// 0..7, 0: disabled, usually set to 3 (350 mA) or 5 (380 mA) - 2 might work on a 350 mA
+volatile byte moonlightLevel;			// 0..7, 0: disabled, usually set to 3 (350 mA) or 5 (380 mA) - 2 might work on a 350 mA
 #else
-volatile byte moonlightLevel = 3;	// 0..7, 0: disabled, usually set to 3 (350 mA) or 5 (380 mA) - 2 might work on a 350 mA
+volatile byte moonlightLevel;			// 0..7, 0: disabled, usually set to 3 (350 mA) or 5 (380 mA) - 2 might work on a 350 mA
 #endif
-volatile byte stepdownMode = 5;		// 0=disabled, 1=thermal, 2=60s, 3=90s, 4=120s, 5=3min, 6=5min, 7=7min (3 mins is good for production)
-volatile byte blinkyMode = 2;			// blinky mode config: 1=strobe only, 2=all blinkies, 0=disable
+volatile byte stepdownMode;			// 0=disabled, 1=thermal, 2=60s, 3=90s, 4=120s, 5=3min, 6=5min, 7=7min (3 mins is good for production)
+volatile byte blinkyMode;				// blinky mode config: 1=strobe only, 2=all blinkies, 0=disable
 
-volatile byte modeSetIdx = 3;			// 0..11, mode set currently in effect, chosen by user (3=4 modes)
-volatile byte moonLightEnable = 1;	// 1: enable moonlight mode, 0: disable moon mode
-volatile byte highToLow = 0;			// 1: highest to lowest, 0: modes go from lowest to highest
-volatile byte modeMemoryEnabled = 0;// 1: save/recall last mode set, 0: no memory
+volatile byte modeSetIdx;				// 0..11, mode set currently in effect, chosen by user (3=4 modes)
+volatile byte moonLightEnable;		// 1: enable moonlight mode, 0: disable moon mode
+volatile byte highToLow;				// 1: highest to lowest, 0: modes go from lowest to highest
+volatile byte modeMemoryEnabled;		// 1: save/recall last mode set, 0: no memory
 
-volatile byte locatorLedOn = 1;		// Locator LED feature (ON when light is OFF) - 1=enabled, 0=disabled
-volatile byte bvldLedOnly = 0;		// BVLD (Battery Voltage Level Display) - 1=BVLD shown only w/onboard LED, 0=both primary and onboard LED's
-volatile byte onboardLedEnable = 1;	// On Board LED support - 1=enabled, 0=disabled
+volatile byte locatorLedOn;			// Locator LED feature (ON when light is OFF) - 1=enabled, 0=disabled
+volatile byte bvldLedOnly;				// BVLD (Battery Voltage Level Display) - 1=BVLD shown only w/onboard LED, 0=both primary and onboard LED's
+volatile byte onboardLedEnable;		// On Board LED support - 1=enabled, 0=disabled
 //----------------------------------------------------------------
 
-//----------------------------------------------------------------
-// Global state options
-//----------------------------------------------------------------
-volatile byte OffTimeEnable = 0;		// 1: Do OFF time mode memory on power switching (tailswitch), 0: disabled
-volatile byte byLockOutEnable = 1;	// button lock-out feature is enabled
-//----------------------------------------------------------------
+volatile byte OffTimeEnable = OFFTIME_ENABLE;	// 1: Do OFF time mode memory for Mode Sets on power switching (tailswitch), 0: disabled
+
 
 // Ramping :
 #define MAX_RAMP_LEVEL (RAMP_SIZE)
@@ -551,6 +158,8 @@ byte rampPauseCntDn;						// count down timer for ramping support
 
 
 // State and count vars:
+byte modesCnt;			// total count of modes based on 'modes' arrays below
+
 volatile byte byLockOutSet = 0;		// System is in LOCK OUT mode
 
 volatile byte ConfigMode = 0;		// config mode is active: 1=init, 2=mode set,
@@ -567,7 +176,8 @@ word wPressDuration = 0;
 volatile byte last_modeIdx;		// last value for modeIdx
 
 
-volatile byte quickClicks = 0;
+volatile byte fastClicks = 0;		// fast click counts for dbl-click, triple-click, etc.
+
 volatile byte modeMemoryLastModeIdx = 0;
 
 volatile word wIdleTicks = 0;
@@ -575,9 +185,6 @@ volatile word wIdleTicks = 0;
 word wTimedStepdownTickLimit = 0;			// current set timed stepdown limit (in 16 msec increments)
 
 byte holdHandled = 0;	// 1=a click/hold has been handled already - ignore any more hold events
-
-volatile byte currOutLvl1;			// set to current: modes[mode]
-volatile byte currOutLvl2;			// set to current: alt_modes[mode]
 
 volatile byte LowBattSignal = 0;	// a low battery has been detected - trigger/signal it
 
@@ -613,6 +220,7 @@ byte config3;
 volatile byte noinit_decay __attribute__ ((section (".noinit")));
 
 
+#ifdef VOLT_MON_R1R2
 // Map the voltage level to the # of blinks, ex: 3.7V = 3, then 7 blinks
 PROGMEM const uint8_t voltage_blinks[] = {
 		ADC_22,22,	// less than 2.2V will blink 2.2
@@ -624,26 +232,33 @@ PROGMEM const uint8_t voltage_blinks[] = {
 		ADC_43,43,		ADC_44,44,
 		255,   11,  // Ceiling, don't remove
 };
+#endif
+
+
+// channel specific versions 
+#include "Channels.h"
+
 
 /**************************************************************************************
-* TurnOnBoardLed
-* ==============
+* SetConfigDefaults - set the stored configuration setting defaults
+* =================
+*  inline for now, but may be called by user invocation to reset to factory defaults
 **************************************************************************************/
-void TurnOnBoardLed(byte on)
+void SetConfigDefaults()
 {
-	if (onboardLedEnable)
-	{
-		if (on)
-		{
-			DDRB = (1 << PWM_PIN) | (1 << ALT_PWM_PIN) | (1 << ONBOARD_LED_PIN);
-			PORTB |= (1 << ONBOARD_LED_PIN);
-		}
-		else
-		{
-			DDRB = (1 << PWM_PIN) | (1 << ALT_PWM_PIN);
-			PORTB &= 0xff ^ (1 << ONBOARD_LED_PIN);
-		}
-	}
+	ramping = DEF_RAMPING;					// 1: ramping mode in effect, 0: mode sets
+	moonlightLevel = DEF_MOON_LEVEL;		// 0..7, 0: disabled, usually set to 3 (350 mA) or 5 (380 mA) - 2 might work on a 350 mA
+	stepdownMode = DEF_STEPDOWN_MODE;	// 0=disabled, 1=thermal, 2=60s, 3=90s, 4=120s, 5=3min, 6=5min, 7=7min (3 mins is good for production)
+	blinkyMode = DEF_BLINKY_MODE;			// blinky mode config: 1=strobe only, 2=all blinkies, 0=disable
+
+	modeSetIdx = DEF_MODE_SET_IDX;				// 0..11, mode set currently in effect, chosen by user (3=4 modes)
+	moonLightEnable = DEF_MOON_MODE;		// 1: enable moonlight mode, 0: disable moon mode
+	highToLow = DEF_HIGH_TO_LOW;			// 1: highest to lowest, 0: modes go from lowest to highest
+	modeMemoryEnabled = DEF_MODE_MEMORY;// 1: save/recall last mode set, 0: no memory
+
+	locatorLedOn = DEF_LOCATOR_LED;		// Locator LED feature (ON when light is OFF) - 1=enabled, 0=disabled
+	bvldLedOnly = DEF_BVLD_LED_ONLY;		// BVLD (Battery Voltage Level Display) - 1=BVLD shown only w/onboard LED, 0=both primary and onboard LED's
+	onboardLedEnable = DEF_ONBOARD_LED;	// On Board LED support - 1=enabled, 0=disabled
 }
 
 
@@ -653,12 +268,13 @@ void TurnOnBoardLed(byte on)
 **************************************************************************************/
 void Strobe(byte ontime, byte offtime)
 {
-	PWM_LVL = 255;
+	FET_PWM_LVL = 255;
 	_delay_ms(ontime);
-	PWM_LVL = 0;
+	FET_PWM_LVL = 0;
 	_delay_ms(offtime);
 }
 
+#ifdef VOLT_MON_R1R2
 /**************************************************************************************
 * BattCheck
 * =========
@@ -681,84 +297,7 @@ inline byte BattCheck()
 		
 	return pgm_read_byte(voltage_blinks + i + 1);
 }
-
-/**************************************************************************************
-* DefineModeSet
-* =============
-**************************************************************************************/
-inline void DefineModeSet()
-{
-	byte offset = 1;
-
-	modesCnt = pgm_read_byte(modeSetCnts+modeSetIdx);
-
-	// Set OFF mode states (index 0)
-	byPrimModes[0] = bySecModes[0] = 0;
-
-	if (moonLightEnable)
-	{
-		offset = 2;
-		byPrimModes[1] = 0;
-		bySecModes[1] = moonlightLevel;	// PWM value to use for moonlight mode
-	}
-
-	// Populate the RAM based current mode set
-	for (int i = 0; i < modesCnt; i++) 
-	{
-		byPrimModes[offset+i] = pgm_read_byte(modeTableFet[modeSetIdx]+i);
-		bySecModes[offset+i] = pgm_read_byte(modeTable7135[modeSetIdx]+i);
-	}
-
-	modesCnt += offset;		// adjust to total mode count
-}
-
-/**************************************************************************************
-* SetOutput - sets the PWM output values directly for the two channels
-* =========
-**************************************************************************************/
-void SetOutput(byte pwmFet, byte pwm7135)
-{
-	PWM_LVL = pwmFet;
-	ALT_PWM_LVL = pwm7135;
-}
-
-/**************************************************************************************
-* SetLevel - uses the ramping levels to set the PWM output
-* ========		(0 is OFF, 1..RAMP_SIZE is the ramping index level)
-**************************************************************************************/
-void SetLevel(byte level)
-{
-	if (level == 0)
-	{
-		SetOutput(0,0);
-		if (locatorLed)
-			TurnOnBoardLed(1);
-	}
-	else
-	{
-		level -= 1;	// make it 0 based
-		SetOutput(pgm_read_byte(ramp_FET  + level), pgm_read_byte(ramp_7135 + level));
-		if (locatorLed)
-			TurnOnBoardLed(0);
-	}
-}
-
-/**************************************************************************************
-* SetMode
-* =======
-**************************************************************************************/
-void inline SetMode(byte mode)
-{
-	currOutLvl1 = byPrimModes[mode];
-	currOutLvl2 = bySecModes[mode];
-	
-	SetOutput(currOutLvl1, currOutLvl2);
-
-	if ((mode == 0) && locatorLed)
-		TurnOnBoardLed(1);
-	else if (last_modeIdx == 0)
-		TurnOnBoardLed(0);
-}
+#endif
 
 /**************************************************************************************
 * EnterSpecialModes - enter special/strobe(s) modes
@@ -772,7 +311,9 @@ void EnterSpecialModes ()
 	specModeIdx = 0;
 	modeIdx = specialModes[specModeIdx];
 										
+  #ifdef ONBOARD_LED
 	TurnOnBoardLed(0);	// be sure the on board LED is OFF here
+  #endif
 }
 
 /**************************************************************************************
@@ -798,12 +339,23 @@ void Blink(byte val, word speed)
 {
 	for (; val>0; val--)
 	{
+	  #ifdef ONBOARD_LED
 		TurnOnBoardLed(1);
+	  #endif
+	  #ifndef BLINK_ONLY_IND_LED
 		SetOutput(BLINK_BRIGHTNESS);
+	  #endif
+
 		_delay_ms(speed);
 		
+	  #ifdef ONBOARD_LED
 		TurnOnBoardLed(0);
-		SetOutput(0,0);
+	  #endif
+
+	  #ifndef BLINK_ONLY_IND_LED
+		SetOutput(OFF_OUTPUT);
+	  #endif
+
 		_delay_ms(speed<<2);	// 4X delay OFF
 	}
 }
@@ -819,7 +371,7 @@ void NumBlink(byte val, byte blinkModeIdx)
 		if (modeIdx != blinkModeIdx)	// if the mode changed, bail out
 			break;
 			
-#ifdef ONBOARD_LED_PIN
+#ifdef ONBOARD_LED
 		TurnOnBoardLed(1);
 #endif
 		
@@ -828,11 +380,11 @@ void NumBlink(byte val, byte blinkModeIdx)
 			
 		_delay_ms(250);
 		
-#ifdef ONBOARD_LED_PIN
+#ifdef ONBOARD_LED
 		TurnOnBoardLed(0);
 #endif
 
-		SetOutput(0,0);
+		SetOutput(OFF_OUTPUT);
 		_delay_ms(375);
 		
 		if (modeIdx != blinkModeIdx)	// if the mode changed, bail out
@@ -868,18 +420,34 @@ void BlinkLVP(byte BlinkCnt)
 	// Flash 'n' times before lowering
 	while (BlinkCnt-- > 0)
 	{
-		SetOutput(0,0);
+		SetOutput(OFF_OUTPUT);
 		_delay_ms(nMsecs);
+
+#ifdef ONBOARD_LED
 		TurnOnBoardLed(1);
+#endif
+
 		if (ramping)
 			SetLevel(outLevel);
 		else
+		{
+		  #if OUT_CHANNELS == 3		// Triple Channel
+			SetOutput(currOutLvl1, currOutLvl2, currOutLvl3);
+		  #elif OUT_CHANNELS == 2	// two channels
 			SetOutput(currOutLvl1, currOutLvl2);
+		  #else			
+			SetOutput(currOutLvl);
+		  #endif
+		}
 		_delay_ms(nMsecs*2);
+
+#ifdef ONBOARD_LED
 		TurnOnBoardLed(0);
+#endif
 	}
 }
 
+#ifdef ONBOARD_LED
 /**************************************************************************************
 * BlinkIndLed - blinks the indicator LED given time and count
 * ===========
@@ -894,6 +462,7 @@ void BlinkIndLed(int nMsecs, byte nBlinkCnt)
 		_delay_ms(nMsecs >> 1);		// make it 1/2 the time for OFF
 	}
 }
+#endif
 
 /**************************************************************************************
 * ConfigBlink - do 2 quick blinks, followed by num count of long blinks
@@ -914,9 +483,15 @@ void ConfigBlink(byte num)
 **************************************************************************************/
 inline static void ClickBlink()
 {
-	SetOutput(0,20);
+  #if OUT_CHANNELS == 3		// Triple Channel
+	SetOutput(20,0,0);
+  #elif OUT_CHANNELS == 2	// two channels
+	SetOutput(20,0);
+  #else
+	SetOutput(16);
+  #endif
 	_delay_ms(100);
-	SetOutput(0,0);
+	SetOutput(OFF_OUTPUT);
 }
 
 /**************************************************************************************
@@ -925,14 +500,25 @@ inline static void ClickBlink()
 **************************************************************************************/
 inline static void BlinkActiveChannel()
 {
+#ifdef ONBOARD_LED
 	byte cnt = 1;
 	
 	if (outLevel == 0)	// if invalid, bail. outLevel should be 1..RAMP_SIZE or 255
 		return;
-	if (outLevel < FET_START_LVL)
-		cnt = 1;
-	else if (outLevel < 255)	// 255 is special value for moon mode (use 1)
+
+  #if OUT_CHANNELS == 2
+	if ((outLevel >= FET_START_LVL) && (outLevel < 255))	// 255 is special value for moon mode (use 1)
 		cnt = 2;
+  #endif
+		
+  #if OUT_CHANNELS == 3
+	if (outLevel < BANK_START_LVL)
+		cnt = 1;
+	else if (outLevel < FET_START_LVL)
+		cnt = 2;
+	else if (outLevel < 255)	// 255 is special value for moon mode (use 1)
+		cnt = 3;
+  #endif
 	
 	_delay_ms(300);				// delay initially so a button LED can be seen
 	for (; cnt>0; cnt--)
@@ -943,6 +529,7 @@ inline static void BlinkActiveChannel()
 		if (cnt > 1)
 			_delay_ms(175);
 	}
+#endif
 }
 
 /**************************************************************************************
@@ -1085,7 +672,7 @@ inline void ADC_on()
 **************************************************************************************/
 inline void ADC_off()
 {
-	ADCSRA &= ~(1<<7); //ADC off
+	ADCSRA &= ~(1<<ADEN); //ADC off
 }
 
 /**************************************************************************************
@@ -1328,7 +915,7 @@ ISR(ADC_vect)
 	{
 	  #ifdef VOLT_MON_R1R2
 		ADMUX = ADCMUX_VCC_R1R2;			// 1.1v reference, not left-adjust, ADC1/PB2
-	#else
+	  #else
 		ADMUX  = ADCMUX_VCC_INTREF;		// not left-adjust, Vbg
 	  #endif
 	}
@@ -1379,7 +966,9 @@ ISR(WDT_vect)
 		{
 			modeIdx = outLevel = rampingLevel = 0;
 			rampState = 0;
+		  #ifdef LOCKOUT_ENABLE
 			byLockOutSet = 1;		// set "LOCK OUT"
+		  #endif
 			ConfigMode = 0;
 			return;
 		}
@@ -1421,9 +1010,17 @@ ISR(WDT_vect)
 							rampState = 1;
 							rampPauseCntDn = RAMP_MOON_PAUSE;	// delay a little on moon
 
-							SetOutput(0,moonlightLevel);
+						  #if OUT_CHANNELS == 3		// Triple Channel
+							SetOutput(moonlightLevel,0,0);						  #elif OUT_CHANNELS == 2	// two channels
+							SetOutput(moonlightLevel,0);
+						  #else
+							SetOutput(moonlightLevel);
+						  #endif
+
+#ifdef ONBOARD_LED
 							if (locatorLed)
 								TurnOnBoardLed(0);
+#endif
 								
 							// set this to the 1st level for the current mode
 							outLevel = rampingLevel = 255;
@@ -1546,7 +1143,8 @@ ISR(WDT_vect)
 			//---------------------------------------------------------------------------------------
 			if (wPressDuration == XLONG_PRESS_DUR)
 			{
-				if ((byLockOutEnable == 1) && (quickClicks == 2) && (wIdleTicks < LOCK_OUT_TICKS))
+			  #ifdef LOCKOUT_ENABLE
+				if ((fastClicks == 2) && (wIdleTicks < DBL_CLICK_TICKS))
 				{
 				  #ifndef ADV_RAMP_OPTIONS
 					if (!ramping || (byLockOutSet == 1))
@@ -1559,8 +1157,9 @@ ISR(WDT_vect)
 					}
 				}
 				else if (byLockOutSet == 0)
+			  #endif
 				{
-					if ((quickClicks == 1) && (wIdleTicks < LOCK_OUT_TICKS))
+					if ((fastClicks == 1) && (wIdleTicks < DBL_CLICK_TICKS))
 					{
 					  #ifndef ADV_RAMP_OPTIONS
 						if (!ramping)
@@ -1568,8 +1167,7 @@ ISR(WDT_vect)
 						{
 							modeIdx = BATT_CHECK_MODE;
 							byDelayRamping = 1;		// don't act on ramping button presses
-							PWM_LVL = 0;				// suppress main LED output
-							ALT_PWM_LVL = 0;
+							SetOutput(OFF_OUTPUT);	// suppress main LED output
 						}
 					}
 					else if (modeIdx > SPECIAL_MODES)
@@ -1579,10 +1177,18 @@ ISR(WDT_vect)
 					else if (modeIdx == BATT_CHECK_MODE)
 					{
 						modeIdx = 0;		// clear main mode
-						PWM_LVL = 0;		// suppress main LED output
-						ALT_PWM_LVL = 0;
+						SetOutput(OFF_OUTPUT);	// suppress main LED output
 			
 						ConfigMode = 21;		// Initialize Advanced Config mode
+						configClicks = 0;
+						holdHandled = 1;		// suppress more hold events on this hold
+					}
+					else if (modeIdx == FIRM_VERS_MODE)
+					{
+						modeIdx = 0;			// clear main mode
+						SetOutput(OFF_OUTPUT);	// suppress main LED output
+						
+						ConfigMode = 14;		// Reset to Factory Defaults
 						configClicks = 0;
 						holdHandled = 1;		// suppress more hold events on this hold
 					}
@@ -1599,7 +1205,7 @@ ISR(WDT_vect)
 			//---------------------------------------------------------------------------------------
 			if (byLockOutSet == 0)
 			{
-				if ((!ramping && (wPressDuration == CONFIG_ENTER_DUR) && (quickClicks != 2) && (modeIdx != BATT_CHECK_MODE))
+				if ((!ramping && (wPressDuration == CONFIG_ENTER_DUR) && (fastClicks != 2) && (modeIdx != BATT_CHECK_MODE))
 											||
 					 (ramping && (wPressDuration == 500)))	// 8 secs in ramping mode
 				{
@@ -1608,8 +1214,7 @@ ISR(WDT_vect)
 					rampState = 0;
 					
 					// turn the light off initially
-					PWM_LVL = 0;
-					ALT_PWM_LVL = 0;
+					SetOutput(OFF_OUTPUT);	// suppress main LED output
 				
 					ConfigMode = 1;
 					configClicks = 0;
@@ -1665,9 +1270,9 @@ ISR(WDT_vect)
 				{
 					// normal short click processing
 
-					++quickClicks;	// track quick clicks in a row from OFF or ON (doesn't matter in ramping)
+					++fastClicks;	// track quick clicks in a row from OFF or ON (doesn't matter in ramping)
 
-					if (quickClicks == 1)
+					if (fastClicks == 1)
 					{
 						byModeForClicks = modeIdx;		// save current mode
 						if ((modeIdx < 16) && (rampingLevel == MAX_RAMP_LEVEL))
@@ -1679,103 +1284,63 @@ ISR(WDT_vect)
 							outLevel = rampingLevel = 0;	// 08/28/16 TE: zero out outLevel here as well (used in LVP)
 							byDelayRamping = 1;		// don't act on ramping button presses
 						}
-					}
-							
-					if ((byModeForClicks == BATT_CHECK_MODE) || (byModeForClicks == TEMP_CHECK_MODE))	// battery check - multi-click checks
-					{
-						if (quickClicks == 2)			// --> double click: blink out the firmware vers #
+
+						if (!byLockOutSet && !byDelayRamping)
 						{
-							if (byModeForClicks == BATT_CHECK_MODE)
-								modeIdx = TEMP_CHECK_MODE;
-							else
-								modeIdx = FIRM_VERS_MODE;
-							byDelayRamping = 1;		// don't act on ramping button presses
-							PWM_LVL = 0;				// suppress main LED output
-							ALT_PWM_LVL = 0;
-						}
-					}
-					
-					else   // for other modes - multi-click checks
-					{
-						if ((quickClicks == 4) && byLockOutEnable)	// --> 4X clicks: do a lock-out
-						{
-							modeIdx = outLevel = rampingLevel = 0;
-							rampState = 0;
-							byLockOutSet = 1 - byLockOutSet;		// invert "LOCK OUT"
-							byDelayRamping = 1;		// don't act on ramping button presses (ramping ON/OFF code below)
-						}
-						else
-						{
-							if (!byLockOutSet)
+							//---------------------------------
+							// Normal click ON in ramping mode
+							//---------------------------------
+							if (rampingLevel == 0)  // light is OFF, turn it ON
 							{
-							  #ifdef TRIPLE_CLICK_BATT
-								if (quickClicks == 3)						// --> triple click: display battery check/status
-								{
-									modeIdx = BATT_CHECK_MODE;
-									byDelayRamping = 1;		// don't act on ramping button presses
-									PWM_LVL = 0;				// suppress main LED output
-									ALT_PWM_LVL = 0;
-								}
+								if (savedLevel == 0)
+									savedLevel = 1;
+
+								dontToggleDir = 1;		// force direction to be lo->hi for a switch ON
+								rampLastDirState = 2;	// lo->hi
+
+								// Restore the saved level (last mode memory)
+								outLevel = rampingLevel = savedLevel;
+
+							  #ifdef ONBOARD_LED
+								// Blink the Ind. LED from restoring last level
+								if (onboardLedEnable)
+									byBlinkActiveChan = 1;
+							  #endif
+							}
+							else        				// light is ON, turn it OFF
+							{
+								outLevel = rampingLevel = 0;
+							}
+
+							if (outLevel == 255)
+							{
+							  #if OUT_CHANNELS == 3		// Triple Channel
+								SetOutput(moonlightLevel,0,0);
+							  #elif OUT_CHANNELS == 2	// two channels
+								SetOutput(moonlightLevel,0);
+							  #else
+								SetOutput(moonlightLevel);
 							  #endif
 
-								if (quickClicks == 2)						// --> double click: set to MAX level
-								{
-									if (byModeForClicks == 255)
-									{
-										// Engage first special mode!
-										EnterSpecialModes ();
-									}
-									else
-									{
-										rampingLevel = MAX_RAMP_LEVEL;
-										outLevel = rampingLevel;
-										SetLevel(outLevel);
-									}
-								}
-
-								else if (!byDelayRamping)
-								{
-									//---------------------------------
-									// Normal click ON in ramping mode
-									//---------------------------------
-									if (rampingLevel == 0)  // light is OFF, turn it ON
-									{
-										if (savedLevel == 0)
-											savedLevel = 1;
-
-										dontToggleDir = 1;		// force direction to be lo->hi for a switch ON
-										rampLastDirState = 2;	// lo->hi
-									
-										// Restore the saved level (last mode memory)
-										outLevel = rampingLevel = savedLevel;
-										
-										if (onboardLedEnable)
-											byBlinkActiveChan = 1;
-									}
-									else        				// light is ON, turn it OFF
-									{
-										outLevel = rampingLevel = 0;
-									}
-								
-									if (outLevel == 255)
-									{
-										SetOutput(0,moonlightLevel);
-										if (locatorLed)
-											TurnOnBoardLed(0);
-									}
-									else
-										SetLevel(outLevel);
-								}
-							} // !byLockOutSet
-						} // else not 4X
-					} // non Battery Check mode support
+							  #ifdef ONBOARD_LED
+								if (locatorLed)
+									TurnOnBoardLed(0);
+							  #endif
+							}
+							else
+								SetLevel(outLevel);
+						} // !byLockOutSet && !byDelayRamping
+					} // fastClicks == 1
 				} // short click
 				else
 				{
-					quickClicks = 0;	// reset quick clicks for long holds
+					fastClicks = 0;	// reset quick clicks for long holds
 					
+				  #ifdef ONBOARD_LED
+					// Blink the Ind. LED from a ramping hold
 					if (onboardLedEnable)
 						byBlinkActiveChan = 1;
+				  #endif
 				}
 				
 				wPressDuration = 0;
@@ -1786,81 +1351,93 @@ ISR(WDT_vect)
 			//------------------------------------------------------------------------------
 			//	Non-Ramping - button released
 			//------------------------------------------------------------------------------
-			else if (wPressDuration < LONG_PRESS_DUR)
-			{
-				// normal short click
-				if ((modeIdx == BATT_CHECK_MODE) || (modeIdx == TEMP_CHECK_MODE) || (modeIdx == FIRM_VERS_MODE))		// battery check/firmware vers - reset to OFF
-					modeIdx = 0;
-				else
-				{
-					// track quick clicks in a row from OFF
-					if ((modeIdx == 0) && !quickClicks)
-						quickClicks = 1;
-					else if (quickClicks)
-						++quickClicks;
-
-					if (byLockOutSet == 0)
-					{
-						if (modeMemoryEnabled && (modeMemoryLastModeIdx > 0) && (modeIdx == 0))
-						{
-							modeIdx = modeMemoryLastModeIdx;
-							modeMemoryLastModeIdx = 0;
-						}
-						else if (modeIdx < 16)
-						{
-							if ((modeIdx > 0) && (wIdleTicks >= IDLE_TIME))
-							{
-								modeMemoryLastModeIdx = modeIdx;
-								prevModeIdx = modeIdx;
-								modeIdx = 0;	// Turn OFF the light
-							}
-							else
-							{
-								// Short press - normal modes
-								if (highToLow)
-									PrevMode();
-								else
-									NextMode();
-							}
-						}
-						else  // special modes
-						{
-							// Bail out if timed out the click
-							if (wIdleTicks >= IDLE_TIME)
-								ExitSpecialModes ();		// restore previous state (normal mode and ramping)
-								
-							// Bail out if configured for only one blinky mode
-							else if (blinkyMode == 1)
-								ExitSpecialModes ();		// restore previous state (normal mode and ramping)
-								
-							// Bail out if at last blinky mode
-							else if (++specModeIdx >= specialModesCnt)
-								ExitSpecialModes ();		// restore previous state (normal mode and ramping)
-							else
-								modeIdx = specialModes[specModeIdx];
-						}
-					}
-				} // ...
-
-				wPressDuration = 0;
-			} // short click
 			else
 			{
-				if (wPressDuration < XLONG_PRESS_DUR)
+				if (wPressDuration < LONG_PRESS_DUR)
 				{
-					// Special Locator LED toggle sequence: quick click then click&hold
-					if ((quickClicks == 1) && (wIdleTicks < LOCK_OUT_TICKS) && (modeIdx == 0))
+					// normal short click
+					if ((modeIdx == BATT_CHECK_MODE) || (modeIdx == TEMP_CHECK_MODE) || (modeIdx == FIRM_VERS_MODE))		// battery check/firmware vers - reset to OFF
 					{
-						locatorLed = 1 - locatorLed;
-						TurnOnBoardLed(locatorLed);
+						byModeForClicks = modeIdx;		// save current mode
+						modeIdx = 0;
+						++fastClicks;
 					}
-				}
-				quickClicks = 0;	// reset quick clicks for long holds
-			}
-			
-			wIdleTicks = 0;	// reset idle time
+					else
+					{
+						// track quick clicks in a row from OFF
+						if ((modeIdx == 0) && !fastClicks)
+							fastClicks = 1;
+						else if (fastClicks)
+							++fastClicks;
 
-		} // previously pressed
+						if (byLockOutSet == 0)
+						{
+							if (modeMemoryEnabled && (modeMemoryLastModeIdx > 0) && (modeIdx == 0))
+							{
+								modeIdx = modeMemoryLastModeIdx;
+								modeMemoryLastModeIdx = 0;
+							}
+							else if (modeIdx < 16)
+							{
+								if ((modeIdx > 0) && (wIdleTicks >= IDLE_TIME))
+								{
+									modeMemoryLastModeIdx = modeIdx;
+									prevModeIdx = modeIdx;
+									modeIdx = 0;	// Turn OFF the light
+								}
+								else
+								{
+									// Short press - normal modes
+									if (highToLow)
+										PrevMode();
+									else
+										NextMode();
+								}
+							}
+							else  // special modes
+							{
+								// Bail out if timed out the click
+								if (wIdleTicks >= IDLE_TIME)
+									ExitSpecialModes ();		// restore previous state (normal mode and ramping)
+								
+								// Bail out if configured for only one blinky mode
+								else if (blinkyMode == 1)
+									ExitSpecialModes ();		// restore previous state (normal mode and ramping)
+								
+								// Bail out if at last blinky mode
+								else if (++specModeIdx >= specialModesCnt)
+									ExitSpecialModes ();		// restore previous state (normal mode and ramping)
+								else
+									modeIdx = specialModes[specModeIdx];
+							}
+						}
+					} // ...
+
+					wPressDuration = 0;
+				} // short click (wPressDuration < LONG_PRESS_DUR)
+				else
+				{
+				  #ifdef ONBOARD_LED
+					if (wPressDuration < XLONG_PRESS_DUR)
+					{
+						// Special Locator LED toggle sequence: quick click then click&hold
+						if ((fastClicks == 1) && (wIdleTicks < DBL_CLICK_TICKS) && (modeIdx == 0))
+						{
+							locatorLed = 1 - locatorLed;
+							TurnOnBoardLed(locatorLed);
+						}
+					}
+				  #endif
+				  
+					fastClicks = 0;	// reset quick clicks for long holds
+				}
+			
+			} // non-ramping
+	
+			wIdleTicks = 0;	// reset idle time
+			
+		} // previously pressed (wPressDuration > 0)
+		
 		else
 		{
 			//---------------------------------------------------------------------------------------
@@ -1871,8 +1448,67 @@ ISR(WDT_vect)
 			if (++wIdleTicks == 0)
 				wIdleTicks = 30000;		// max it out at 30,000 (8 minutes)
 
-			if (wIdleTicks > LOCK_OUT_TICKS)
-				quickClicks = 0;
+			if (wIdleTicks > DBL_CLICK_TICKS)
+			{
+				//-----------------------------------------------------------------------------------
+				// Process multi clicks here, after it times out
+				//-----------------------------------------------------------------------------------
+
+				// For Lock-Out, always support 4 quick clicks regardless of mode/state
+			  #ifdef LOCKOUT_ENABLE
+				if (fastClicks == 4)	// --> 4X clicks: do a lock-out
+				{
+					modeIdx = outLevel = rampingLevel = 0;
+					rampState = 0;
+					byLockOutSet = 1 - byLockOutSet;		// invert "LOCK OUT"
+					byDelayRamping = 1;		// don't act on ramping button presses (ramping ON/OFF code below)
+				}
+				else
+			  #endif
+
+				// Support 2X clicks for Batt and Temp blink outs in ramping
+				if ((byModeForClicks == BATT_CHECK_MODE) || (byModeForClicks == TEMP_CHECK_MODE))	// battery check - multi-click checks
+				{
+					if (fastClicks == 2)			// --> double click: blink out the firmware vers #
+					{
+						if (byModeForClicks == BATT_CHECK_MODE)
+							modeIdx = TEMP_CHECK_MODE;
+						else
+							modeIdx = FIRM_VERS_MODE;
+						byDelayRamping = 1;		// don't act on ramping button presses
+						SetOutput(OFF_OUTPUT);	// suppress main LED output
+					}
+				}
+				else if (ramping && !byLockOutSet)
+				{
+				  #ifdef TRIPLE_CLICK_BATT
+					if (fastClicks == 3)						// --> triple click: display battery check/status
+					{
+						modeIdx = BATT_CHECK_MODE;
+						byDelayRamping = 1;		// don't act on ramping button presses
+						SetOutput(OFF_OUTPUT);	// suppress main LED output
+					}
+				  #endif
+
+					if (fastClicks == 2)						// --> double click: set to MAX level
+					{
+						if (byModeForClicks == 255)
+						{
+							if (blinkyMode > 0) // must be enabled
+								EnterSpecialModes ();	// Engage first special mode!
+						}
+						else
+						{
+							rampingLevel = MAX_RAMP_LEVEL;
+							outLevel = rampingLevel;
+							SetLevel(outLevel);
+						}
+					}
+				}
+
+
+				fastClicks = 0;	// clear it after processing it
+			}
 
 			// Only do timed stepdown check when switch isn't pressed
 			if (stepdownMode > 1)
@@ -1889,7 +1525,7 @@ ISR(WDT_vect)
 				else          // regular modes
 				{
 					if (modeIdx < 16)
-						if (byPrimModes[modeIdx] == 255)
+						if (byFETModes[modeIdx] == 255)
 						{
 							if (++wStepdownTicks > wTimedStepdownTickLimit)
 								PrevMode();		// Go to the previous mode
@@ -1977,20 +1613,30 @@ int main(void)
 	// Set the switch as an interrupt for when we turn pin change interrupts on
 	PCMSK = (1 << SWITCH_PIN);
 	
-	// Set primary and alternate PWN pins for output
-	DDRB = (1 << PWM_PIN) | (1 << ALT_PWM_PIN);
+	// Set LED PWM pins for output
+  #if OUT_CHANNELS == 3		// Triple Channel
+	DDRB = (1 << ONE7135_PWM_PIN) | (1 << BANK_PWM_PIN) | (1 << FET_PWM_PIN);
+  #elif OUT_CHANNELS == 2	// two channels
+	DDRB = (1 << ONE7135_PWM_PIN) | (1 << FET_PWM_PIN);
+  #else
+	DDRB = (1 << MAIN_PWM_PIN);
+  #endif
 
 	TCCR0A = PHASE;		// set this once here - don't use FAST anymore
 
 	// Set timer to do PWM for correct output pin and set prescaler timing
 	TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
 	
-	// Turn features on or off as needed
-  #ifdef VOLTAGE_MON
-	ADC_on();
-  #else
-	ADC_off();
+  #if OUT_CHANNELS == 3		// Triple Channel
+	// Second PWM counter is ... weird (straight from bistro-tripledown.c)
+	TCCR1 = _BV (CS10);
+	GTCCR = _BV (COM1B1) | _BV (PWM1B);
+	OCR1C = 255;  // Set ceiling value to maximum
   #endif
+
+	// Turn features on or off as needed
+	ADC_on();
+
 	ACSR   |=  (1<<7);	// Analog Comparator off
 
 	// Enable sleep mode set to Power Down that will be triggered by the sleep_mode() command.
@@ -2006,6 +1652,8 @@ int main(void)
 	 WDTCR |= (1<<WDCE) | (1<<WDE);  // Start timed sequence
 	 WDTCR = 0x00;					// Disable WDT
 	}
+	
+	SetConfigDefaults();
 	
 	// Load config settings: mode, mode set, lo-hi, mode memory
 	LoadConfig();
@@ -2029,12 +1677,25 @@ int main(void)
 		}
 	}
 	else
+	{
+	  #ifdef STARTUP_LIGHT_OFF
 		modeIdx = 0;
+	  #else
+		modeIdx = modesCnt - 1;
+		if (ramping)
+		{
+			outLevel = rampingLevel = MAX_RAMP_LEVEL;
+			SetLevel(outLevel);
+		}
+	  #endif
+	}
 
   #ifdef STARTUP_2BLINKS
 	if (modeIdx == 0)
 	{
-		Blink(2, 80);
+		// If tail mode switching is enabled for mode set operation, don't blink the LED
+		if (ramping || !OffTimeEnable)
+			Blink(2, 80);
 	}
   #endif
 
@@ -2068,7 +1729,7 @@ int main(void)
 			{
 				byPrevLockOutSet = byLockOutSet;
 
-				SetOutput(0,0);
+				SetOutput(OFF_OUTPUT);
 				_delay_ms(250);
 				Blink(4, 60);
 				
@@ -2095,8 +1756,7 @@ int main(void)
 					last_modeIdx = modeIdx;
 
 					// If coming from a standard mode, suppress alternate PWM output
-					ALT_PWM_LVL = 0;
-					PWM_LVL = 0;				// suppress main LED output
+					SetOutput(OFF_OUTPUT);	// suppress main LED output
 
 					if (modeIdx == BATT_CHECK_MODE)
 					{
@@ -2145,7 +1805,7 @@ int main(void)
 					{
 						while (modeIdx == STROBE_MODE)      // strobe at 16 Hz
 						{
-							Strobe(16,47);		// 20,60 is 12.5 Hz
+							Strobe(STROBE_SPEED);	// 14,41: 18Hz, 16,47: 16Hz, 20,60: 12.5Hz
 						}
 					}
 
@@ -2186,9 +1846,9 @@ int main(void)
 							for(i=0;i<4;i++)
 							{
 								if (modeIdx != BIKING_STROBE)		break;
-								SetOutput(255,0);
+								SetOutput(MAX_BRIGHTNESS);
 								_delay_ms(5);
-								SetOutput(0,255);
+								SetOutput(MAX_7135);
 								_delay_ms(65);
 							}
 							for(i=0;i<10;i++)
@@ -2197,7 +1857,7 @@ int main(void)
 								_delay_ms(72);
 							}
 						}
-						SetOutput(0,0);
+						SetOutput(OFF_OUTPUT);
 					}
 
 					else if (modeIdx == BEACON_2S_MODE)
@@ -2287,6 +1947,7 @@ int main(void)
 			}
 			else if (LowBattBlinkSignal)
 			{
+#ifdef ONBOARD_LED
 				// Blink the Indicator LED twice
 				if (onboardLedEnable)
 				{
@@ -2305,7 +1966,7 @@ int main(void)
 						TurnOnBoardLed(1);
 					}
 				}
-
+#endif
 				LowBattBlinkSignal = 0;
 			} // low battery signal
 
@@ -2329,9 +1990,9 @@ int main(void)
 						SetLevel(outLevel);
 						
 						wThermalTicks = TEMP_ADJ_PERIOD;
-						#ifdef ONBOARD_LED_PIN
+					  #ifdef ONBOARD_LED
 						BlinkIndLed(500, 3);	// Flash the Ind LED to show it's lowering
-						#endif
+					  #endif
 					}
 				}
 				else	// modes
@@ -2341,13 +2002,12 @@ int main(void)
 						PrevMode();	// Drop the output level
 						
 						wThermalTicks = TEMP_ADJ_PERIOD;
-						#ifdef ONBOARD_LED_PIN
+					  #ifdef ONBOARD_LED
 						BlinkIndLed(500, 3);	// Flash the Ind LED to show it's lowering
-						#endif
+					  #endif
 					}
 				}
-				
-			}
+			} // thermal step down
 
 			//---------------------------------------------------------------------
 			// Be sure switch is not pressed and light is OFF for at least 5 secs
@@ -2360,6 +2020,7 @@ int main(void)
 									 &&
 				 !IsPressed() && (wIdleTicks > wWaitTicks))
 			{
+#ifdef ONBOARD_LED
 				// If the battery is currently low, then turn OFF the indicator LED before going to sleep
 				//  to help in saving the battery
 			  #ifdef VOLT_MON_R1R2
@@ -2368,7 +2029,9 @@ int main(void)
 				if (byVoltage < BATT_LOW)
 			  #endif
 				if (locatorLed)
-					TurnOnBoardLed(0);
+					TurnOnBoardLed(0);
+#endif
+
 				_delay_ms(1); // Need this here, maybe instructions for PWM output not getting executed before shutdown?
 
 				SleepUntilSwitchPress();	// Go to sleep
@@ -2379,10 +2042,9 @@ int main(void)
 			//---------------------------------------------------------------------
 			if (byBlinkActiveChan)
 			{
+				byBlinkActiveChan = 0;	// disable first so a subsequent one is not missed
 				BlinkActiveChannel();
-				byBlinkActiveChan = 0;
 			}
-			
 		}
 		
       //---------------------------------------------------------------------------------------
@@ -2418,6 +2080,20 @@ int main(void)
 					}
 					ConfigBlink(2);
 					break;
+
+				case 14:	// Reset to Factory Default settings
+					SetConfigDefaults();
+					SaveConfig();
+					
+					locatorLed = locatorLedOn;
+					DefineModeSet();
+					byStepdownTemp = DEFAULT_STEPDOWN_TEMP;	// the current temperature in C for doing the stepdown
+					WrEEPROM (250, byStepdownTemp);				// save it at the fixed address of 250 in the EEPROM space
+
+					wTimedStepdownTickLimit = pgm_read_word(timedStepdownOutVals+stepdownMode);
+				
+					ConfigMode = 15;			// all done, go to exit
+					break;	
 					
 				case 15:	// exiting config mode
 					ConfigMode = 0;		// Exit Config mode
@@ -2471,12 +2147,12 @@ int main(void)
 
 				case 100:	// thermal calibration in effect
 					Blink(3, 40);			// 3 quick blinks
-					SetOutput(255, 0);	// set max output
+					SetOutput(MAX_BRIGHTNESS);	// set max output
 					wThermalTicks = 312;	// set for 5 seconds as the minimum time to set a new stepdown temperature
 					break;
 
 				case 101:	// exiting thermal calibration
-					SetOutput(0,0);
+					SetOutput(OFF_OUTPUT);
 				
 					if (wThermalTicks == 0)	// min. time exceeded
 					{
@@ -2485,6 +2161,7 @@ int main(void)
 						WrEEPROM (250, byStepdownTemp);
 					}
 				
+					// Continue to next setting (blinky modes)
 					if (ramping)
 					{
 						ConfigBlink(4);
@@ -2510,6 +2187,7 @@ int main(void)
 						wTimedStepdownTickLimit = pgm_read_word(timedStepdownOutVals+stepdownMode);
 					}
 
+					// Continue to next setting (blinky modes)
 					if (ramping)
 					{
 						ConfigBlink(4);
@@ -2628,25 +2306,27 @@ int main(void)
 							break;
 
 						case 9:	// 7 - (exiting) stepdown setting
-							if (configClicks == 0)			// disable it
+							if (configClicks == 1)			// disable it
 							{
 								stepdownMode = 0;
 								SaveConfig();
 								ConfigBlink(8);
 							}
-							else if (configClicks == 1)	// thermal stepdown
+							else if (configClicks == 2)	// thermal stepdown
 							{
 								stepdownMode = 1;
 								SaveConfig();
 								ConfigMode = 100;		// thermal configuration in effect!!
 							}
-							else                          // timed stepdown
+							else if (configClicks == 3)   // timed stepdown
 							{
-								Blink(3, 40);			// 3 quick blinks
-								ConfigMode = 40;
+									Blink(3, 40);			// 3 quick blinks
+									ConfigMode = 40;
 							}
+							else
+								ConfigBlink(8);
 							break;
-						
+							
 						case 10:	// 8 - (exiting) blinky mode setting (0=disable, 1=strobe only, 2=all blinkies)
 							if ((configClicks > 0) && (configClicks <= 3))
 							{
@@ -2665,9 +2345,9 @@ int main(void)
 			} // ConfigMode changed
 
 			else if (
-					((configClicks > 0) && (configIdleTime > 62))		// least 1 click: 1 second wait is enough
+					((configClicks > 0) && (configIdleTime > 125))		// least 1 click: 2 second wait is enough
 												||
-					((ConfigMode != 100) && (configClicks == 0) && (configIdleTime > 200)))	// no clicks: 3.2 secs (make it a little quicker, was 4 secs)
+					((ConfigMode != 100) && (configClicks == 0) && (configIdleTime > 219)))	// no clicks: 3.5 secs (make it a little quicker, was 4 secs)
 			{
 				++ConfigMode;
 			}
