@@ -305,14 +305,19 @@ void save_state() {
 #endif
 
 void restore_state() {
+    uint8_t eep;
     #ifdef MEMTOGGLE
     // memory is either 1 or 0
     // (if it's unconfigured, 0xFF, clip it)
-    memory = eeprom_read_byte((uint8_t *)OPT_memory) & 0x01;
+    //memory = eeprom_read_byte((uint8_t *)OPT_memory) & 0x01;
+    // off by default (oops, makes it be always off)
+    //memory = ! (eeprom_read_byte((uint8_t *)OPT_memory) & 0x01);
+    eep = eeprom_read_byte((uint8_t *)OPT_memory);
+    if (eep < 2) { memory = eep; }
+    else { memory = 0; }
     #endif
 
     // find the mode index and last brightness level
-    uint8_t eep;
     for(eepos=0; eepos<WEAR_LVL_LEN; eepos+=2) {
         eep = eeprom_read_byte((const uint8_t *)eepos);
         if (eep != 0xff) {
