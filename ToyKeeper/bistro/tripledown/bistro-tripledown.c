@@ -160,6 +160,7 @@
 #include <string.h>
 
 #define OWN_DELAY           // Don't use stock delay functions.
+#define USE_DELAY_MS        // use _delay_ms()
 #define USE_DELAY_S         // Also use _delay_s(), not just _delay_ms()
 #include "tk-delay.h"
 
