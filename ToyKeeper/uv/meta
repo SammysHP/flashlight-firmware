@@ -5,7 +5,7 @@ Description: S7-like code intended for use on a UV blacklight
  without using as much power as a tactical strobe.
 Button-Type: clicky
 Memory: offtime, mem decay, none
-MCU: attiny13a
+MCU: attiny13
 Authors: ToyKeeper
 Modes: battcheck, party strobe, beacon
 Extras:

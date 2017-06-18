@@ -1,6 +1,6 @@
 Description: DrJones' first clicky EDC firmware
 Authors: DrJones
-MCU: attiny13a
+MCU: attiny13
 Button-Type: clicky
 Memory: ontime, short-cycle, none
 Modes: ramp, battcheck, tactical strobe, 5-minute timer, config

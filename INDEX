@@ -118,6 +118,9 @@ Summary of each project
     gchart/babka:
         "Babka" firmware for nanjg-style drivers
 
+    gchart/ramping-ui:
+        Ramping UI for 1-channel clicky-switch lights
+
     hello_world:
         quick example to help test if flashing hardware works
 
@@ -179,6 +182,7 @@ Authors
         Tom_E/narsil
 
     ToyKeeper:
+        Tom_E/narsil
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
@@ -194,6 +198,7 @@ Authors
         ToyKeeper/tail-light
         ToyKeeper/uv
         gchart/babka
+        gchart/ramping-ui
         pilotdog68/xintd-x3
 
     Werner:
@@ -208,6 +213,9 @@ Authors
 
     dthoang:
         dthoang
+
+    gChart:
+        gchart/ramping-ui
 
     gchart:
         gchart/babka
@@ -254,6 +262,7 @@ Button-Type
         _the_/TheStar
         alexvh/basic_off_time_driver
         gchart/babka
+        gchart/ramping-ui
         odd/MGdriver
         pilotdog68/xintd-x3
         tterev3/pic10f322-examples
@@ -287,10 +296,12 @@ Extras
 
     LVP:
         Tamagotchi/7135x8v2
+        Tom_E/narsil
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
         gchart/babka
+        gchart/ramping-ui
 
     battery indicator LEDs:
         ToyKeeper/Ferrero_Rocher
@@ -325,7 +336,7 @@ Extras
         ToyKeeper/cypreus
         _the_/TheStar
 
-    lock-out:
+    indicator LED:
         Tom_E/narsil
 
     mode groups:
@@ -356,10 +367,15 @@ Extras
         Tamagotchi/7135x8v2
 
     ramping UI:
+        Tom_E/narsil
         ToyKeeper/Ferrero_Rocher
+        gchart/ramping-ui
 
     self-adjusting moon:
         ToyKeeper/cypreus
+
+    soft lock:
+        Tom_E/narsil
 
     soft start:
         ToyKeeper/bistro
@@ -391,8 +407,10 @@ Extras
     thermal step-down:
         JonnyC/STAR/MTN_momentary_temp
         Tamagotchi/7135x8v2
+        Tom_E/narsil
 
     triple PWM:
+        Tom_E/narsil
         ToyKeeper/bistro/tripledown
 
 License
@@ -408,6 +426,7 @@ License
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
         gchart/babka
+        gchart/ramping-ui
 
 MCU
 
@@ -415,10 +434,6 @@ MCU
         tterev3/attiny10_starter_code
 
     attiny13:
-        ToyKeeper/bistro/biscotti
-        gchart/babka
-
-    attiny13a:
         DrJones/MiniDrv
         DrJones/MiniMo
         DrJones/NLITE
@@ -436,6 +451,7 @@ MCU
         ToyKeeper/STAR_1mode
         ToyKeeper/STAR_noinit
         ToyKeeper/battcheck
+        ToyKeeper/bistro/biscotti
         ToyKeeper/blf-a6
         ToyKeeper/blf-a6/cypreus2
         ToyKeeper/cypreus
@@ -448,6 +464,8 @@ MCU
         _the_/TheStar
         alexvh/basic_off_time_driver
         dthoang
+        gchart/babka
+        gchart/ramping-ui
         odd/MGdriver
         pilotdog68/xintd-x3
 
@@ -496,13 +514,17 @@ Memory
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
+        ToyKeeper/blf-a6
         gchart/babka
+        gchart/ramping-ui
 
     mem decay:
         ToyKeeper/STAR_noinit
+        ToyKeeper/bistro/biscotti
         ToyKeeper/s7
         ToyKeeper/uv
         alexvh/basic_off_time_driver
+        gchart/ramping-ui
         tterev3/pic10f322-examples
 
     none:
@@ -541,6 +563,7 @@ Memory
         _the_/TheStar
         alexvh/basic_off_time_driver
         gchart/babka
+        gchart/ramping-ui
         odd/MGdriver
         pilotdog68/xintd-x3
         tterev3/pic10f322-examples
@@ -566,7 +589,6 @@ Memory
         JonnyC/STAR/STAR_dual_switch
         JonnyC/STAR/STAR_off_time
         ToyKeeper/STAR_noinit
-        ToyKeeper/blf-a6
         ToyKeeper/starry-offtime
         _the_/TheStar
 
@@ -613,6 +635,7 @@ Modes
         ToyKeeper/tail-light
         ToyKeeper/uv
         gchart/babka
+        gchart/ramping-ui
 
     battcheck calibrator:
         ToyKeeper/battcheck
@@ -651,6 +674,7 @@ Modes
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
         gchart/babka
+        gchart/ramping-ui
         pilotdog68/xintd-x3
         tterev3/power_cycle_light
 
@@ -690,13 +714,17 @@ Modes
     ramp:
         DrJones/luxdrv
         Tamagotchi/7135x8v2
+        Tom_E/narsil
+        ToyKeeper/Ferrero_Rocher
         alexvh/basic_off_time_driver
+        gchart/ramping-ui
 
     random strobe:
         ToyKeeper/bistro
         ToyKeeper/bistro/tripledown
 
     soft lock:
+        Tom_E/narsil
         ToyKeeper/Ferrero_Rocher
 
     strobe:

@@ -1,6 +1,6 @@
 Description: baby-like heartbeat effect
 Authors: DrJones
-MCU: attiny13a
+MCU: attiny13
 Button-Type:
 Memory:
 Modes: variable heartbeat

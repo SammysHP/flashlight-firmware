@@ -3,7 +3,7 @@ Description: TK's full-featured clicky EDC firmware
  brass-edc: Calibrated for the CNQG brass EDC
 Button-Type: clicky
 Memory: offtime, mem decay, none
-MCU: attiny13a
+MCU: attiny13
 Authors: ToyKeeper
 Modes: battcheck, party strobe, beacon, bike flasher, variable strobe
 Extras:

@@ -13,7 +13,7 @@
     <OutputFileExtension>.elf</OutputFileExtension>
     <OutputDirectory>$(MSBuildProjectDirectory)\$(Configuration)</OutputDirectory>
     <AssemblyName>Driver1</AssemblyName>
-    <Name>Driver1</Name>
+    <Name>NarsilM</Name>
     <RootNamespace>Driver1</RootNamespace>
     <ToolchainFlavour>Native</ToolchainFlavour>
     <KeepTimersRunning>true</KeepTimersRunning>
@@ -34,7 +34,7 @@
         <documentation help="" />
         <offline-documentation help="" />
         <dependencies>
-          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.18.1" />
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.28.1" />
         </dependencies>
       </framework-data>
     </AsfFrameworkConfig>
@@ -103,13 +103,28 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Narsil.c">
+    <Compile Include="Channels.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="tk-attiny.h">
+    <Compile Include="ModeSets.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="tk-calibration.h">
+    <Compile Include="NarsilM.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="RampingTables.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="RegisterSettings.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="tk-calibMTN17DDm.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="tk-calibWight.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="tk-delay.h">

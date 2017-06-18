@@ -1,9 +1,13 @@
 Description: full-featured configurable e-switch firmware for tiny45/85
-  2016-03-21 rev: http://budgetlightforum.com/comment/915711#comment-915711
-Authors: Tom E, JonnyC
+  2017-05-29 r1.0: http://budgetlightforum.com/node/54635
+  Old Narsil below:
+    2017-04-03 r1.3: http://budgetlightforum.com/comment/1108496#comment-1108496
+    2016-03-21 rev: http://budgetlightforum.com/comment/915711#comment-915711
+Authors: Tom E, ToyKeeper, JonnyC
 MCU: attiny45, attiny85
 Button-Type: momentary
 Memory: configurable
-Modes: config, tactical strobe, police strobe, bike flasher, beacon,
-  alpine beacon, battcheck, voltage readout
-Extras: mode groups, lock-out, config mode
+Modes: ramp, config, tactical strobe, police strobe, bike flasher, beacon,
+  alpine beacon, battcheck, voltage readout, soft lock
+Extras: mode groups, ramping UI, soft lock, config mode, thermal step-down,
+  LVP, indicator LED, triple PWM

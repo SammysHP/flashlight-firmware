@@ -1,0 +1,20 @@
+Open Issues
+-----------
+- FIXED: Tom E: in mode sets, step down settings wasn't working correctly
+- FIXED: 1 Lexel/BLF spotted: Blinkies unable to turn off in ramping
+- FIXED: delay processing of fast click operations to avoid max/turbo flash and allow more fast
+  click options (over 4 doesn't work)
+- re-work triple channel ramping tables: add more to the FET range, check/test for different
+  # of 7135's in the bank (5/27: not sure this is necessary now with new 3 chan ramping table)
+- add in buck driver support cleanly (BLF GT)
+  
+Possible New Features
+---------------------
+- joechina recommended to do a quick ramp to max, maybe even quick fade to OFF to ease tension to
+  the eyes. The Olight A1R does this.
+- enhancing tailswitch support: full mode sets w/memory (Lexel)
+- add ability to have timed and temp step down simultaneously (Lexel)
+- research "bump protection" - tolerate a short loss of power
+- build in a method to show the current config settings
+- more blinky modes, like lightning, campfire, etc.
+
