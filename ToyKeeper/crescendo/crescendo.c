@@ -138,7 +138,7 @@
 #define STEADY    252
 #define BATTCHECK 251
 //#define MEMORY    250
-//#define MEMTOGGLE 249   // Extra mode to (en/dis)able memory (requires MEMORY)
+//#define MEMTOGGLE // runtime config for memory (requires MEMORY)
 //#define TEMP_CAL_MODE 248  FIXME: NOT IMPLEMENTED YET
 #define BIKING_MODE 247   // steady on with pulses at 1Hz
 //#define BIKING_MODE2 246   // steady on with pulses at 1Hz
@@ -162,6 +162,10 @@
 
 // thermal step-down
 //#define TEMPERATURE_MON  FIXME: NOT IMPLEMENTED YET
+
+#if defined(MEMTOGGLE) || defined(TEMP_CAL_MODE)
+#define CONFIG_MODE
+#endif
 
 // Calibrate voltage and OTC in this file:
 #include "tk-calibration.h"
@@ -261,9 +265,6 @@ uint8_t modes[] = {
 #endif
 #ifdef SOS
     SOS,
-#endif
-#ifdef MEMTOGGLE
-    MEMTOGGLE,
 #endif
 };
 
@@ -519,6 +520,27 @@ inline void poweroff() {
     sleep_mode();
 }
 
+#ifdef CONFIG_MODE
+void toggle(uint8_t *var, uint8_t num) {
+    // Used for config mode
+    // Changes the value of a config option, waits for the user to "save"
+    // by turning the light off, then changes the value back in case they
+    // didn't save.  Can be used repeatedly on different options, allowing
+    // the user to change and save only one at a time.
+    blink(num, BLINK_SPEED/8);  // indicate which option number this is
+    _delay_4ms(250/4);
+    *var ^= 1;
+    save_state();
+    // "buzz" for a while to indicate the active toggle window
+    blink(32, 500/32/4);
+    // if the user didn't click, reset the value and return
+    *var ^= 1;
+    save_state();
+    _delay_s();
+}
+#endif  // ifdef CONFIG_MODE
+
+
 int main(void)
 {
     // Set PWM pin to output
@@ -601,6 +623,32 @@ int main(void)
 
         if (0) {  // This can't happen
         }
+
+        #ifdef CONFIG_MODE
+        else if (fast_presses > 15) {
+            _delay_s();       // wait for user to stop fast-pressing button
+            fast_presses = 0; // exit this mode after one use
+            //mode = STEADY;
+            mode_idx = 1;
+            next_mode_num = 255;
+
+            uint8_t t = 0;
+            #ifdef MEMTOGGLE
+            // turn memory on/off
+            // (click during the "buzz" to change the setting)
+            toggle(&memory, ++t);
+            #endif  // ifdef MEMTOGGLE
+
+            #ifdef TEMP_CAL_MODE
+            // Enter temperature calibration mode?
+            // FIXME: not the right way to override into a mode
+            mode = TEMP_CAL_MODE;
+            toggle(&mode_override, ++t);
+            mode_idx = 1;
+            #endif
+
+        }
+        #endif  // ifdef CONFIG_MODE
 
         #ifdef MEMORY
         // memorized level
@@ -699,6 +747,10 @@ int main(void)
             // instead of going to next mode (unless they're
             // tapping rapidly, in which case we should advance to turbo)
             next_mode_num = 0;
+
+            #ifdef THERMAL_REGULATION
+            // TODO: implement this
+            #endif  // ifdef THERMAL_REGULATION
         }
 
         // turbo is special because it's easier
@@ -778,19 +830,19 @@ int main(void)
 
         #ifdef PARTY_STROBE12
         else if (mode == PARTY_STROBE12) {
-            party_strobe(1,79);
+            party_strobe_loop(1,79);
         }
         #endif
 
         #ifdef PARTY_STROBE24
         else if (mode == PARTY_STROBE24) {
-            party_strobe(0,41);
+            party_strobe_loop(0,41);
         }
         #endif
 
         #ifdef PARTY_STROBE60
         else if (mode == PARTY_STROBE60) {
-            party_strobe(0,15);
+            party_strobe_loop(0,15);
         }
         #endif
 
@@ -843,6 +895,8 @@ int main(void)
         // "good night" mode, slowly ramps down and shuts off
         else if (mode == GOODNIGHT) {
             uint8_t i, j;
+            // signal that this is *not* the STEADY mode
+            blink(2, BLINK_SPEED/16);
             #define GOODNIGHT_TOP (RAMP_SIZE/6)
             // ramp up instead of going directly to the top level
             // (probably pointless in this UI)
@@ -874,24 +928,6 @@ int main(void)
             poweroff();
         }
         #endif // ifdef GOODNIGHT
-
-        #ifdef MEMTOGGLE
-        // turn memory on/off
-        // (click during the "buzz" to change the setting)
-        else if (mode == MEMTOGGLE) {
-            // warn the user and give them a moment to tap to skip this mode
-            blink(8, 12/4);
-            _delay_s();
-
-            mode_idx = 1;
-            memory ^= 1;
-            save_state();
-            blink(64, 12/4);
-            memory ^= 1;
-            save_state();
-            _delay_s();
-        }
-        #endif  // ifdef MEMTOGGLE
 
         else {  // shouldn't happen
         }
