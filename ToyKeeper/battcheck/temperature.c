@@ -21,7 +21,7 @@
 //#define ATTINY 25
 #define FET_7135_LAYOUT  // specify an I/O pin layout
 // Also, assign I/O pins in this file:
-#include "../tk-attiny.h"
+#include "tk-attiny.h"
 
 /*
  * =========================================================================
@@ -35,36 +35,17 @@
  */
 
 #define OWN_DELAY           // Don't use stock delay functions.
-#define USE_DELAY_S         // Also use _delay_s(), not just _delay_ms()
-#include "../tk-delay.h"
+#define USE_DELAY_S         // use _delay_s()
+#define USE_DELAY_MS        // Also use _delay_ms()
+#include "tk-delay.h"
 
 #include <avr/pgmspace.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 
-#define ADC_TEMP_CHANNEL
-
-inline void ADC_on_temperature() {
-    // TODO: (?) enable ADC Noise Reduction Mode, Section 17.7 on page 128
-    // TODO: select ADC4 and write 0b00001111 to ADMUX
-    ADMUX  = (1 << V_REF) | (1 << ADLAR) | TEMP_CHANNEL; // 1.1v reference, left-adjust, ADC1/PB2
-    // disable digital input on ADC pin to reduce power consumption
-    //DIDR0 |= (1 << TEMP_DIDR);
-    ADCSRA = (1 << ADEN ) | (1 << ADSC ) | ADC_PRSCL;   // enable, start, prescale
-}
-
-inline void ADC_off() {
-    ADCSRA &= ~(1<<7); //ADC off
-}
-
-uint8_t get_temperature() {
-    // Start conversion
-    ADCSRA |= (1 << ADSC);
-    // Wait for completion
-    while (ADCSRA & (1 << ADSC));
-    // See if voltage is lower than what we were looking for
-    return ADCH;
-}
+#define THERMAL_REGULATION
+#define TEMP_10bit
+#include "tk-voltage.h"
 
 void noblink() {
     PWM_LVL = (BLINK_PWM>>2);
@@ -97,6 +78,7 @@ int main(void)
     PWM_LVL = 255;
     _delay_ms(5);
     PWM_LVL = 0;
+    _delay_s();
 
     uint16_t value;
     uint8_t i;
@@ -109,16 +91,27 @@ int main(void)
         value = 0;
         for (i=0; i<8; i++) {
             value += get_temperature();
-            _delay_ms(50);
+            PWM_LVL = 2;
+            _delay_ms(25);
+            PWM_LVL = 0;
+            _delay_ms(25);
         }
         value = value >> 3;
+        _delay_s();
+
+        // thousands
+        while (value >= 1000) {
+            value -= 1000;
+            blink();
+        }
+        _delay_s();
 
         // hundreds
         while (value >= 100) {
             value -= 100;
             blink();
         }
-        _delay_ms(1000);
+        _delay_s();
 
         // tens
         if (value < 10) {
@@ -128,7 +121,7 @@ int main(void)
             value -= 10;
             blink();
         }
-        _delay_ms(1000);
+        _delay_s();
 
         // ones
         if (value <= 0) {
@@ -138,10 +131,11 @@ int main(void)
             value -= 1;
             blink();
         }
-        _delay_ms(1000);
+        _delay_s();
 
         // ... and wait a bit for next time
-        _delay_ms(3000);
+        _delay_s();
+        _delay_s();
 
     }
 }
