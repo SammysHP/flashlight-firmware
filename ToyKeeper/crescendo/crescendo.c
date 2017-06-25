@@ -43,8 +43,8 @@
 //#define ATTINY 13
 //#define ATTINY 25
 // Pick your driver type:
-#define NANJG_LAYOUT
-//#define FET_7135_LAYOUT
+//#define NANJG_LAYOUT
+#define FET_7135_LAYOUT
 //#define TRIPLEDOWN_LAYOUT
 // Also, assign I/O pins in this file:
 #include "tk-attiny.h"
@@ -55,6 +55,7 @@
  */
 
 #define VOLTAGE_MON         // Comment out to disable LVP and battcheck
+#define THERMAL_REGULATION  // Comment out to disable thermal regulation
 
 // FET-only or Convoy red driver
 // ../../bin/level_calc.py 1 64 7135 1 0.25 1000
@@ -64,7 +65,7 @@
 // ../../bin/level_calc.py 1 64 7135 4 0.25 1000
 //#define RAMP_CH1   4,4,4,4,4,5,5,5,5,6,6,7,7,8,9,10,11,12,13,14,16,17,19,21,23,25,27,29,32,34,37,40,43,47,50,54,58,62,66,71,75,80,86,91,97,103,109,115,122,129,136,143,151,159,167,176,184,194,203,213,223,233,244,255
 // ../../bin/level_calc.py 1 96 7135 4 0.25 1000
-#define RAMP_CH1   4,4,4,4,4,4,4,5,5,5,5,5,5,6,6,6,7,7,7,8,8,9,9,10,11,11,12,13,14,15,16,17,18,19,20,21,22,24,25,26,28,30,31,33,35,37,39,41,43,45,47,49,52,54,57,60,62,65,68,71,74,78,81,84,88,92,95,99,103,107,111,116,120,124,129,134,139,144,149,154,159,165,170,176,182,188,194,200,207,213,220,226,233,240,248,255
+//#define RAMP_CH1   4,4,4,4,4,4,4,5,5,5,5,5,5,6,6,6,7,7,7,8,8,9,9,10,11,11,12,13,14,15,16,17,18,19,20,21,22,24,25,26,28,30,31,33,35,37,39,41,43,45,47,49,52,54,57,60,62,65,68,71,74,78,81,84,88,92,95,99,103,107,111,116,120,124,129,134,139,144,149,154,159,165,170,176,182,188,194,200,207,213,220,226,233,240,248,255
 // ../../bin/level_calc.py 1 128 7135 4 0.25 1000
 //#define RAMP_CH1   4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,6,6,6,6,7,7,7,7,8,8,8,9,9,10,10,11,11,12,12,13,13,14,15,15,16,17,18,19,19,20,21,22,23,24,25,26,27,29,30,31,32,34,35,36,38,39,41,42,44,46,47,49,51,53,55,57,59,61,63,65,67,69,72,74,76,79,81,84,86,89,92,95,98,100,103,106,109,113,116,119,122,126,129,133,136,140,144,148,152,155,159,164,168,172,176,181,185,189,194,199,203,208,213,218,223,228,233,239,244,249,255
 
@@ -86,8 +87,8 @@
 //#define RAMP_CH2 2,2,2,3,3,4,4,5,5,6,7,8,9,10,11,13,14,16,18,20,22,24,27,30,32,35,39,42,46,49,53,58,62,67,72,77,82,88,94,100,106,113,120,127,135,143,151,160,168,178,187,197,207,217,228,239,251,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 // MTN17DDm FET+1 tiny25, 128 steps (smooth!), 2000lm max, 380mA 7135 chip
 // ../../bin/level_calc.py 2 128 7135 6 0.25 140 FET 1 10 2000
-//#define RAMP_CH1 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,4,5,6,7,9,10,12,13,14,16,18,19,21,23,25,26,28,30,32,34,36,39,41,43,45,48,50,53,55,58,61,63,66,69,72,75,78,81,84,88,91,94,98,101,105,109,112,116,120,124,128,132,136,141,145,149,154,158,163,168,173,177,182,187,193,198,203,209,214,220,225,231,237,243,249,255
-//#define RAMP_CH2 6,6,7,7,7,8,9,9,10,11,12,14,15,17,19,21,23,25,28,31,34,37,41,45,49,53,58,63,68,73,79,85,92,99,106,114,122,130,139,148,157,167,178,188,200,211,224,236,249,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+#define RAMP_CH1 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,4,5,6,7,9,10,12,13,14,16,18,19,21,23,25,26,28,30,32,34,36,39,41,43,45,48,50,53,55,58,61,63,66,69,72,75,78,81,84,88,91,94,98,101,105,109,112,116,120,124,128,132,136,141,145,149,154,158,163,168,173,177,182,187,193,198,203,209,214,220,225,231,237,243,249,255
+#define RAMP_CH2 6,6,7,7,7,8,9,9,10,11,12,14,15,17,19,21,23,25,28,31,34,37,41,45,49,53,58,63,68,73,79,85,92,99,106,114,122,130,139,148,157,167,178,188,200,211,224,236,249,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 
 // TripleDown
 // ../../bin/level_calc.py 3 80 7135 3 0.25 140 7135 3 1.5 660 FET 1 10 1200
@@ -137,16 +138,16 @@
 #define RAMP      253
 #define STEADY    252
 #define BATTCHECK 251
-//#define MEMORY    250
-//#define MEMTOGGLE // runtime config for memory (requires MEMORY)
+#define MEMORY    250
+#define MEMTOGGLE // runtime config for memory (requires MEMORY)
 //#define TEMP_CAL_MODE 248  FIXME: NOT IMPLEMENTED YET
 #define BIKING_MODE 247   // steady on with pulses at 1Hz
 //#define BIKING_MODE2 246   // steady on with pulses at 1Hz
 // comment out to use minimal version instead (smaller)
 #define FULL_BIKING_MODE
 // Required for any of the strobes below it
-#define ANY_STROBE
-#define STROBE    245         // Simple tactical strobe
+//#define ANY_STROBE
+//#define STROBE    245         // Simple tactical strobe
 //#define POLICE_STROBE 244     // 2-speed tactical strobe
 //#define RANDOM_STROBE 243     // variable-speed tactical strobe
 //#define SOS 242               // distress signal
@@ -194,6 +195,9 @@
 #define USE_DELAY_S         // Also use _delay_s(), not just _delay_ms()
 #include "tk-delay.h"
 
+#ifdef THERMAL_REGULATION
+#define TEMP_10bit
+#endif
 #include "tk-voltage.h"
 
 #ifdef RANDOM_STROBE
@@ -491,21 +495,23 @@ inline void biking_mode(uint8_t lo, uint8_t hi) {
 }
 #endif
 
-#ifdef TEMPERATURE_MON
-uint8_t get_temperature() {
+#ifdef THERMAL_REGULATION
+// max temperature == TEMP_FLOOR + ~250 F (or + ~140 C)
+#define TEMP_FLOOR 230  // roughly -40 F (or -40 C) (ish)
+uint8_t current_temperature() {
     ADC_on_temperature();
     // average a few values; temperature is noisy
     uint16_t temp = 0;
     uint8_t i;
-    get_voltage();
+    get_temperature();
     for(i=0; i<16; i++) {
-        temp += get_voltage();
+        temp += get_temperature();
         _delay_4ms(1);
     }
-    temp >>= 4;
-    return temp;
+    temp = (temp>>4) - TEMP_FLOOR;
+    return (uint8_t)temp;
 }
-#endif  // TEMPERATURE_MON
+#endif  // ifdef THERMAL_REGULATION
 
 #ifdef GOODNIGHT
 void poweroff() {
@@ -617,6 +623,10 @@ int main(void)
     // Make sure voltage reading is running for later
     ADCSRA |= (1 << ADSC);
 #endif
+    #ifdef THERMAL_REGULATION
+    #define NUM_TEMPERATURES 8
+    uint8_t temperatures[NUM_TEMPERATURES];
+    #endif
     while(1) {
         //mode = pgm_read_byte(modes + mode_idx);
         mode = modes[mode_idx];
@@ -737,32 +747,61 @@ int main(void)
             ramp_dir = -ramp_dir;
         }
 
-        // normal flashlight mode
-        else if (mode == STEADY) {
-            set_mode(ramp_level);
-            // User has 0.5s to tap again to advance to the next mode
-            //next_mode_num = 255;
-            _delay_500ms();
-            // After a delay, assume user wants to adjust ramp
-            // instead of going to next mode (unless they're
-            // tapping rapidly, in which case we should advance to turbo)
-            next_mode_num = 0;
+        else if ((mode == STEADY) || (mode == TURBO)) {
+
+            // normal flashlight mode
+            if (mode == STEADY) {
+                set_mode(ramp_level);
+                // User has 0.5s to tap again to advance to the next mode
+                //next_mode_num = 255;
+                _delay_500ms();
+                // After a delay, assume user wants to adjust ramp
+                // instead of going to next mode (unless they're
+                // tapping rapidly, in which case we should advance to turbo)
+                next_mode_num = 0;
+
+            }
+
+            // turbo is special because it's easier to handle that way
+            else {
+                set_mode(RAMP_SIZE);
+                //next_mode_num = 255;
+                _delay_500ms();
+                // go back to the previously-memorized level
+                // if the user taps after a delay,
+                // instead of advancing to blinkies
+                // (allows something similar to "momentary" turbo)
+                next_mode_num = 1;
+            }
 
             #ifdef THERMAL_REGULATION
             // TODO: implement this
+            //thermal_regulation();
+            uint8_t temp = current_temperature();
+            int8_t diff;
+            uint8_t t;
+            uint8_t maxtemp = 100;
+            uint8_t mintemp = 90;
+            for(t=0; t<NUM_TEMPERATURES-1; t++) {
+                temperatures[t] = temperatures[t+1];
+            }
+            temperatures[NUM_TEMPERATURES-1] = temp;
+            diff = temp - temperatures[0];
+            if ((temp + diff) > maxtemp) {
+                // step down
+                // TODO: step down *slower*
+                // TODO: make the minimum level higher
+                // TODO: step down at a speed proportional to how high it is
+                if (ramp_level > 1) {
+                    ramp_level -= 1;
+                }
+            }
+            else if ((temp + diff) < mintemp) {
+                // TODO: step back up
+                // TODO: use "actual_level" trick
+            }
             #endif  // ifdef THERMAL_REGULATION
-        }
 
-        // turbo is special because it's easier
-        else if (mode == TURBO) {
-            set_mode(RAMP_SIZE);
-            //next_mode_num = 255;
-            _delay_500ms();
-            // go back to the previously-memorized level
-            // if the user taps after a delay,
-            // instead of advancing to blinkies
-            // (allows something similar to "momentary" turbo)
-            next_mode_num = 1;
         }
 
         #ifdef STROBE
