@@ -2,26 +2,35 @@
 
  * ====================================================================
  *  "Babka" firmware by gChart (Gabriel Hart)
- *  Last updated: 2016-11-10
+ *  Last updated: 2017-03-20 (v3)
  *
  *  This firmware is based on "Biscotti" by ToyKeeper and is intended
  *  for single-channel attiny13a drivers such as Qlite and nanjc105d.
+ *
+ *  Change log:
+ *    v2: - Added more mode groups
+ *        - Went from 2 turbo options to 1 (on or off)
+ *        - Code efficiency improvements
+ *        - Moved some chunks of code to inline functions for readability
+ *        - Changed lowest modes to properly use PHASE
+ *        - Changed a couple variables to register variables
+ *        - Added a second fast_presses variable for robustness
+ *
+ *    v3: - Code efficiency improvements (saved like 58 bytes)
+ *        - Split toggle function into two separate functions
+ *        - More register variables, now possible b/c of the two toggle functions
+ *        - Replaced fast_presses variables with an array of size NUM_FP_BYTES
+ *        - Variable length mode groups
+ *        - More mode groups
+ *        - Turbo ramp-down option (disable by commenting TURBO_RAMP_DOWN flag, ~10 bytes)
+ *
  * ====================================================================
  *
  * 12 or more fast presses > Configuration mode
- * 
- * Short tap on first config option goes to Group Mode selection
- * Short tap on second config option goes to Turbo Mode selection
  *
  * If hidden modes are enabled, perform a triple-click to enter the hidden modes.
  * Tap once to advance through the hidden modes.  Once you advance past the last
  * hidden mode, you will return to the first non-hidden mode.
- * 
- * Battery Check will blink out between 0 and 8 blinks.  0 blinks means your battery
- * is dead.  1 blink is 1-12% battery remaining.  2 blinks is 13-24% remaining...
- * 8 blinks is 88-100% remaining.  Essentially, the number of blinks is how many
- * eighths of the battery remain: 1/8, 2/8, 3/8... 8/8.  After blinking, it will 
- * pause for two seconds and then repeat itself.
  *
  * Configuration Menu
  *   1: Mode Groups:
@@ -29,13 +38,21 @@
  *     2: 20, 100
  *     3: 5, 35, 100
  *     4: 1, 10, 35, 100
+ *     5: 100, 35, 10, 1
+ *     6: 100, 35, 5
+ *     7: 100, 20
+ *     8: 100, Strobe
+ *     9: 20, 100, Strobe
+ *     10: 5, 35, 100, Strobe
+ *     11: 1, 10, 35, 100, Strobe
+ *     12: 100, 35, 10, 1, Strobe
+ *     13: 100, 35, 5, Strobe
+ *     14: 100, 20, Strobe
  *   2: Memory Toggle
  *   3: Hidden Strobe Modes Toggle (Strobe, Beacon, SOS)
  *   4: Hidden Batt Check Toggle (if strobes are enabled, Batt Check appears at the end of them)
- *   5: Turbo timer: disabled
- *   6: Turbo timer: 2 minutes (turbo steps down to 50%)
- *   7: Turbo timer: 5 minutes (turbo steps down to 50%)
- *   8: Reset to default configuration
+ *   5: Turbo Timer Toggle (turbo steps down to 50%)
+ *   6: Reset to default configuration
  *   
  * ====================================================================
  *
@@ -79,7 +96,6 @@
  *   much more reliable than attempting to calculate the values from a
  *   theoretical formula.
  *
- *   Same for off-time capacitor values.  Measure, don't guess.
  */
 // Choose your MCU here, or in the build script
 #define ATTINY 13
@@ -87,33 +103,27 @@
 // Also, assign I/O pins in this file:
 #include "../tk-attiny.h"
 
-//#define DEFAULTS 0b00000110  // 3 modes with memory, no blinkies, no battcheck, turbo timer disabled
-//#define DEFAULTS 0b00100110  // 3 modes with memory, no blinkies, no battcheck, 2 min turbo timer
-#define DEFAULTS 0b01000110  // 3 modes with memory, no blinkies, no battcheck, 5 min turbo timer
+//#define DEFAULTS 0b00010010  // 3 modes with memory, no blinkies, no battcheck, no turbo timer
+#define DEFAULTS 0b10010010  // 3 modes with memory, no blinkies, no battcheck, with turbo timer
 
-#define FAST  0xA3		  // fast PWM both channels
-#define PHASE 0xA1		  // phase-correct PWM both channels
 #define VOLTAGE_MON		 // Comment out to disable LVP
 #define USE_BATTCHECK	   // Enable battery check mode
 //#define BATTCHECK_4bars	 // up to 4 blinks
 #define BATTCHECK_8bars	 // up to 8 blinks
 
 #define RAMP_SIZE  6
-// for the lowest value, a 4 wouldn't turn on an XP-L HI (but did ok with a 219C)... so let's kick it up to a 5
-//#define RAMP_PWM   4, 13, 26, 51, 89, 255  // 1, 5, 10, 20, 35, 100%
 #define RAMP_PWM   5, 13, 26, 51, 89, 255  // 1, 5, 10, 20, 35, 100%
 
 #define BLINK_BRIGHTNESS	3 // output to use for blinks on battery check (and other modes)
 #define BLINK_SPEED		 750 // ms per normal-speed blink
 
+#define TURBO_MINUTES 5 // when turbo timer is enabled, how long before stepping down
 #define TICKS_PER_MINUTE 120 // used for Turbo Timer timing
 #define TURBO_LOWER 128  // the PWM level to use when stepping down
-
 #define TURBO	 RAMP_SIZE	// Convenience code for turbo mode
+#define TURBO_RAMP_DOWN  // disable this to jump right from turbo to the stepdown, no ramping
 
-#define FIRST_SELECT_MODE 252
 #define GROUP_SELECT_MODE 252
-#define TURBO_SELECT_MODE 253
 
 // These need to be in sequential order, no gaps.
 // Make sure to update FIRST_BLINKY and LAST_BLINKY as needed.
@@ -149,56 +159,71 @@
 
 #include "../tk-voltage.h"
 
-uint8_t modegroup = 0; // which mode group (set above in #defines)
-uint8_t mode_idx = 0;	  // current or last-used mode number
-uint8_t eepos = 0;
+// borrowed some register variable settings / ideas from Flintrock
+register uint8_t options asm("r6");   //uint8_t options = 0;
+register uint8_t mode_idx asm("r7");  //uint8_t mode_idx = 0;	 
+register uint8_t eepos asm("r8");     //uint8_t eepos = 0;
+uint8_t num_modes;
 
-// (needs to be remembered while off, but only for up to half a second)
-uint8_t fast_presses __attribute__ ((section (".noinit")));
+#define NUM_FP_BYTES 3
+uint8_t fast_presses[NUM_FP_BYTES] __attribute__ ((section (".noinit")));
 
-// number of regular modes in current mode group
-uint8_t solid_modes;
-
-// Each group *must* be 4 values long
-#define NUM_MODEGROUPS 4
-//Group 1 should always have 1 mode, group 2 should have 2 modes, etc, otherwise count_modes will break
+#define NUM_MODEGROUPS 14 // Can define up to 16 groups
 PROGMEM const uint8_t modegroups[] = {
-	6, 0, 0, 0,
-	4, 6, 0, 0,
+	6, 0,
+	4, 6, 0,
 	2, 5, 6, 0,
-	1, 3, 5, 6, 
+	1, 3, 5, 6, 0,
+	6, 5, 3, 1, 0,
+	6, 5, 2, 0,
+	6, 4, 0,
+	6, STROBE, 0,
+	4, 6, STROBE, 0,
+  2, 5, 6, STROBE, 0,
+	1, 3, 5, 6, STROBE, 0,
+  6, 5, 3, 1, STROBE, 0,
+	6, 5, 2, STROBE, 0,
+	6, 4, STROBE, 0,
 };
-uint8_t modes[] = { 0,0,0,0, };  // make sure this is long enough...
+uint8_t modes[] = { 0,0,0,0,0 };  // make sure this is long enough...
 
 // Modes (gets set when the light starts up based on saved config values)
 PROGMEM const uint8_t ramp_PWM[]  = { RAMP_PWM };
 
+inline uint8_t modegroup_number()     { return (options     ) & 0b00001111; }
+inline uint8_t memory_is_enabled()    { return (options >> 4) & 0b00000001; }
+inline uint8_t blinkies_are_enabled() { return (options >> 5) & 0b00000001; }
+inline uint8_t battcheck_is_enabled() { return (options >> 6) & 0b00000001; }
+inline uint8_t ttimer_is_enabled()    { return (options >> 7) & 0b00000001; }
+
 void save_mode() {  // save the current mode index (with wear leveling)
-	eeprom_write_byte((uint8_t *)(eepos), 0xff);	 // erase old state
+	uint8_t oldpos=eepos;
 	eepos = (eepos+1) & ((EEPSIZE/2)-1);  // wear leveling, use next cell
 	eeprom_write_byte((uint8_t *)(eepos), mode_idx);  // save current state
+	eeprom_write_byte((uint8_t *)(oldpos), 0xff);     // erase old state
 }
 
-#define OPT_modegroup (EEPSIZE-1)
+#define OPT_options (EEPSIZE-1)
 void save_state() {  // central method for writing complete state
 	save_mode();
-	eeprom_write_byte((uint8_t *)OPT_modegroup, modegroup);
+	eeprom_write_byte((uint8_t *)OPT_options, options);
 }
 
 inline void reset_state() {
 	mode_idx = 0;
-	modegroup = DEFAULTS;  // 3 brightness levels with memory
+	options = DEFAULTS;  // 3 brightness levels with memory
 	save_state();
 }
 
-void restore_state() {
+inline void restore_state() {
 	uint8_t eep;
-
 	uint8_t first = 1;
+	uint8_t i;
 	// find the mode index data
-	for(eepos=0; eepos<(EEPSIZE-6); eepos++) {
-		eep = eeprom_read_byte((const uint8_t *)eepos);
+	for(i=0; i<(EEPSIZE-6); i++) {
+		eep = eeprom_read_byte((const uint8_t *)i);
 		if (eep != 0xff) {
+			eepos = i;
 			mode_idx = eep;
 			first = 0;
 			break;
@@ -211,34 +236,36 @@ void restore_state() {
 	}
 
 	// load other config values
-	modegroup = eeprom_read_byte((uint8_t *)OPT_modegroup);
+	options = eeprom_read_byte((uint8_t *)OPT_options);
 }
 
 inline void next_mode() {
-	mode_idx += 1;
+	mode_idx++;
 	
-	if(fast_presses == 3 && mode_idx <= solid_modes) {  // triple-tap from a solid mode
-		if((modegroup >> 3) & 0x01) mode_idx = FIRST_BLINKY; // if blinkies enabled, go to first one
-		else if((modegroup >> 4) & 0x01) mode_idx = BATT_CHECK; // else if battcheck enabled, go to it
+	if(fast_presses[0] == 3 && mode_idx <= num_modes) {  // triple-tap from a solid mode
+		if( blinkies_are_enabled() ) mode_idx = FIRST_BLINKY; // if blinkies enabled, go to first one
+		else if( battcheck_is_enabled() ) mode_idx = BATT_CHECK; // else if battcheck enabled, go to it
 	}
 	
 	// if we hit the end of the solid modes or the blinkies (or battcheck if disabled), go to first solid mode
-	if ( (mode_idx == solid_modes) || (mode_idx > LAST_BLINKY) || (mode_idx == BATT_CHECK && !((modegroup >> 4) & 0x01))) {
+	if ( (mode_idx == num_modes) || (mode_idx > LAST_BLINKY) || (mode_idx == BATT_CHECK && !battcheck_is_enabled() )) {
 		mode_idx = 0;
 	}
 	
 }
 
-void count_modes() {
-	// Determine how many modes we have.
-	uint8_t my_modegroup = (modegroup) & 0x03;
-	uint8_t *dest;
-	const uint8_t *src = modegroups + (my_modegroup<<2);
-	dest = modes;
-	// Figure out how many modes are in this group
-	for(solid_modes = 0; solid_modes <= my_modegroup; solid_modes++, src++ )
-	  { *dest++ = pgm_read_byte(src); }
-
+inline void count_modes() {
+	uint8_t group = 0, mode, i, mc=0;
+	uint8_t *dest = modes;
+	const uint8_t *src = modegroups;
+	for(i=0; i<sizeof(modegroups); i++) {
+		mode = pgm_read_byte(src+i);
+		// if we hit a 0, that means we're moving on to the next group
+		if (mode==0) { group++; } 
+		// else if we're in the right group, store the mode and increase the mode count
+		else if (group == modegroup_number()) { *dest++ = mode; mc++; } 
+	}
+	num_modes = mc;
 }
 
 inline void set_output(uint8_t pwm1) {
@@ -246,7 +273,7 @@ inline void set_output(uint8_t pwm1) {
 }
 
 void set_level(uint8_t level) {
-	if (level == 1) { TCCR0A = PHASE; } // phase corrected PWM is 0xA1 for PB1, fast-PWM is 0xA3
+	if (level == 1) { TCCR0A = PHASE; } 
 	set_output(pgm_read_byte(ramp_PWM  + level - 1));
 }
 
@@ -262,17 +289,53 @@ void blink(uint8_t val, uint16_t speed)
 	}
 }
 
-void toggle(uint8_t *var, uint8_t value, uint8_t num) {
+inline void toggle_mode(uint8_t value, uint8_t num) {
 	blink(num, BLINK_SPEED/4);  // indicate which option number this is
-	uint8_t temp = *var;
-	*var = value;
+	uint8_t temp = mode_idx;
+	mode_idx = value;
 	save_state();
 	blink(32, 500/32); // "buzz" for a while to indicate the active toggle window
 	
 	// if the user didn't click, reset the value and return
-	*var = temp;
+	mode_idx = temp;
 	save_state();
 	_delay_s();
+}
+
+void toggle_options(uint8_t value, uint8_t num) {
+	blink(num, BLINK_SPEED/4);  // indicate which option number this is
+	uint8_t temp = options;
+	options = value;
+	save_state();
+	blink(32, 500/32); // "buzz" for a while to indicate the active toggle window
+	
+	// if the user didn't click, reset the value and return
+	options = temp;
+	save_state();
+	_delay_s();
+}
+
+#if 0
+inline uint8_t we_did_a_fast_press() {
+	uint8_t i = NUM_FP_BYTES-1;
+	while (i && (fast_presses[i] == fast_presses[i-1] )){ --i; }
+	return !i;
+}
+#else
+inline uint8_t we_did_a_fast_press() {
+	uint8_t i;
+	for(i=0; i<NUM_FP_BYTES-1; i++) { if(fast_presses[i] != fast_presses[i+1]) return 0;}
+	return 1;
+}
+#endif
+inline void increment_fast_presses() {
+	uint8_t i;
+	for(i=0; i<NUM_FP_BYTES; i++) { fast_presses[i]++; }
+}
+
+void reset_fast_presses() {
+	uint8_t i;
+	for(i=0; i<NUM_FP_BYTES; i++) { fast_presses[i] = 0; }
 }
 
 int main(void)
@@ -285,15 +348,14 @@ int main(void)
 	restore_state(); // Read config values and saved state
 
 	count_modes(); // Enable the current mode group
-
-	 // check button press time, unless we're in a selection mode (mode group or turbo timer selection)
-	if (mode_idx < FIRST_SELECT_MODE) {
-		if (fast_presses < 0x20) { // Short press, go to the next mode
-			fast_presses = (fast_presses+1) & 0x1f; // We don't care what the fast_presses value is as long as it's over 15
+	 // check button press time, unless we're in group selection mode
+	if (mode_idx != GROUP_SELECT_MODE) {
+		if ( we_did_a_fast_press() ) { // sram hasn't decayed yet, must have been a short press
+			increment_fast_presses();
 			next_mode(); // Will handle wrap arounds
 		} else { // Long press, keep the same mode
-			fast_presses = 0;
-			if(!((modegroup >> 2) & 0x01)) {mode_idx = 0;}  // if memory is turned off, set mode_idx to 0
+			reset_fast_presses();
+			if( !memory_is_enabled() ) {mode_idx = 0;}  // if memory is turned off, set mode_idx to 0
 		}
 	}
 	save_mode();
@@ -308,15 +370,9 @@ int main(void)
 	uint8_t output;
 	uint8_t i = 0;
 	uint16_t ticks = 0;
-
-	uint16_t turbo_ticks = 65535; // maxed out, effectively no turbo timer
-	//if(((modegroup >> 5) & 0x03) == 1) turbo_ticks = 2 * TICKS_PER_MINUTE; // 2 minutes
-	//if(((modegroup >> 5) & 0x03) == 2) turbo_ticks = 5 * TICKS_PER_MINUTE; // 5 minutes
-	// Using these (instead of the two lines above) saves 8 bytes, but they're sketchy... assumes we'll never have values > 2
-	if(modegroup & 0b00100000) turbo_ticks = 2  * TICKS_PER_MINUTE;  // assuming valid values are 0, 1, and 2... turbo timer = 1
-	if(modegroup & 0b01000000) turbo_ticks = 5  * TICKS_PER_MINUTE;  // assuming valid values are 0, 1, and 2... turbo timer = 1
-	//if((modegroup >> 5) & 0x01) turbo_ticks = 2  * TICKS_PER_MINUTE;  // assuming valid values are 0, 1, and 2... turbo timer = 1
-	//if((modegroup >> 6) & 0x01) turbo_ticks = 5  * TICKS_PER_MINUTE;  // assuming valid values are 0, 1, and 2... turbo timer = 2
+#ifdef TURBO_RAMP_DOWN
+	uint8_t adj_output = 255;
+#endif
 	
 #ifdef VOLTAGE_MON
 	uint8_t lowbatt_cnt = 0;
@@ -324,22 +380,20 @@ int main(void)
 	ADCSRA |= (1 << ADSC); // Make sure voltage reading is running for later
 #endif
 
-	if(mode_idx > solid_modes) { output = mode_idx; }  // special modes, override output
+	if(mode_idx > num_modes) { output = mode_idx; }  // special modes, override output
 	else { output = modes[mode_idx]; }
 	
 	while(1) {
-		if (fast_presses >= 12) {  // Config mode if 12 or more fast presses
+		if (fast_presses[0] >= 12) {  // Config mode if 12 or more fast presses
 			_delay_s();	   // wait for user to stop fast-pressing button
-			fast_presses = 0; // exit this mode after one use
+			reset_fast_presses(); // exit this mode after one use
 
-			toggle(&mode_idx, GROUP_SELECT_MODE, 1); // Enter the mode group selection mode?
-			toggle(&modegroup, (modegroup ^ 0b00000100), 2); // memory
-			toggle(&modegroup, (modegroup ^ 0b00001000), 3); // hidden blinkies
-			toggle(&modegroup, (modegroup ^ 0b00010000), 4); // hidden battcheck
-			toggle(&modegroup, (modegroup & 0b10011111), 5); // turbo timer = 0 (disabled)
-			toggle(&modegroup, (modegroup & 0b10011111) | (1 << 5), 6); // turbo timer = 1 (2 minutes)
-			toggle(&modegroup, (modegroup & 0b10011111) | (2 << 5), 7); // turbo timer = 2 (5 minutes)
-			toggle(&modegroup, DEFAULTS, 8); // reset to defaults
+			toggle_mode(GROUP_SELECT_MODE, 1); // Enter the mode group selection mode?
+			toggle_options((options ^ 0b00010000), 2); // memory
+			toggle_options((options ^ 0b00100000), 3); // hidden blinkies
+			toggle_options((options ^ 0b01000000), 4); // hidden battcheck
+			toggle_options((options ^ 0b10000000), 5); // turbo timer
+			toggle_options(DEFAULTS, 6); // reset to defaults
 		}
 		else if (output == STROBE) { // 10Hz tactical strobe
 			for(i=0;i<8;i++) {
@@ -371,21 +425,28 @@ int main(void)
 			mode_idx = 0; // exit this mode after one use
 
 			for(i=0; i<NUM_MODEGROUPS; i++) {
-				toggle(&modegroup, ((modegroup & 0b11111100) | i), i+1);
+				toggle_options(((options & 0b11110000) | i), i+1);
 			}
 			_delay_s();
 		}
 		else {
-			set_level(output);
-
-			ticks ++; // count ticks for turbo timer
-
-			if ((output == TURBO) && (ticks > turbo_ticks)) set_output(TURBO_LOWER);
+			if ((output == TURBO) && ( ttimer_is_enabled() ) && (ticks > (TURBO_MINUTES * TICKS_PER_MINUTE))) {
+	#ifdef TURBO_RAMP_DOWN
+				if (adj_output > TURBO_LOWER) { adj_output = adj_output - 2; }
+				set_output(adj_output);
+	#else
+				set_output(TURBO_LOWER);
+	#endif
+			}
+			else {
+				ticks ++; // count ticks for turbo timer
+				set_level(output);
+			}
 
 			_delay_ms(500);  // Otherwise, just sleep.
 
 		}
-		fast_presses = 0;
+		reset_fast_presses();
 #ifdef VOLTAGE_MON
 		if (ADCSRA & (1 << ADIF)) {  // if a voltage reading is ready
 			voltage = ADCH;  // get the waiting value
