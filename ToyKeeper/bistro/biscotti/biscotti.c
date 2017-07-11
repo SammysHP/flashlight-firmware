@@ -3,7 +3,7 @@
  * This code runs on a single-channel driver with attiny13a MCU.
  * It is intended specifically for nanjg 105d drivers from Convoy.
  *
- * Copyright (C) 2015 Selene Scriven
+ * Copyright (C) 2017 Selene Scriven
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -55,12 +55,6 @@
  * Settings to modify per driver
  */
 
-// FIXME: make 1-channel vs 2-channel power a single #define option
-//#define FAST 0x23           // fast PWM channel 1 only
-//#define PHASE 0x21          // phase-correct PWM channel 1 only
-#define FAST 0xA3           // fast PWM both channels
-#define PHASE 0xA1          // phase-correct PWM both channels
-
 #define VOLTAGE_MON         // Comment out to disable LVP
 
 //#define OFFTIM3             // Use short/med/long off-time presses
@@ -79,7 +73,7 @@
 //#define RAMP_FET   6,12,34,108,255
 // level_calc.py 1 4 7135 9 8 700
 // level_calc.py 1 3 7135 9 8 700
-#define RAMP_FET   4,9,36,63,107,127,255
+#define RAMP_FET   1,7,32,63,107,127,255
 // x**5 curve
 //#define RAMP_7135  3,3,3,4,4,5,5,6,7,8,10,11,13,15,18,21,24,28,33,38,44,50,57,66,75,85,96,108,122,137,154,172,192,213,237,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 //#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,6,9,13,17,21,25,30,35,41,47,53,60,67,75,83,91,101,111,121,132,144,156,169,183,198,213,255
@@ -98,7 +92,7 @@
 //#define BLINK_BRIGHTNESS    RAMP_SIZE/4
 #define BLINK_BRIGHTNESS    3
 // ms per normal-speed blink
-#define BLINK_SPEED         750
+#define BLINK_SPEED         (750/4)
 
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
@@ -110,13 +104,14 @@
 #define GROUP_SELECT_MODE 253
 //#define TEMP_CAL_MODE 252
 // Uncomment to enable tactical strobe mode
-#define STROBE    251       // Convenience code for strobe mode
+#define ANY_STROBE  // required for strobe or police_strobe
+//#define STROBE    251       // Convenience code for strobe mode
 // Uncomment to unable a 2-level stutter beacon instead of a tactical strobe
 #define BIKING_STROBE 250   // Convenience code for biking strobe mode
 // comment out to use minimal version instead (smaller)
 #define FULL_BIKING_STROBE
 //#define RAMP 249       // ramp test mode for tweaking ramp shape
-//#define POLICE_STROBE 248
+#define POLICE_STROBE 248
 //#define RANDOM_STROBE 247
 #define SOS 246
 
@@ -142,7 +137,7 @@
 #include <string.h>
 
 #define OWN_DELAY           // Don't use stock delay functions.
-#define USE_DELAY_MS        // use _delay_ms()
+#define USE_DELAY_4MS
 #define USE_DELAY_S         // Also use _delay_s(), not just _delay_ms()
 #include "tk-delay.h"
 
@@ -198,17 +193,17 @@ uint8_t solid_modes;
 // Each group must be 8 values long, but can be cut short with a zero.
 #define NUM_MODEGROUPS 12  // don't count muggle mode
 PROGMEM const uint8_t modegroups[] = {
-     1,  2,  3,  5,  7,  STROBE, BIKING_STROBE, BATTCHECK,
+     1,  2,  3,  5,  7,  POLICE_STROBE, BIKING_STROBE, BATTCHECK,
      1,  2,  3,  5,  7,  0,  0,  0,
      7,  5,  3,  2,  1,  0,  0,  0,
-     2,  4,  7,  STROBE, BIKING_STROBE, BATTCHECK, SOS,  0,
+     2,  4,  7,  POLICE_STROBE, BIKING_STROBE, BATTCHECK, SOS,  0,
      2,  4,  7,  0,  0,  0,  0,  0,
      7,  4,  2,  0,  0,  0,  0,  0,
-     1,  2,  3,  6,  STROBE, BIKING_STROBE, BATTCHECK, SOS,
+     1,  2,  3,  6,  POLICE_STROBE, BIKING_STROBE, BATTCHECK, SOS,
      1,  2,  3,  6,  0,  0,  0,  0,
      6,  3,  2,  1,  0,  0,  0,  0,
      2,  3,  5,  7,  0,  0,  0,  0,
-     7,  4, STROBE,0,0,  0,  0,  0,
+     7,  4, POLICE_STROBE,0,0,  0,  0,  0,
      7,  0,
 };
 uint8_t modes[8];  // make sure this is long enough...
@@ -456,11 +451,12 @@ inline void set_output(uint8_t pwm1) {
 }
 
 void set_level(uint8_t level) {
+    TCCR0A = PHASE;
     if (level == 0) {
         //set_output(0,0);
         set_output(0);
     } else {
-        level -= 1;
+        //level -= 1;
         /* apparently not needed on the newer drivers
         if (level == 0) {
             // divide PWM speed by 8 for moon,
@@ -468,13 +464,13 @@ void set_level(uint8_t level) {
             TCCR0B = 0x02;
         }
         */
-        if (level < 2) {
+        if (level > 2) {
             // divide PWM speed by 2 for moon and low,
             // because the nanjg 105d chips are SLOW
-            TCCR0A = PHASE;
+            TCCR0A = FAST;
         }
         //set_output(pgm_read_byte(ramp_FET + level), 0);
-        set_output(pgm_read_byte(ramp_FET + level));
+        set_output(pgm_read_byte(ramp_FET + level - 1));
     }
 }
 
@@ -498,37 +494,37 @@ void set_mode(uint8_t mode) {
     //set_level(mode);
 #endif  // SOFT_START
 
-void blink(uint8_t val, uint16_t speed)
+void blink(uint8_t val, uint8_t speed)
 {
     for (; val>0; val--)
     {
         set_level(BLINK_BRIGHTNESS);
-        _delay_ms(speed);
+        _delay_4ms(speed);
         set_level(0);
-        _delay_ms(speed);
-        _delay_ms(speed);
+        _delay_4ms(speed);
+        _delay_4ms(speed);
     }
 }
 
-#ifdef STROBE
+#ifdef ANY_STROBE
 inline void strobe(uint8_t ontime, uint8_t offtime) {
     uint8_t i;
     for(i=0;i<8;i++) {
         set_level(RAMP_SIZE);
-        _delay_ms(ontime);
+        _delay_4ms(ontime);
         set_level(0);
-        _delay_ms(offtime);
+        _delay_4ms(offtime);
     }
 }
 #endif
 
 #ifdef SOS
 inline void SOS_mode() {
-#define SOS_SPEED 200
+#define SOS_SPEED (200/4)
     blink(3, SOS_SPEED);
-    _delay_ms(SOS_SPEED*5);
+    _delay_4ms(SOS_SPEED*5);
     blink(3, SOS_SPEED*5/2);
-    //_delay_ms(SOS_SPEED);
+    //_delay_4ms(SOS_SPEED);
     blink(3, SOS_SPEED);
     _delay_s(); _delay_s();
 }
@@ -544,13 +540,13 @@ void toggle(uint8_t *var, uint8_t num) {
     *var ^= 1;
     save_state();
     // "buzz" for a while to indicate the active toggle window
-    blink(32, 500/32);
+    blink(32, 500/4/32);
     /*
     for(uint8_t i=0; i<32; i++) {
         set_level(BLINK_BRIGHTNESS * 3 / 4);
-        _delay_ms(30);
+        _delay_4ms(30);
         set_level(0);
-        _delay_ms(30);
+        _delay_4ms(30);
     }
     */
     // if the user didn't click, reset the value and return
@@ -568,7 +564,7 @@ uint8_t get_temperature() {
     get_voltage();
     for(i=0; i<16; i++) {
         temp += get_voltage();
-        _delay_ms(5);
+        _delay_4ms(1);
     }
     temp >>= 4;
     return temp;
@@ -614,7 +610,7 @@ int main(void)
     // Set timer to do PWM for correct output pin and set prescaler timing
     //TCCR0A = 0x23; // phase corrected PWM is 0x21 for PB1, fast-PWM is 0x23
     //TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
-    TCCR0A = FAST;
+    //TCCR0A = FAST;
     // Set timer to do PWM for correct output pin and set prescaler timing
     TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
 
@@ -746,24 +742,24 @@ int main(void)
 #ifdef STROBE
         else if (output == STROBE) {
             // 10Hz tactical strobe
-            strobe(33,67);
+            strobe(33/4,67/4);
         }
 #endif // ifdef STROBE
 #ifdef POLICE_STROBE
         else if (output == POLICE_STROBE) {
             // police-like strobe
             //for(i=0;i<8;i++) {
-                strobe(20,40);
+                strobe(20/4,40/4);
             //}
             //for(i=0;i<8;i++) {
-                strobe(40,80);
+                strobe(40/4,80/4);
             //}
         }
 #endif // ifdef POLICE_STROBE
 #ifdef RANDOM_STROBE
         else if (output == RANDOM_STROBE) {
             // pseudo-random strobe
-            uint8_t ms = 34 + (pgm_rand() & 0x3f);
+            uint8_t ms = (34 + (pgm_rand() & 0x3f))>>2;
             strobe(ms, ms);
             //strobe(ms, ms);
         }
@@ -776,10 +772,10 @@ int main(void)
             for(i=0;i<4;i++) {
                 //set_output(255,0);
                 set_mode(RAMP_SIZE);
-                _delay_ms(10);
+                _delay_4ms(3);
                 //set_output(0,255);
                 set_mode(4);
-                _delay_ms(60);
+                _delay_4ms(15);
             }
             //_delay_ms(720);
             _delay_s();
@@ -787,7 +783,7 @@ int main(void)
             // small/minimal version
             set_mode(RAMP_SIZE);
             //set_output(255,0);
-            _delay_ms(10);
+            _delay_4ms(8);
             set_mode(3);
             //set_output(0,255);
             _delay_s();
@@ -803,11 +799,11 @@ int main(void)
             // simple ramping test
             for(r=1; r<=RAMP_SIZE; r++) {
                 set_level(r);
-                _delay_ms(25);
+                _delay_4ms(6);
             }
             for(r=RAMP_SIZE; r>0; r--) {
                 set_level(r);
-                _delay_ms(25);
+                _delay_4ms(6);
             }
         }
 #endif  // ifdef RAMP
@@ -815,12 +811,12 @@ int main(void)
         else if (output == BATTCHECK) {
 #ifdef BATTCHECK_VpT
             // blink out volts and tenths
-            _delay_ms(100);
+            _delay_4ms(25);
             uint8_t result = battcheck();
             blink(result >> 5, BLINK_SPEED/8);
-            _delay_ms(BLINK_SPEED);
-            blink(1,5);
-            _delay_ms(BLINK_SPEED*3/2);
+            _delay_4ms(BLINK_SPEED);
+            blink(1,5/4);
+            _delay_4ms(254);
             blink(result & 0b00011111, BLINK_SPEED/8);
 #else  // ifdef BATTCHECK_VpT
             // blink zero to five times to show voltage
@@ -894,7 +890,7 @@ int main(void)
             ADC_on();  // return to voltage mode
 #endif
             // Otherwise, just sleep.
-            _delay_ms(500);
+            _delay_4ms(125);
 
             // If we got this far, the user has stopped fast-pressing.
             // So, don't enter config mode.
