@@ -146,7 +146,8 @@
 
 // output to use for blinks on battery check mode (primary PWM level, alt PWM level)
 // Use 20,0 for a single-channel driver or 0,40 for a two-channel driver
-#define BLINK_BRIGHTNESS 0,40
+#define BLINK_BRIGHTNESS  (RAMP_SIZE/5)
+#define BEACON_BRIGHTNESS (RAMP_SIZE/4)
 
 // States (in modeState):
 #define RAMPING_ST      (0)
@@ -194,7 +195,7 @@
 
 
 //---------------------------------------------------------------------------------------
-#define RAMP_SIZE  150
+#define RAMP_SIZE  sizeof(ramp_7135)
 #define TURBO_DROP_MIN 115
 // min level in ramping the turbo timeout will engage,
 //    level 115 = 106 PWM, this is ~43%
@@ -342,15 +343,42 @@ byte config1;   // keep global, not on stack local
 
 
 /**************************************************************************************
+* SetOutput - sets the PWM output value directly
+* =========
+**************************************************************************************/
+// TODO: add support for 1-channel and 3-channel drivers
+void SetOutput(byte pwm1, byte pwm2)
+{
+    PWM_LVL = pwm1;
+    ALT_PWM_LVL = pwm2;
+}
+
+/**************************************************************************************
+* SetLevel - uses the ramping levels to set the PWM output
+* ========      (0 is OFF, 1..RAMP_SIZE is the ramping index level)
+**************************************************************************************/
+void SetLevel(byte level)
+{
+    if (level == 0)
+    {
+        SetOutput(0,0);
+    }
+    else
+    {
+        level -= 1; // make it 0 based
+        SetOutput(pgm_read_byte(ramp_FET  + level), pgm_read_byte(ramp_7135 + level));
+    }
+}
+
+/**************************************************************************************
 * Strobe
 * ======
 **************************************************************************************/
 void Strobe(byte ontime, byte offtime)
 {
-    // FIXME: don't access PWM_LVL directly
-    PWM_LVL = 255;
+    SetLevel(MAX_RAMP_LEVEL);
     _delay_ms(ontime);
-    PWM_LVL = 0;
+    SetLevel(0);
     _delay_ms(offtime);
 }
 
@@ -395,34 +423,6 @@ inline byte BattCheck()
 #endif
 
 /**************************************************************************************
-* SetOutput - sets the PWM output value directly
-* =========
-**************************************************************************************/
-// TODO: add support for 1-channel and 3-channel drivers
-void SetOutput(byte pwm1, byte pwm2)
-{
-    PWM_LVL = pwm1;
-    ALT_PWM_LVL = pwm2;
-}
-
-/**************************************************************************************
-* SetLevel - uses the ramping levels to set the PWM output
-* ========      (0 is OFF, 1..RAMP_SIZE is the ramping index level)
-**************************************************************************************/
-void SetLevel(byte level)
-{
-    if (level == 0)
-    {
-        SetOutput(0,0);
-    }
-    else
-    {
-        level -= 1; // make it 0 based
-        SetOutput(pgm_read_byte(ramp_FET  + level), pgm_read_byte(ramp_7135 + level));
-    }
-}
-
-/**************************************************************************************
 * Blink - do a # of blinks with a speed in msecs
 * =====
 **************************************************************************************/
@@ -430,12 +430,10 @@ void Blink(byte val, word speed)
 {
     for (; val>0; val--)
     {
-        // FIXME: set BLINK_BRIGHTNESS by ramp index, not PWM levels
-        SetOutput(BLINK_BRIGHTNESS);
+        SetLevel(BLINK_BRIGHTNESS);
         _delay_ms(speed);
 
-        // FIXME: use SetLevel() instead
-        SetOutput(0,0);
+        SetLevel(0);
         _delay_ms(speed<<2);    // 4X delay OFF
     }
 }
@@ -451,10 +449,9 @@ byte DigitBlink(byte val, byte blinkModeState)
 
     for (; val>0; val--)
     {
-        // FIXME: use SetLevel() instead
-        SetOutput(BLINK_BRIGHTNESS);
+        SetLevel(BLINK_BRIGHTNESS);
         _delay_ms(250);
-        SetOutput(0,0);
+        SetLevel(0);
 
         if (modeState != blinkModeState)    // if the mode changed, bail out
             return 0;
@@ -497,12 +494,10 @@ void BlinkLVP(byte BlinkCnt)
     // Flash 'n' times before lowering
     while (BlinkCnt-- > 0)
     {
-        // FIXME: use SetLevel() instead
-        SetOutput(0,0);
+        SetLevel(0);
         _delay_ms(nMsecs);
         SetLevel(outLevel);
-        // FIXME: use "<<" instead of "*"
-        _delay_ms(nMsecs*2);
+        _delay_ms(nMsecs<<1);
     }
 }
 
@@ -512,10 +507,9 @@ void BlinkLVP(byte BlinkCnt)
 **************************************************************************************/
 inline static void ClickBlink()
 {
-    // FIXME: use SetLevel() instead
-    SetOutput(0,20);
+    SetLevel(RAMP_SIZE/8);
     _delay_ms(100);
-    SetOutput(0,0);
+    SetLevel(0);
 }
 
 
@@ -584,8 +578,7 @@ EMPTY_INTERRUPT(PCINT0_vect);
 * WDT_on - Setup watchdog timer to only interrupt, not reset, every 16ms
 * ======
 **************************************************************************************/
-// FIXME: smaller without inline?
-inline void WDT_on()
+void WDT_on()
 {
     // Setup watchdog timer to only interrupt, not reset, every 16ms.
     cli();                          // Disable interrupts
@@ -599,8 +592,7 @@ inline void WDT_on()
 * WDT_off - turn off the WatchDog timer
 * =======
 **************************************************************************************/
-// FIXME: smaller without inline?
-inline void WDT_off()
+void WDT_off()
 {
     wdt_reset();                    // Reset the WDT
     MCUSR &= ~(1<<WDRF);            // Clear Watchdog reset flag
@@ -612,8 +604,7 @@ inline void WDT_off()
 * ADC_on - Turn the AtoD Converter ON
 * ======
 **************************************************************************************/
-// FIXME: smaller without inline?
-inline void ADC_on()
+void ADC_on()
 {
     // Turn ADC on (13 CLKs required for conversion, go max 200 kHz for 10-bit resolution)
     ADMUX  = ADCMUX_VCC;                         // 1.1 V reference, not left-adjust, Vbg
@@ -625,7 +616,6 @@ inline void ADC_on()
 * ADC_off - Turn the AtoD Converter OFF
 * =======
 **************************************************************************************/
-// FIXME: smaller without inline?
 inline void ADC_off()
 {
     ADCSRA &= ~(1<<ADEN); //ADC off
@@ -635,7 +625,6 @@ inline void ADC_off()
 * SleepUntilSwitchPress - only called with the light OFF
 * =====================
 **************************************************************************************/
-// FIXME: smaller without inline?
 inline void SleepUntilSwitchPress()
 {
     // This routine takes up a lot of program memory :(
@@ -791,10 +780,7 @@ ISR(ADC_vect)
         temperature = adcin;                    // prime on first read
     }
 
-    // FIXME: why does this not use the smaller version?
-    //adc_step = (adc_step +1) & 0x3;             // increment but keep in range of 0..3
-    if (++adc_step > 3)                         // increment but keep in range of 0..3
-        adc_step = 0;
+    adc_step = (adc_step +1) & 0x03;             // increment but keep in range of 0..3
 
     if (adc_step < 2)                           // steps 0, 1 read voltage, steps 2, 3 read temperature
         ADMUX  = ADCMUX_VCC;
@@ -1309,8 +1295,7 @@ int main(void)
                 case RAMPING_ST:
                     if (savedPrevMode == TACTICAL_ST)
                     {
-                        // FIXME: use SetLevel() instead
-                        SetOutput(0,0);
+                        SetLevel(0);
                         _delay_ms(250);
                         Blink(2, 60);
 
@@ -1319,8 +1304,7 @@ int main(void)
                     }
                     else if (savedPrevMode == LOCKOUT_ST)
                     {
-                        // FIXME: use SetLevel() instead
-                        SetOutput(0,0);
+                        SetLevel(0);
                         _delay_ms(250);
                         Blink(2, 60);
                     }
@@ -1329,8 +1313,7 @@ int main(void)
                 case TACTICAL_ST:  // Entering Tactical
                     if (savedPrevMode == RAMPING_ST)
                     {
-                        // FIXME: use SetLevel() instead
-                        SetOutput(0,0);
+                        SetLevel(0);
                         _delay_ms(250);
                         Blink(4, 60);
 
@@ -1341,16 +1324,14 @@ int main(void)
                     //        (this code should probably be removed)
                     else if (savedPrevMode == LOCKOUT_ST)
                     {
-                        // FIXME: use SetLevel() instead
-                        SetOutput(0,0);
+                        SetLevel(0);
                         _delay_ms(250);
                         Blink(2, 60);
                     }
                     break;
 
                 case LOCKOUT_ST:       // Entering Lock Out
-                    // FIXME: use SetLevel() instead
-                    SetOutput(0,0);
+                    SetLevel(0);
                     _delay_ms(250);
                     Blink(4, 60);
 
@@ -1361,10 +1342,9 @@ int main(void)
                     _delay_ms(300); // pause a little initially
                     while (modeState == BEACON_ST)  // Beacon mode
                     {
-                        // FIXME: use SetLevel() instead
-                        SetOutput(0, 77);   // ~30% power
-                        _delay_ms(500);     // for 1/2 second
-                        SetOutput(0, 0);
+                        SetLevel(BEACON_BRIGHTNESS);   // ~30% power
+                        _delay_ms(500);                // for 1/2 second
+                        SetLevel(0);
 
                         for (int i=0; i < 20; i++)  // 2 secs delay
                         {
@@ -1386,8 +1366,7 @@ int main(void)
                         }
                         else
                             tempAdjEnable = 0;
-                        // FIXME: use SetLevel() instead
-                        SetOutput(0,0);     // blink ON/OFF
+                        SetLevel(0);     // blink ON/OFF
                         _delay_ms(250);
                         Blink(blinkCnt, 60);
 
