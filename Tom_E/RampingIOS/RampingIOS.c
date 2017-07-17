@@ -597,9 +597,9 @@ inline void WDT_off()
 **************************************************************************************/
 inline void ADC_on()
 {
-	// Turn ADC on (13 CLKs required for conversion, go max 200 kHz for 10-bit resolution)
-	ADMUX  = ADCMUX_VCC;						// 1.1 V reference, not left-adjust, Vbg
-	DIDR0 |= (1 << ADC1D);					// disable digital input on ADC1 pin to reduce power consumption
+	// Turn ADC on (13 CLKs required for conversion, go max 200 kHz for 10-bit resolution)
+	ADMUX  = ADCMUX_VCC;						// 1.1 V reference, not left-adjust, Vbg
+	DIDR0 |= (1 << ADC1D);					// disable digital input on ADC1 pin to reduce power consumption
 	ADCSRA = (1 << ADEN ) | (1 << ADSC ) | 0x07;// enable, start, ADC clock prescale = 128 for 62.5 kHz
 }
 
