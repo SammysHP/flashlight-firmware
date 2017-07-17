@@ -103,11 +103,11 @@
 //   -8   For the Manker U11 - at -11, reads 18C at 71F room temp (22C)
 //   -2   For the Lumintop SD26 - at -2, reading a solid 19C-20C (66.2F-68F for 67F room temp)
 
-#define TEMP_CRITICAL (50)      // Temperature in C to step the light down (50C=122F, 55C=131F
+#define TEMP_CRITICAL (40)      // Temperature in C to step the light down (50C=122F, 55C=131F
 // use 50C for smaller size hosts, or a more conservative level (SD26, U11, etc.)
 // use 55C for larger size hosts, maybe C8 and above, or for a more aggressive setting
 
-#define TEMP_ADJ_PERIOD 2812    // Over Temp adjustment frequency: 45 secs (in 16 msec ticks)
+#define TEMP_ADJ_PERIOD 625     // Over Temp adjustment frequency: 10 secs (in 16 msec ticks)
 //-----------------------------
 
 //#define USING_3807135_BANK    // (default OFF) sets up ramping for 380 mA 7135's instead of a FET
@@ -268,7 +268,8 @@ PROGMEM const byte ramp_FET[]  = {
 //---------------------------------------------------------------------------------------
 
 // Turbo timeout values, 16 msecs each: 30secs, 60 secs, 90 secs, 120 secs, 3 mins, 5 mins, 10 mins
-PROGMEM const word turboTimeOutVals[] = {0, 1875, 3750, 5625, 7500, 11250, 18750, 37500};
+// unused
+//PROGMEM const word turboTimeOutVals[] = {0, 1875, 3750, 5625, 7500, 11250, 18750, 37500};
 
 #ifdef VOLT_MON_PIN7
 // Map the voltage level to the # of blinks, ex: 3.7V = 3, then 7 blinks
@@ -288,7 +289,8 @@ PROGMEM const uint8_t voltage_blinks[] = {
 //----------------------------------------------------------------
 byte tacticalSet = 0;       // 1: system is in Tactical Mode
 byte tempAdjEnable = 1;     // 1: enable active temperature adjustments, 0: disable
-byte turboTimeoutMode = 0;  // 0=disabled, 1=30s,2=60s,3=90s, 4=120s, 5=3min,6=5min,7=10min (2 mins is good for production)
+// unused
+//byte turboTimeoutMode = 0;  // 0=disabled, 1=30s,2=60s,3=90s, 4=120s, 5=3min,6=5min,7=10min (2 mins is good for production)
 
 //----------------------------------------------------------------
 // Global state options
@@ -316,7 +318,7 @@ word wPressDuration = 0;
 volatile byte fastClicks = 0;       // fast click counts for dbl-click, triple-click, etc.
 
 volatile word wIdleTicks = 0;
-word wTurboTickLimit = 0;
+//word wTurboTickLimit = 0;  // unused
 
 volatile byte LowBattSignal = 0;    // a low battery has been detected - trigger/signal it
 
@@ -740,6 +742,10 @@ void SaveConfig()
 ****************************************************************************************/
 ISR(ADC_vect)
 {
+    // (probably 4 values, since this happens 4X per second)
+    #define NUM_TEMP_VALUES 4
+    static int16_t temperature_values[NUM_TEMP_VALUES];  // for lowpass filter
+
     // Read in the ADC 10 bit value (0..1023)
     int16_t adcin = ADC;
 
@@ -747,6 +753,7 @@ ISR(ADC_vect)
     if (adc_step == 1)                          // ignore first ADC value from step 0
     {
         // Read cell voltage, applying the
+        // FIXME: can we maybe do this without dividing?
         adcin = (11264 + adcin/2)/adcin + D1;   // in volts * 10: 10 * 1.1 * 1024 / ADC + D1, rounded
         if (voltageTenths > 0)
         {
@@ -765,19 +772,33 @@ ISR(ADC_vect)
         //----------------------------------------------------------------------------------
         // Read the MCU temperature, applying a calibration offset value
         //----------------------------------------------------------------------------------
+        // FIXME: adjust temperature values to fit in 0-255 range
+        //        (should be able to cover about -40 C to 100 C)
         adcin = adcin - 275 + TEMP_CAL_OFFSET;  // 300 = 25 degC
 
-        // FIXME: remove this lowpass filter, average last few values instead
-        // (probably 4 values, since this happens 4X per second)
+        // average the last few values to reduce noise
+        // (noise will be amplified by predictive thermal algorithm, so noise is bad)
         if (temperature > 0)
         {
-            if (temperature < adcin)            // crude low pass filter
-            ++temperature;
-            if (temperature > adcin)
-            --temperature;
+            uint8_t i;
+            uint16_t total=0;
+
+            // rotate array
+            for(i=0; i<NUM_TEMP_VALUES-1; i++) {
+                temperature_values[i] = temperature_values[i+1];
+                total += temperature_values[i];
+            }
+            temperature_values[i] = adcin;
+            total += adcin;
+
+            temperature = total >> 2;
         }
-        else
-        temperature = adcin;                    // prime on first read
+        else {  // prime on first read
+            uint8_t i;
+            for(i=0; i<NUM_TEMP_VALUES; i++)
+                temperature_values[i] = adcin;
+            temperature = adcin;
+        }
     }
 
     adc_step = (adc_step +1) & 0x03;             // increment but keep in range of 0..3
@@ -1255,7 +1276,11 @@ int main(void)
     // Load config settings: tactical mode and temperature regulation
     LoadConfig();
 
-    wTurboTickLimit = pgm_read_word(turboTimeOutVals+turboTimeoutMode);
+    //wTurboTickLimit = pgm_read_word(turboTimeOutVals+turboTimeoutMode);  // unused
+
+    #define THERM_HISTORY_SIZE 4
+    //uint16_t temperatures[THERM_HISTORY_SIZE];
+    //uint8_t first_temp_reading = 1;
 
 
     #ifdef STARTUP_LIGHT_ON
@@ -1442,13 +1467,22 @@ int main(void)
         // Temperature monitoring - step it down if too hot!
         //---------------------------------------------------------------------
         // FIXME: rewrite thermal regulation completely
+        /*
+        if (temperature > 0) {
+            if (first_temp_reading) {
+                uint8_t i;
+                for (i=0; i<THERM_HISTORY_SIZE; i++)
+                    temperatures[i] = temperature;
+            }
+        }
+        */
         if (tempAdjEnable && (temperature >= TEMP_CRITICAL) && (wTempTicks == 0))
         {
             if (outLevel > MAX_RAMP_LEVEL/16)
             {
                 wTempTicks = TEMP_ADJ_PERIOD;
 
-                outLevel = outLevel - outLevel/6;   // reduce by 16.7%
+                outLevel = outLevel - (outLevel>>3);   // reduce by 12.5% of ramp
                 SetLevel(outLevel);
             }
         } // temp monitoring
