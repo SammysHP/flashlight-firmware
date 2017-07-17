@@ -97,17 +97,19 @@
 
 // Temperature monitoring setup
 //-----------------------------
-// Temperature Calibration Offset -
-#define TEMP_CAL_OFFSET (-12)       // this is about right on the DEL DDm-L4 board in the UranusFire C818 light
+// Temperature Calibration Offset - tiny85 chips vary per-chip
+#define TEMP_CAL_OFFSET (0)     // err on the safe side for factory production purposes
+//   -12  is about right on the DEL DDm-L4 board in the UranusFire C818 light
 //   -11  On the TA22 board in SupFire M2-Z, it's bout 11-12C too high,reads 35C at room temp, 23C=73.4F
 //   -8   For the Manker U11 - at -11, reads 18C at 71F room temp (22C)
 //   -2   For the Lumintop SD26 - at -2, reading a solid 19C-20C (66.2F-68F for 67F room temp)
 
-#define TEMP_CRITICAL (40)      // Temperature in C to step the light down (50C=122F, 55C=131F
+#define TEMP_CRITICAL (40)      // Temperature in C to step the light down
+// (40C=104F, 45C=113F, 50C=122F, 55C=131F, 60C=140F)
 // use 50C for smaller size hosts, or a more conservative level (SD26, U11, etc.)
 // use 55C for larger size hosts, maybe C8 and above, or for a more aggressive setting
 
-#define TEMP_ADJ_PERIOD 625     // Over Temp adjustment frequency: 10 secs (in 16 msec ticks)
+#define TEMP_ADJ_PERIOD 32     // Thermal regulation frequency: 0.5 sec(s) (in 16 msec ticks)
 //-----------------------------
 
 //#define USING_3807135_BANK    // (default OFF) sets up ramping for 380 mA 7135's instead of a FET
@@ -300,11 +302,12 @@ byte tempAdjEnable = 1;     // 1: enable active temperature adjustments, 0: disa
 #define MAX_RAMP_LEVEL (RAMP_SIZE)
 
 volatile byte rampingLevel = 0;     // 0=OFF, 1..MAX_RAMP_LEVEL is the ramping table index, 255=moon mode
+volatile byte TargetLevel = 0;      // what the user requested (may be higher than actual level, due to thermal regulation)
+byte ActualLevel;                   // current brightness (may differ from rampingLevel or TargetLevel)
 byte rampState = 0;                 // 0=OFF, 1=in lowest mode (moon) delay, 2=ramping Up, 3=Ramping Down, 4=ramping completed (Up or Dn)
 byte rampLastDirState = 0;          // last ramping state's direction: 2=up, 3=down
-byte  dontToggleDir = 0;            // flag to not allow the ramping direction to switch//toggle
+byte dontToggleDir = 0;             // flag to not allow the ramping direction to switch//toggle
 byte savedLevel = 0;                // mode memory for ramping (copy of rampingLevel)
-byte outLevel;                      // current set rampingLevel (see rampinglevel above)
 //volatile byte byDelayRamping = 0;   // when the ramping needs to be temporarily disabled
 byte rampPauseCntDn;                // count down timer for ramping support
 
@@ -318,7 +321,6 @@ word wPressDuration = 0;
 volatile byte fastClicks = 0;       // fast click counts for dbl-click, triple-click, etc.
 
 volatile word wIdleTicks = 0;
-//word wTurboTickLimit = 0;  // unused
 
 volatile byte LowBattSignal = 0;    // a low battery has been detected - trigger/signal it
 
@@ -347,6 +349,7 @@ byte config1;   // keep global, not on stack local
 /**************************************************************************************
 * SetOutput - sets the PWM output value directly
 * =========
+* Don't use this directly; use SetLevel or SetActualLevel instead.
 **************************************************************************************/
 // TODO: add support for 1-channel and 3-channel drivers
 void SetOutput(byte pwm1, byte pwm2)
@@ -356,20 +359,28 @@ void SetOutput(byte pwm1, byte pwm2)
 }
 
 /**************************************************************************************
-* SetLevel - uses the ramping levels to set the PWM output
+* SetActualLevel - uses the ramping levels to set the PWM output
 * ========      (0 is OFF, 1..RAMP_SIZE is the ramping index level)
 **************************************************************************************/
-void SetLevel(byte level)
+void SetActualLevel(byte level)
 {
+    ActualLevel = level;
     if (level == 0)
     {
         SetOutput(0,0);
     }
     else
     {
-        level -= 1; // make it 0 based
+        level -= 1;  // make it 0 based
         SetOutput(pgm_read_byte(ramp_FET  + level), pgm_read_byte(ramp_7135 + level));
     }
+}
+
+// Use this one if you also want to adjust the maximum brightness it'll step up to when cold.
+void SetLevel(byte level)
+{
+    TargetLevel = level;
+    SetActualLevel(level);
 }
 
 /**************************************************************************************
@@ -487,7 +498,7 @@ void BlinkOutNumber(byte num, byte blinkModeState)
 * ========
 *  Supports both ramping and mode set modes.
 **************************************************************************************/
-void BlinkLVP(byte BlinkCnt)
+void BlinkLVP(byte BlinkCnt, byte level)
 {
     int nMsecs = 200;
     if (BlinkCnt > 5)
@@ -498,22 +509,10 @@ void BlinkLVP(byte BlinkCnt)
     {
         SetLevel(0);
         _delay_ms(nMsecs);
-        SetLevel(outLevel);
+        SetLevel(level);
         _delay_ms(nMsecs<<1);
     }
 }
-
-/**************************************************************************************
-* ClickBlink
-* ==========
-**************************************************************************************/
-inline static void ClickBlink()
-{
-    SetLevel(RAMP_SIZE/8);
-    _delay_ms(100);
-    SetLevel(0);
-}
-
 
 /**************************************************************************************
 * IsPressed - debounce the switch release, not the switch press
@@ -791,7 +790,11 @@ ISR(ADC_vect)
             temperature_values[i] = adcin;
             total += adcin;
 
-            temperature = total >> 2;
+            // Original method, divide back to original range:
+            //temperature = total >> 2;
+            // More precise method: use noise as extra precision
+            // (values are now basically fixed-point, signed 13.2)
+            temperature = total;
         }
         else {  // prime on first read
             uint8_t i;
@@ -868,8 +871,8 @@ ISR(WDT_vect)
         //        (goes to battcheck mode, then next click goes back to tactical mode)
         else if ((modeState == TACTICAL_ST) && (wPressDuration == 1) && (fastClicks < 2))
         {
-            outLevel = rampingLevel = MAX_RAMP_LEVEL;
-            SetLevel(outLevel);
+            rampingLevel = MAX_RAMP_LEVEL;
+            SetLevel(rampingLevel);
         }
 
         // long-press for ramping
@@ -885,8 +888,8 @@ ISR(WDT_vect)
                             rampPauseCntDn = RAMP_MOON_PAUSE;   // delay a little on moon
 
                             // set this to the 1st level
-                            outLevel = rampingLevel = 1;
-                            SetLevel(outLevel);
+                            rampingLevel = 1;
+                            SetLevel(1);
 
                             dontToggleDir = 0;                  // clear it in case it got set from a timeout
                         }
@@ -895,25 +898,24 @@ ISR(WDT_vect)
                             #ifdef RAMPING_REVERSE
                                 if (dontToggleDir)
                                 {
-                                    rampState = rampLastDirState;           // keep it in the same
-                                    dontToggleDir = 0;                      // clear it so it can't happen again til another timeout
+                                    rampState = rampLastDirState;      // keep it in the same
+                                    dontToggleDir = 0;                 // clear it so it can't happen again til another timeout
                                 }
                                 else
-                                    rampState = 5 - rampLastDirState;   // 2->3, or 3->2
+                                    rampState = 5 - rampLastDirState;  // 2->3, or 3->2
                             #else
                                 rampState = 2;  // lo->hi
                             #endif
                             if (rampingLevel == MAX_RAMP_LEVEL)
                             {
                                 rampState = 3;  // hi->lo
-                                outLevel = MAX_RAMP_LEVEL;
-                                SetLevel(outLevel);
+                                SetLevel(MAX_RAMP_LEVEL);
                             }
-                            else if (rampingLevel == 255)   // If stopped in ramping moon mode, start from lowest
+                            else if (rampingLevel == 255)  // If stopped in ramping moon mode, start from lowest
                             {
                                 rampState = 2; // lo->hi
-                                outLevel = rampingLevel = 1;
-                                SetLevel(outLevel);
+                                rampingLevel = 1;
+                                SetLevel(rampingLevel);
                             }
                             else if (rampingLevel == 1)
                                 rampState = 2;  // lo->hi
@@ -931,32 +933,30 @@ ISR(WDT_vect)
                         rampLastDirState = 2;
                         if (rampingLevel < MAX_RAMP_LEVEL)
                         {
-                            outLevel = ++rampingLevel;
-                            savedLevel = rampingLevel;
+                            savedLevel = ++rampingLevel;
                         }
                         else
                         {
                             rampState = 4;
-                            SetLevel(0);        // Do a quick blink
+                            SetActualLevel(0);  // Do a quick blink
                             _delay_ms(7);
                         }
-                        SetLevel(outLevel);
+                        SetLevel(rampingLevel);
                         break;
 
                     case 3:        // hi->lo
                         rampLastDirState = 3;
                         if (rampingLevel > 1)
                         {
-                            outLevel = --rampingLevel;
-                            savedLevel = rampingLevel;
+                            savedLevel = --rampingLevel;
                         }
                         else
                         {
                             rampState = 4;
-                            SetLevel(0);        // Do a quick blink
+                            SetActualLevel(0);  // Do a quick blink
                             _delay_ms(7);
                         }
-                        SetLevel(outLevel);
+                        SetLevel(rampingLevel);
                         break;
 
                     case 4:        // ramping ended - 0 or max reached
@@ -991,8 +991,8 @@ ISR(WDT_vect)
             // Momentary / tactical mode
             if (modeState == TACTICAL_ST)
             {
-                outLevel = rampingLevel = 0;  // turn off output as soon as the user lets the switch go
-                SetLevel(outLevel);
+                rampingLevel = 0;  // turn off output as soon as the user lets the switch go
+                SetLevel(0);
             }
 
             // normal short click processing
@@ -1014,11 +1014,11 @@ ISR(WDT_vect)
                             // FIXME: go to memorized level instead
                             //        (or at least to a higher level of some sort)
                             if (rampingLevel == 0)
-                                outLevel = rampingLevel = 1;
+                                rampingLevel = 1;
                             // if we were on, turn off
                             else
-                                outLevel = rampingLevel = 0;
-                            SetLevel(outLevel);
+                                rampingLevel = 0;
+                            SetLevel(rampingLevel);
 
                             //byDelayRamping = 1;       // don't act on ramping button presses
                         }
@@ -1027,8 +1027,8 @@ ISR(WDT_vect)
                         else                            // --> 2+ clicks: turn off the output
                         {
                             // prevent flashes while entering long click sequences
-                            outLevel = rampingLevel = 0;
-                            SetLevel(outLevel);
+                            rampingLevel = 0;
+                            SetLevel(rampingLevel);
                         }
                         break;
 
@@ -1047,8 +1047,8 @@ ISR(WDT_vect)
                             byModeForMultiClicks = modeState;   // save current mode
 
                             modeState = tacticalSet;            // set to Ramping or Tactical
-                            outLevel = rampingLevel = 0;        // 08/28/16 TE: zero out outLevel here as well (used in LVP)
-                            SetLevel(outLevel);
+                            rampingLevel = 0;
+                            SetLevel(rampingLevel);
                             //byDelayRamping = 1;                 // don't act on ramping button presses
                         }
                         break;
@@ -1101,8 +1101,8 @@ ISR(WDT_vect)
                             // --> ramp direct to MAX/turbo
                             else if (modeState == RAMPING_ST)
                             {
-                                outLevel = rampingLevel = MAX_RAMP_LEVEL;
-                                SetLevel(outLevel);
+                                rampingLevel = MAX_RAMP_LEVEL;
+                                SetLevel(MAX_RAMP_LEVEL);
                             }
                         }
 
@@ -1176,7 +1176,7 @@ ISR(WDT_vect)
                 #endif
                 {
                     byte atLowLimit;
-                    atLowLimit = ((outLevel == 1));
+                    atLowLimit = ((ActualLevel == 1));
 
                     // See if voltage is lower than what we were looking for
                     #ifdef VOLT_MON_PIN7
@@ -1276,16 +1276,19 @@ int main(void)
     // Load config settings: tactical mode and temperature regulation
     LoadConfig();
 
-    //wTurboTickLimit = pgm_read_word(turboTimeOutVals+turboTimeoutMode);  // unused
-
-    #define THERM_HISTORY_SIZE 4
-    //uint16_t temperatures[THERM_HISTORY_SIZE];
-    //uint8_t first_temp_reading = 1;
+    // Not really intended to be configurable;
+    // only #defined for convenience
+    #define THERM_HISTORY_SIZE 8
+    // this allows us to measure change over time,
+    // which allows predicting future state
+    uint16_t temperatures[THERM_HISTORY_SIZE];
+    // track whether array has been initialized yet
+    uint8_t first_temp_reading = 1;
 
 
     #ifdef STARTUP_LIGHT_ON
-    outLevel = rampingLevel = MAX_RAMP_LEVEL;
-    SetLevel(outLevel);
+    rampingLevel = MAX_RAMP_LEVEL;
+    SetLevel(MAX_RAMP_LEVEL);
     #elif defined STARTUP_2BLINKS
     Blink(2, 80);           // Blink twice upon power-up
     #else
@@ -1420,7 +1423,8 @@ int main(void)
                     while (modeState == TEMP_READ_ST)  // Temperature Check
                     {
                         // blink out temperature in 2 digits
-                        BlinkOutNumber(temperature, TEMP_READ_ST);
+                        // (divide by 4 to get an integer because the value is 13.2 fixed-point)
+                        BlinkOutNumber(temperature>>2, TEMP_READ_ST);
                     }
                     break;
             } // switch
@@ -1434,26 +1438,26 @@ int main(void)
         #ifdef USE_LVP
         if (LowBattSignal)
         {
-            if (outLevel > 0)
+            if (ActualLevel > 0)
             {
-                if (outLevel == 1)
+                if (ActualLevel == 1)
                 {
                     // Reached critical battery level
-                    outLevel = 7;   // bump it up a little for final shutoff blinks
-                    BlinkLVP(8);    // blink more and quicker (to get attention)
-                    outLevel = rampingLevel = 0;    // Shut it down
+                    BlinkLVP(8, 7);    // blink more, brighter, and quicker (to get attention)
+                    ActualLevel = rampingLevel = 0;    // Shut it down
                     rampState = 0;
                     // FIXME: actually shut off as far as possible
                     //        (need to test if this happens, then maybe fix it)
                 }
                 else
                 {
-                    // Drop the output level
-                    BlinkLVP(3);  // normal 3 blinks
-                    // FIXME: drop down in smaller steps
-                    outLevel = 1;
+                    // Drop the output level when voltage is low
+                    BlinkLVP(3, ActualLevel);  // 3 blinks as a warning
+                    // decrease by half current ramp level
+                    ActualLevel = (ActualLevel>>1);
+                    if (ActualLevel < 1) { ActualLevel = 1; }
                 }
-                SetLevel(outLevel);
+                SetLevel(ActualLevel);  // FIXME: soft ramp
             }
             LowBattSignal = 0;
         }
@@ -1466,26 +1470,90 @@ int main(void)
         //---------------------------------------------------------------------
         // Temperature monitoring - step it down if too hot!
         //---------------------------------------------------------------------
-        // FIXME: rewrite thermal regulation completely
-        /*
-        if (temperature > 0) {
-            if (first_temp_reading) {
+        // don't run unless config enabled and a measurement has completed
+        if (tempAdjEnable && (temperature > 0)) {
+
+            if (first_temp_reading) {  // initial setup
+                first_temp_reading = 0;
                 uint8_t i;
                 for (i=0; i<THERM_HISTORY_SIZE; i++)
                     temperatures[i] = temperature;
             }
-        }
-        */
-        if (tempAdjEnable && (temperature >= TEMP_CRITICAL) && (wTempTicks == 0))
-        {
-            if (outLevel > MAX_RAMP_LEVEL/16)
-            {
+
+            // should happen every half-second or so
+            if (wTempTicks == 0) {
+                // reset timer
                 wTempTicks = TEMP_ADJ_PERIOD;
 
-                outLevel = outLevel - (outLevel>>3);   // reduce by 12.5% of ramp
-                SetLevel(outLevel);
+                uint8_t i;
+                // only adjust if several readings in a row are outside desired range
+                static uint8_t overheat_count = 0;
+                static uint8_t underheat_count = 0;
+                int16_t projected;  // Fight the future!
+                int16_t diff;
+
+                // algorithm tweaking; not really intended to be modified
+                // how far ahead should we predict?
+                #define THERM_PREDICTION_STRENGTH 4
+                // how proportional should the adjustments be?
+                #define THERM_DIFF_ATTENUATION 4
+                // how low is the lowpass filter?
+                #define THERM_LOWPASS 6
+                // lowest ramp level; never go below this (sanity check)
+                #define THERM_FLOOR (MAX_RAMP_LEVEL/8)
+                // highest temperature allowed
+                // (convert configured value to 13.2 fixed-point)
+                #define THERM_CEIL (TEMP_CRITICAL<<2)
+                // acceptable temperature window size in C
+                #define THERM_WINDOW_SIZE 10
+
+                // rotate measurements and add a new one
+                for (i=0; i<THERM_HISTORY_SIZE-1; i++) {
+                    temperatures[i] = temperatures[i+1];
+                }
+                temperatures[THERM_HISTORY_SIZE-1] = temperature;
+
+                // guess what the temp will be several seconds in the future
+                diff = temperatures[THERM_HISTORY_SIZE-1] - temperatures[0];
+                projected = temperatures[THERM_HISTORY_SIZE-1] + (diff<<THERM_PREDICTION_STRENGTH);
+
+                // too hot, step down (maybe)
+                if (projected >= THERM_CEIL) {
+                    underheat_count = 0;  // we're definitely not too cold
+                    if (overheat_count > THERM_LOWPASS) {
+                        overheat_count = 0;
+
+                        // how far above the ceiling?
+                        int16_t exceed = (projected - THERM_CEIL) >> THERM_DIFF_ATTENUATION;
+                        if (exceed < 1) { exceed = 1; }
+                        uint8_t stepdown = ActualLevel - exceed;
+                        // never go under the floor; zombies in the cellar
+                        if (stepdown < THERM_FLOOR) {
+                            stepdown = THERM_FLOOR;
+                        }
+                        //if (ActualLevel > THERM_FLOOR) {
+                            SetActualLevel(stepdown);
+                        //}
+                    } else {
+                        overheat_count ++;
+                    }
+                } else {  // not too hot
+                    // too cold?  step back up?
+                    if (projected < (THERM_CEIL - (THERM_WINDOW_SIZE<<2))) {
+                        overheat_count = 0;  // we're definitely not too hot
+                        if (underheat_count > THERM_LOWPASS) {
+                            underheat_count = 0;
+                            // never go above the user's requested level
+                            if (ActualLevel < TargetLevel) {
+                                SetActualLevel(ActualLevel + 1);   // step up slowly
+                            }
+                        } else {
+                            underheat_count ++;
+                        }
+                    }
+                }
             }
-        } // temp monitoring
+        }  // thermal regulation
 
         //---------------------------------------------------------------------
         // Be sure switch is not pressed and light is OFF for at least 5 secs
@@ -1495,7 +1563,7 @@ int main(void)
         if (LowBattState)
             wWaitTicks = 22500;  // 6 minutes
 
-        if ((outLevel == 0) && !IsPressed() && (wIdleTicks > wWaitTicks))
+        if ((ActualLevel == 0) && !IsPressed() && (wIdleTicks > wWaitTicks))
         {
             wIdleTicks = 0;
             _delay_ms(1); // Need this here, maybe instructions for PWM output not getting executed before shutdown?
