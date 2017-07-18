@@ -14,7 +14,13 @@
 // Change History
 // --------------
 // Vers 1.1.0 2017-07-XX:
+//   - added full thermal regulation
+//   - added mode memory on click-from-off
+//   - made LVP drop down in smaller steps
+//   - calibrated moon to ~0.3 lm on Emisar D4-219c hardware
+//   - some code refactoring
 //   - whitespace cleanup
+//
 // Vers 1.0.1 2017-05-03:
 //   - changed ramping table to start at 7135 PWM value of 10 rather than 4 (4 was too low for the IOS 7135's)
 //   - delay a double-click action in ramping so that all multi-clicks don't flash MAX brightness
@@ -22,7 +28,7 @@
 //   - bug fixes in tactical: 4 extra blinks happened when powering up in tactical mode -- removed that
 //   - bug fixes in tactical: from a lockout, ramping got resotred when tactical should have
 //   - for the 10 clicks and 11th hold for thermal step-down, ensure no extra blinks
-
+//
 // Vers 1.0 2017-03-21/27:
 //   - original release
 //-------------------------------------------------------------------------------------
@@ -104,7 +110,7 @@
 //   -8   For the Manker U11 - at -11, reads 18C at 71F room temp (22C)
 //   -2   For the Lumintop SD26 - at -2, reading a solid 19C-20C (66.2F-68F for 67F room temp)
 
-#define TEMP_CRITICAL (40)      // Temperature in C to step the light down
+#define TEMP_CRITICAL (45)      // Temperature in C to step the light down
 // (40C=104F, 45C=113F, 50C=122F, 55C=131F, 60C=140F)
 // use 50C for smaller size hosts, or a more conservative level (SD26, U11, etc.)
 // use 55C for larger size hosts, maybe C8 and above, or for a more aggressive setting
@@ -1481,7 +1487,8 @@ int main(void)
         // Temperature monitoring - step it down if too hot!
         //---------------------------------------------------------------------
         // don't run unless config enabled and a measurement has completed
-        if (tempAdjEnable && (temperature > 0)) {
+        // don't run unless the light is actually on!
+        if ((ActualLevel > 0) && tempAdjEnable && (temperature > 0)) {
 
             if (first_temp_reading) {  // initial setup
                 first_temp_reading = 0;
@@ -1508,14 +1515,14 @@ int main(void)
                 // how proportional should the adjustments be?
                 #define THERM_DIFF_ATTENUATION 4
                 // how low is the lowpass filter?
-                #define THERM_LOWPASS 6
+                #define THERM_LOWPASS 8
                 // lowest ramp level; never go below this (sanity check)
                 #define THERM_FLOOR (MAX_RAMP_LEVEL/8)
                 // highest temperature allowed
                 // (convert configured value to 13.2 fixed-point)
                 #define THERM_CEIL (TEMP_CRITICAL<<2)
                 // acceptable temperature window size in C
-                #define THERM_WINDOW_SIZE 10
+                #define THERM_WINDOW_SIZE 8
 
                 // rotate measurements and add a new one
                 for (i=0; i<THERM_HISTORY_SIZE-1; i++) {
@@ -1548,10 +1555,10 @@ int main(void)
                         overheat_count ++;
                     }
                 } else {  // not too hot
+                    overheat_count = 0;  // we're definitely not too hot
                     // too cold?  step back up?
                     if (projected < (THERM_CEIL - (THERM_WINDOW_SIZE<<2))) {
-                        overheat_count = 0;  // we're definitely not too hot
-                        if (underheat_count > THERM_LOWPASS) {
+                        if (underheat_count > (THERM_LOWPASS/2)) {
                             underheat_count = 0;
                             // never go above the user's requested level
                             if (ActualLevel < TargetLevel) {
