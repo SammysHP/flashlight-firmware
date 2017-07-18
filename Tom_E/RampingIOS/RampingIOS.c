@@ -215,11 +215,18 @@
 //----------------------------------------------------
 
 PROGMEM const byte ramp_7135[] = {
-    10,10,10,11,11,11,12,12,            13,13,14,15,15,16,17,18,
-    19,21,22,23,25,27,28,30,            32,34,37,39,42,44,47,50,
-    53,56,60,63,67,71,75,79,            84,88,93,98,103,108,114,120,
-    126,132,138,145,152,159,166,174,    182,190,198,206,215,224,234,243,
-    253,255,255,255,255,255,255,255,    255,255,255,255,255,255,255,255,
+    // original ramp, 1.7 lm to 133 lm
+    //10,10,10,11,11,11,12,12,            13,13,14,15,15,16,17,18,
+    //19,21,22,23,25,27,28,30,            32,34,37,39,42,44,47,50,
+    //53,56,60,63,67,71,75,79,            84,88,93,98,103,108,114,120,
+    //126,132,138,145,152,159,166,174,    182,190,198,206,215,224,234,243,
+    //253,255,255,255,255,255,255,255,    255,255,255,255,255,255,255,255,
+    // lower lows (0.2-0.4 lm moon), exact 100% 7135 at level=65
+    4,4,5,5,5,6,6,7,                    8,8,9,10,11,12,13,14,
+    15,17,18,20,22,23,25,27,            30,32,34,37,40,42,45,48,
+    52,55,59,62,66,70,74,79,            83,88,93,98,104,109,115,121,
+    127,133,140,146,153,160,168,175,    183,191,200,208,217,226,236,245,
+    255,255,255,255,255,255,255,255,    255,255,255,255,255,255,255,255,
     255,255,255,255,255,255,255,255,    255,255,255,255,255,255,255,255,
     255,255,255,255,255,255,255,255,    255,255,255,255,255,255,255,255,
     255,255,255,255,255,255,255,255,    255,255,255,255,255,255,255,255,
@@ -304,6 +311,7 @@ byte tempAdjEnable = 1;     // 1: enable active temperature adjustments, 0: disa
 volatile byte rampingLevel = 0;     // 0=OFF, 1..MAX_RAMP_LEVEL is the ramping table index, 255=moon mode
 volatile byte TargetLevel = 0;      // what the user requested (may be higher than actual level, due to thermal regulation)
 byte ActualLevel;                   // current brightness (may differ from rampingLevel or TargetLevel)
+byte memorizedLevel = 26;           // mode memory (ish, not saved across battery changes)
 byte rampState = 0;                 // 0=OFF, 1=in lowest mode (moon) delay, 2=ramping Up, 3=Ramping Down, 4=ramping completed (Up or Dn)
 byte rampLastDirState = 0;          // last ramping state's direction: 2=up, 3=down
 byte dontToggleDir = 0;             // flag to not allow the ramping direction to switch//toggle
@@ -1013,11 +1021,13 @@ ISR(WDT_vect)
                             // if we were off, turn on at lowest level
                             // FIXME: go to memorized level instead
                             //        (or at least to a higher level of some sort)
-                            if (rampingLevel == 0)
-                                rampingLevel = 1;
+                            if (rampingLevel == 0) {
+                                rampingLevel = memorizedLevel;
                             // if we were on, turn off
-                            else
+                            } else {
+                                memorizedLevel = rampingLevel;
                                 rampingLevel = 0;
+                            }
                             SetLevel(rampingLevel);
 
                             //byDelayRamping = 1;       // don't act on ramping button presses
@@ -1443,7 +1453,7 @@ int main(void)
                 if (ActualLevel == 1)
                 {
                     // Reached critical battery level
-                    BlinkLVP(8, 7);    // blink more, brighter, and quicker (to get attention)
+                    BlinkLVP(8, RAMP_SIZE/6);    // blink more, brighter, and quicker (to get attention)
                     ActualLevel = rampingLevel = 0;    // Shut it down
                     rampState = 0;
                     // FIXME: actually shut off as far as possible
