@@ -317,7 +317,7 @@ byte tempAdjEnable = 1;     // 1: enable active temperature adjustments, 0: disa
 volatile byte rampingLevel = 0;     // 0=OFF, 1..MAX_RAMP_LEVEL is the ramping table index, 255=moon mode
 volatile byte TargetLevel = 0;      // what the user requested (may be higher than actual level, due to thermal regulation)
 byte ActualLevel;                   // current brightness (may differ from rampingLevel or TargetLevel)
-byte memorizedLevel = 26;           // mode memory (ish, not saved across battery changes)
+byte memorizedLevel = 65;           // mode memory (ish, not saved across battery changes)
 byte rampState = 0;                 // 0=OFF, 1=in lowest mode (moon) delay, 2=ramping Up, 3=Ramping Down, 4=ramping completed (Up or Dn)
 byte rampLastDirState = 0;          // last ramping state's direction: 2=up, 3=down
 byte dontToggleDir = 0;             // flag to not allow the ramping direction to switch//toggle
@@ -785,8 +785,9 @@ ISR(ADC_vect)
         //----------------------------------------------------------------------------------
         // Read the MCU temperature, applying a calibration offset value
         //----------------------------------------------------------------------------------
-        // FIXME: adjust temperature values to fit in 0-255 range
-        //        (should be able to cover about -40 C to 100 C)
+        // cancelled: adjust temperature values to fit in 0-255 range
+        //            (should be able to cover about -40 C to 100 C)
+        //            (cancelled because 13.2 fixed-point precision works better)
         adcin = adcin - 275 + TEMP_CAL_OFFSET;  // 300 = 25 degC
 
         // average the last few values to reduce noise
@@ -956,6 +957,7 @@ ISR(WDT_vect)
                             _delay_ms(7);
                         }
                         SetLevel(rampingLevel);
+                        dontToggleDir = 0;
                         break;
 
                     case 3:        // hi->lo
@@ -971,6 +973,7 @@ ISR(WDT_vect)
                             _delay_ms(7);
                         }
                         SetLevel(rampingLevel);
+                        dontToggleDir = 0;
                         break;
 
                     case 4:        // ramping ended - 0 or max reached
@@ -1024,11 +1027,17 @@ ISR(WDT_vect)
                         {
                             byModeForMultiClicks = modeState;       // save current mode
 
-                            // if we were off, turn on at lowest level
-                            // FIXME: go to memorized level instead
-                            //        (or at least to a higher level of some sort)
+                            // if we were off, turn on at memorized level
                             if (rampingLevel == 0) {
                                 rampingLevel = memorizedLevel;
+                                // also set up other ramp vars to make sure ramping will work
+                                rampState = 2;  // lo->hi
+                                rampLastDirState = 2;
+                                if (rampingLevel == MAX_RAMP_LEVEL) {
+                                    rampState = 3;  // hi->lo
+                                    rampLastDirState = 3;
+                                }
+                                dontToggleDir = 0;
                             // if we were on, turn off
                             } else {
                                 memorizedLevel = rampingLevel;
@@ -1386,13 +1395,13 @@ int main(void)
                     _delay_ms(300); // pause a little initially
                     while (modeState == BEACON_ST)  // Beacon mode
                     {
-                        SetLevel(BEACON_BRIGHTNESS);   // ~30% power
-                        _delay_ms(500);                // for 1/2 second
+                        SetLevel(memorizedLevel);   // allow user to set level
+                        _delay_ms(300);             // for 1/4 second
                         SetLevel(0);
 
-                        for (int i=0; i < 20; i++)  // 2 secs delay
+                        for (int i=0; i < 22; i++)  // 2.2 secs delay
                         {
-                            // FIXME: add function for "sleep unless mode changed"
+                            // FIXME: add function for "sleep unless modeState changed"
                             if (modeState != BEACON_ST) break;
                             _delay_ms(100);
                         }
@@ -1462,8 +1471,7 @@ int main(void)
                     BlinkLVP(8, RAMP_SIZE/6);    // blink more, brighter, and quicker (to get attention)
                     ActualLevel = rampingLevel = 0;    // Shut it down
                     rampState = 0;
-                    // FIXME: actually shut off as far as possible
-                    //        (need to test if this happens, then maybe fix it)
+                    // TODO: test if it actually shuts off as far as possible after LVP
                 }
                 else
                 {
