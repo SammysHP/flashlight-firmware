@@ -168,8 +168,9 @@
 #define LOCKOUT_ST      (2)
 #define BEACON_ST       (3)
 #define THERMAL_REG_ST  (4)
-#define BATT_READ_ST    (5)
-#define TEMP_READ_ST    (6)
+#define THERMAL_CAL_ST  (5)
+#define BATT_READ_ST    (6)
+#define TEMP_READ_ST    (7)
 
 
 #define FIRM_VERS_MODE  81
@@ -1033,6 +1034,13 @@ ISR(WDT_vect)
 
             rampState = 0;  // reset state to not ramping
 
+            // user got too hot and let go of button in thermal calibration mode
+            // (or otherwise aborted that mode)
+            if ((modeState == THERMAL_REG_ST) || (modeState == THERMAL_CAL_ST)) {
+                // change modeState to let main() know it can save the calibration
+                modeState = RAMPING_ST;
+            }
+
             // Momentary / tactical mode
             if (modeState == TACTICAL_ST)
             {
@@ -1384,7 +1392,16 @@ int main(void)
             switch (modeState)
             {
                 case RAMPING_ST:
-                    if (savedPrevMode == TACTICAL_ST)
+                    // user released button during thermal calibration:
+                    if ((savedPrevMode == THERMAL_REG_ST) || (savedPrevMode == THERMAL_CAL_ST)) {
+                        // set limit to whatever they requested
+                        SaveConfig();
+                        // ... and show them the new value
+                        SetLevel(0);
+                        _delay_ms(500);
+                        BlinkOutNumber(tempCeil, RAMPING_ST);
+                    }
+                    else if (savedPrevMode == TACTICAL_ST)
                     {
                         SetLevel(0);
                         _delay_ms(250);
@@ -1448,24 +1465,43 @@ int main(void)
 
                 case THERMAL_REG_ST:
                     {
-                        // FIXME: replace this with a thermal calibration mode
-                        byte blinkCnt = 6;
-                        /*
-                        byte blinkCnt = 2;
-                        if (tempAdjEnable == 0)
-                        {
-                            blinkCnt = 4;
-                            tempAdjEnable = 1;
-                        }
-                        else
-                            tempAdjEnable = 0;
-                        */
-                        SetLevel(0);     // blink ON/OFF
-                        _delay_ms(250);
-                        Blink(blinkCnt, 60);
+                        // First part of thermal calibration mode:
+                        // check current value, option to set maximum,
+                        // then proceed to actual calibration
 
-                        SaveConfig();
-                        modeState = tacticalSet;        // set to Ramping or Tactical
+                        // show previous ceiling value
+                        byte oldCeil = tempCeil;
+                        byte aborted = 0;
+                        SetLevel(0);     // blink ON/OFF
+                        _delay_ms(500);
+                        BlinkOutNumber(oldCeil, THERMAL_REG_ST);
+                        _delay_ms(500);
+                        aborted = ! IsPressed();
+                        if (aborted) {
+                            // exit with no changes
+                            modeState = RAMPING_ST;
+                            break;
+                        }
+
+                        // buzz at a low level to give user time to set maximum level
+                        tempCeil = MAX_THERM_CEIL;
+                        for(uint8_t i=0; i<20; i++) {
+                            SetLevel(MAX_RAMP_LEVEL/8);
+                            _delay_ms(50);
+                            SetLevel(MAX_RAMP_LEVEL/7);
+                            _delay_ms(50);
+                            aborted = ! IsPressed();
+                            if (aborted) break;
+                        }
+                        if (aborted) {
+                            // save and exit
+                            modeState = RAMPING_ST;
+                            break;
+                        }
+
+                        // else calibrate normally
+                        tempCeil = oldCeil;
+                        modeState = THERMAL_CAL_ST;
                     }
                     break;
 
@@ -1535,7 +1571,11 @@ int main(void)
         //---------------------------------------------------------------------
         // Temperature monitoring - step it down if too hot!
         //---------------------------------------------------------------------
-        // don't run unless config enabled and a measurement has completed
+        // Init thermal calibration mode, if we're in that mode.
+        if (modeState == THERMAL_CAL_ST) {
+            SetLevel(MAX_RAMP_LEVEL);
+        }
+        // don't run unless a measurement has completed
         // don't run unless the light is actually on!
         if ((ActualLevel > 0) && (temperature > 0)) {
 
@@ -1569,7 +1609,7 @@ int main(void)
                 #define THERM_FLOOR (MAX_RAMP_LEVEL/8)
                 // highest temperature allowed
                 // (convert configured value to 13.2 fixed-point)
-                #define THERM_CEIL (TEMP_CRITICAL<<2)
+                #define THERM_CEIL (tempCeil<<2)
                 // acceptable temperature window size in C
                 #define THERM_WINDOW_SIZE 8
 
@@ -1583,8 +1623,17 @@ int main(void)
                 diff = temperatures[THERM_HISTORY_SIZE-1] - temperatures[0];
                 projected = temperatures[THERM_HISTORY_SIZE-1] + (diff<<THERM_PREDICTION_STRENGTH);
 
+                // never step down in thermal calibration mode
+                if (modeState == THERMAL_CAL_ST) {
+                    // use the current temperature as the new ceiling value
+                    //tempCeil = projected >> 2;
+                    // less aggressive prediction
+                    tempCeil = (temperatures[THERM_HISTORY_SIZE-1]
+                                + (diff<<(THERM_PREDICTION_STRENGTH-1))) >> 2;
+                    //tempCeil = (temperature + (diff<<(THERM_PREDICTION_STRENGTH-1))) >> 2;
+                }
                 // too hot, step down (maybe)
-                if (projected >= THERM_CEIL) {
+                else if (projected >= THERM_CEIL) {
                     underheat_count = 0;  // we're definitely not too cold
                     if (overheat_count > THERM_LOWPASS) {
                         overheat_count = 0;
@@ -1603,7 +1652,8 @@ int main(void)
                     } else {
                         overheat_count ++;
                     }
-                } else {  // not too hot
+                }
+                else {  // not too hot
                     overheat_count = 0;  // we're definitely not too hot
                     // too cold?  step back up?
                     if (projected < (THERM_CEIL - (THERM_WINDOW_SIZE<<2))) {
