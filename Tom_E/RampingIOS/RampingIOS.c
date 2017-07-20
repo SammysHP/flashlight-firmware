@@ -113,7 +113,9 @@
 //   -8   For the Manker U11 - at -11, reads 18C at 71F room temp (22C)
 //   -2   For the Lumintop SD26 - at -2, reading a solid 19C-20C (66.2F-68F for 67F room temp)
 
-#define TEMP_CRITICAL (45)      // Temperature in C to step the light down
+#define MAX_THERM_CEIL 70
+#define DEFAULT_THERM_CEIL 45
+#define TEMP_CRITICAL (DEFAULT_THERM_CEIL)      // Temperature in C to step the light down
 // (40C=104F, 45C=113F, 50C=122F, 55C=131F, 60C=140F)
 // use 50C for smaller size hosts, or a more conservative level (SD26, U11, etc.)
 // use 55C for larger size hosts, maybe C8 and above, or for a more aggressive setting
@@ -306,7 +308,9 @@ PROGMEM const uint8_t voltage_blinks[] = {
 // Config Settings via UI, with default values:
 //----------------------------------------------------------------
 byte tacticalSet = 0;       // 1: system is in Tactical Mode
-byte tempAdjEnable = 1;     // 1: enable active temperature adjustments, 0: disable
+//byte tempAdjEnable = 1;     // 1: enable active temperature adjustments, 0: disable
+// thermal regulation ceiling
+byte tempCeil = DEFAULT_THERM_CEIL;
 // unused
 //byte turboTimeoutMode = 0;  // 0=disabled, 1=30s,2=60s,3=90s, 4=120s, 5=3min,6=5min,7=10min (2 mins is good for production)
 
@@ -358,10 +362,6 @@ byte b10Clicks = 0;                 // special 10 click state for turning therma
 
 // Configuration settings storage in EEPROM
 word eepos = 0; // (0..n) position of mode/settings stored in EEPROM (128/256/512)
-
-byte config1;   // keep global, not on stack local
-//  Bit 0 - 1: tactical mode in effect, 0 for normal ramping
-//  Bit 1 - 1: thermal regulation, 0: disabled
 
 
 /**************************************************************************************
@@ -691,27 +691,38 @@ inline void SleepUntilSwitchPress()
 * ==========
 *  config1 - 1st byte of stored configuration settings:
 *   bits   0: tactical mode
-*   bits   1: temp regulation in effect
-*   FIXME   : user-configured thermal ceiling value
+*  config2 - 2nd byte of stored configuration settings
+*   all bits: user-configured thermal ceiling value
 *
 **************************************************************************************/
 inline void LoadConfig()
 {
+    uint8_t found = 0;
+    uint8_t config1, config2;
+
     // find the config data
-    for (eepos=0; eepos < 128; eepos++)
+    for (eepos=0; (!found) && (eepos < 127); eepos++)
     {
         config1 = eeprom_read_byte((const byte *)eepos);
+        config2 = eeprom_read_byte((const byte *)eepos+1);
 
         // Only use the data if a valid marker is found
-        if (config1 < 0x80)
+        if (config1 < 0x80) {
+            found = 1;
             break;
+        }
     }
 
     // unpack the config data
-    if (eepos < 128)
+    if (found)
     {
         tacticalSet = modeState = config1 & 0x01;   // ramping or tactical
-        tempAdjEnable = (config1 >> 1) & 0x01;      // temp regulation
+        //tempAdjEnable = (config1 >> 1) & 0x01;      // temp regulation
+        tempCeil = config2;                         // temperature limit
+        // make sure nothing crazy in eeprom can cause a fire
+        if (tempCeil > MAX_THERM_CEIL) {
+            tempCeil = DEFAULT_THERM_CEIL;
+        }
     }
     else
     {
@@ -728,27 +739,34 @@ inline void LoadConfig()
 *
 *  config1 - 1st byte of stored configuration settings:
 *   bits   0: tactical mode
-*   bits   1: temp regulation in effect
-*   FIXME   : user-configured thermal ceiling value
+*  config2 - 2nd byte of stored configuration settings
+*   all bits: user-configured thermal ceiling value
 *
 **************************************************************************************/
 void SaveConfig()
 {
+    uint8_t config1;
+    uint8_t config2;
     // Pack all settings into one byte
-    config1 = (byte)(tacticalSet | (tempAdjEnable << 1));
+    //config1 = (byte)(tacticalSet | (tempAdjEnable << 1));
+    config1 = (byte)(tacticalSet);
+    config2 = tempCeil;
 
     byte oldpos = eepos;
 
     eepos = (eepos+1) & 127;  // wear leveling, use next cell
 
-    // Write the current settings
-    EEARL=eepos;   EEDR=config1; EECR=32+4; EECR=32+4+2;  //WRITE  //32:write only (no erase)  4:enable  2:go
-    while(EECR & 2)  ; // wait for completion
+    cli();  // don't interrupt while writing eeprom; that's bad
 
     // Erase the last settings
-    EEARL=oldpos;   EECR=16+4; EECR=16+4+2;  //ERASE  //16:erase only (no write)  4:enable  2:go
-    while(EECR & 2)  ; // wait for completion
+    eeprom_write_byte((uint8_t *)(oldpos), 0xff);
+    eeprom_write_byte((uint8_t *)(oldpos+1), 0xff);
 
+    // Write the current settings
+    eeprom_write_byte((uint8_t *)(eepos), config1);
+    eeprom_write_byte((uint8_t *)(eepos+1), config2);
+
+    sei();  // okay, interrupts are fine now
 }
 
 /****************************************************************************************
@@ -1431,6 +1449,8 @@ int main(void)
                 case THERMAL_REG_ST:
                     {
                         // FIXME: replace this with a thermal calibration mode
+                        byte blinkCnt = 6;
+                        /*
                         byte blinkCnt = 2;
                         if (tempAdjEnable == 0)
                         {
@@ -1439,6 +1459,7 @@ int main(void)
                         }
                         else
                             tempAdjEnable = 0;
+                        */
                         SetLevel(0);     // blink ON/OFF
                         _delay_ms(250);
                         Blink(blinkCnt, 60);
@@ -1516,7 +1537,7 @@ int main(void)
         //---------------------------------------------------------------------
         // don't run unless config enabled and a measurement has completed
         // don't run unless the light is actually on!
-        if ((ActualLevel > 0) && tempAdjEnable && (temperature > 0)) {
+        if ((ActualLevel > 0) && (temperature > 0)) {
 
             if (first_temp_reading) {  // initial setup
                 first_temp_reading = 0;
