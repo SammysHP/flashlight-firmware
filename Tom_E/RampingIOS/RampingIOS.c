@@ -347,9 +347,6 @@ volatile word wIdleTicks = 0;
 
 volatile byte LowBattSignal = 0;    // a low battery has been detected - trigger/signal it
 
-volatile byte LowBattState = 0;     // in a low battery state (it's been triggered)
-volatile byte LowBattBlinkSignal = 0;   // a periodic low battery blink signal
-
 byte byStartupDelayTime;            // Used to delay the WDT from doing anything for a short period at power up
 
 // Keep track of cell voltage in ISRs, 10-bit resolution required for impedance check
@@ -897,8 +894,6 @@ ISR(WDT_vect)
 {
     //static word wTurboTicks = 0;
 
-    static word wLowBattBlinkTicks = 0;
-
     //static byte byBattCheck = 0;
     static byte byModeForMultiClicks = 0;   // the mode that originally was running before the 1st click
 
@@ -1303,8 +1298,6 @@ ISR(WDT_vect)
                 {
                     LowBattSignal = 1;
 
-                    LowBattState = 1;
-
                     lowbatt_cnt = 0;
                     // If we reach 0 here, main loop will go into sleep mode
                     // Restart the counter to when we step down again
@@ -1315,15 +1308,6 @@ ISR(WDT_vect)
                 // Make sure conversion is running for next time through
                 ADCSRA |= (1 << ADSC);
                 #endif
-            }
-
-            if (LowBattState)
-            {
-                if (++wLowBattBlinkTicks == 500)        // Blink every 8 secs
-                {
-                    LowBattBlinkSignal = 1;
-                    wLowBattBlinkTicks = 0;
-                }
             }
 
             #endif
@@ -1597,10 +1581,6 @@ int main(void)
             }
             LowBattSignal = 0;
         }
-        else if (LowBattBlinkSignal)
-        {
-            LowBattBlinkSignal = 0;
-        }
         #endif  // ifdef USE_LVP
 
         //---------------------------------------------------------------------
@@ -1710,9 +1690,6 @@ int main(void)
         // Be sure switch is not pressed and light is OFF for at least 5 secs
         //---------------------------------------------------------------------
         word wWaitTicks = 300;   // ~5 secs
-        // FIXME: Why wait 6 minutes in lowbattstate?  What is LowBattState, exactly?
-        if (LowBattState)
-            wWaitTicks = 22500;  // 6 minutes
 
         if ((ActualLevel == 0) && !IsPressed() && (wIdleTicks > wWaitTicks))
         {
