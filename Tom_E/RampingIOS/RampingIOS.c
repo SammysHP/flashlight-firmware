@@ -15,9 +15,12 @@
 // --------------
 // Vers 1.1.0 2017-07-XX:
 //   - added full thermal regulation
-//   - added mode memory on click-from-off
+//   - added mode memory on click-from-off (default 100% 7135)
+//   - made beacon use current ramp level
+//   - made double-click toggle turbo (not just one-way any more)
 //   - made LVP drop down in smaller steps
 //   - calibrated moon to ~0.3 lm on Emisar D4-219c hardware
+//   - blink when passing the 100% 7135 level, for reference
 //   - some code refactoring
 //   - whitespace cleanup
 //
@@ -313,15 +316,16 @@ byte tempAdjEnable = 1;     // 1: enable active temperature adjustments, 0: disa
 
 // Ramping :
 #define MAX_RAMP_LEVEL (RAMP_SIZE)
+#define MAX_7135_LEVEL 65
 
 volatile byte rampingLevel = 0;     // 0=OFF, 1..MAX_RAMP_LEVEL is the ramping table index, 255=moon mode
 volatile byte TargetLevel = 0;      // what the user requested (may be higher than actual level, due to thermal regulation)
 byte ActualLevel;                   // current brightness (may differ from rampingLevel or TargetLevel)
 byte memorizedLevel = 65;           // mode memory (ish, not saved across battery changes)
+byte preTurboLevel = 65;            // only used to return from double-click turbo
 byte rampState = 0;                 // 0=OFF, 1=in lowest mode (moon) delay, 2=ramping Up, 3=Ramping Down, 4=ramping completed (Up or Dn)
 byte rampLastDirState = 0;          // last ramping state's direction: 2=up, 3=down
 byte dontToggleDir = 0;             // flag to not allow the ramping direction to switch//toggle
-byte savedLevel = 0;                // mode memory for ramping (copy of rampingLevel)
 //volatile byte byDelayRamping = 0;   // when the ramping needs to be temporarily disabled
 byte rampPauseCntDn;                // count down timer for ramping support
 
@@ -948,11 +952,13 @@ ISR(WDT_vect)
                         rampLastDirState = 2;
                         if (rampingLevel < MAX_RAMP_LEVEL)
                         {
-                            savedLevel = ++rampingLevel;
+                            rampingLevel ++;
                         }
                         else
                         {
                             rampState = 4;
+                        }
+                        if ((rampingLevel == MAX_RAMP_LEVEL) || (rampingLevel == MAX_7135_LEVEL)) {
                             SetActualLevel(0);  // Do a quick blink
                             _delay_ms(7);
                         }
@@ -964,11 +970,13 @@ ISR(WDT_vect)
                         rampLastDirState = 3;
                         if (rampingLevel > 1)
                         {
-                            savedLevel = --rampingLevel;
+                            rampingLevel --;
                         }
                         else
                         {
                             rampState = 4;
+                        }
+                        if ((rampingLevel == 1) || (rampingLevel == MAX_7135_LEVEL)) {
                             SetActualLevel(0);  // Do a quick blink
                             _delay_ms(7);
                         }
@@ -980,6 +988,8 @@ ISR(WDT_vect)
                         break;
 
                 } // switch on rampState
+                // ensure turbo toggle will return to ramped level, even if the ramp was at turbo
+                preTurboLevel = rampingLevel;
 
             } // switch held longer than single click
         } // else (not b10Clicks)
@@ -1030,6 +1040,8 @@ ISR(WDT_vect)
                             // if we were off, turn on at memorized level
                             if (rampingLevel == 0) {
                                 rampingLevel = memorizedLevel;
+                                // bugfix: make off->turbo work when memorizedLevel == turbo
+                                preTurboLevel = memorizedLevel;
                                 // also set up other ramp vars to make sure ramping will work
                                 rampState = 2;  // lo->hi
                                 rampLastDirState = 2;
@@ -1123,11 +1135,19 @@ ISR(WDT_vect)
                             {
                                 modeState = TEMP_READ_ST;
                             }
-                            // --> ramp direct to MAX/turbo
+                            // --> ramp direct to MAX/turbo (or back)
                             else if (modeState == RAMPING_ST)
                             {
-                                rampingLevel = MAX_RAMP_LEVEL;
-                                SetLevel(MAX_RAMP_LEVEL);
+                                // make double-click toggle turbo, not a one-way trip
+                                // Note: rampingLevel is zero here,
+                                //       because double-click turns the light off and back on
+                                if (memorizedLevel == MAX_RAMP_LEVEL) {
+                                    rampingLevel = preTurboLevel;
+                                } else {
+                                    preTurboLevel = memorizedLevel;
+                                    rampingLevel = MAX_RAMP_LEVEL;
+                                }
+                                SetLevel(rampingLevel);
                             }
                         }
 
