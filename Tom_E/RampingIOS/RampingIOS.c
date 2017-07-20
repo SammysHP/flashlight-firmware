@@ -402,6 +402,26 @@ void SetLevel(byte level)
     SetActualLevel(level);
 }
 
+#define SetLevelSoft SetLevel
+#ifndef SetLevelSoft
+// FIXME: this interferes with handling double-clicks
+// FIXME: looks bad when turning off, if ramp has repeated values at the bottom
+// Like SetLevel, but with a ramp-up / ramp-down transition
+void SetLevelSoft(byte level)
+{
+    uint8_t target_level = level;
+    int8_t shift_amount;
+    int16_t diff;
+    do {
+        diff = target_level - ActualLevel;
+        shift_amount = (diff >> 2) | (diff!=0);
+        ActualLevel += shift_amount;
+        SetLevel(ActualLevel);
+        _delay_ms(RAMP_SIZE/8);  // fast ramp
+    } while (target_level != ActualLevel);
+}
+#endif
+
 /**************************************************************************************
 * Strobe
 * ======
@@ -1099,7 +1119,7 @@ ISR(WDT_vect)
                                 memorizedLevel = rampingLevel;
                                 rampingLevel = 0;
                             }
-                            SetLevel(rampingLevel);
+                            SetLevelSoft(rampingLevel);
 
                             //byDelayRamping = 1;       // don't act on ramping button presses
                         }
@@ -1191,7 +1211,7 @@ ISR(WDT_vect)
                                     preTurboLevel = memorizedLevel;
                                     rampingLevel = MAX_RAMP_LEVEL;
                                 }
-                                SetLevel(rampingLevel);
+                                SetLevelSoft(rampingLevel);
                             }
                         }
 
@@ -1573,7 +1593,7 @@ int main(void)
                     ActualLevel = (ActualLevel>>1);
                     if (ActualLevel < 1) { ActualLevel = 1; }
                 }
-                SetLevel(ActualLevel);  // FIXME: soft ramp
+                SetLevelSoft(ActualLevel);  // soft ramp down
             }
             LowBattSignal = 0;
         }
@@ -1588,7 +1608,7 @@ int main(void)
         //---------------------------------------------------------------------
         // Init thermal calibration mode, if we're in that mode.
         if (modeState == THERMAL_CAL_ST) {
-            SetLevel(MAX_RAMP_LEVEL);
+            SetLevelSoft(MAX_RAMP_LEVEL);
         }
         // don't run unless a measurement has completed
         // don't run unless the light is actually on!
