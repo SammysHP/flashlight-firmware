@@ -471,6 +471,23 @@ void Blink(byte val, word speed)
 }
 
 /**************************************************************************************
+* delay_unless_modeState_changed - like _delay_ms(), but aborts on mode change
+* =========
+* ms       : milliseconds to delay
+* expected : abort if/when modeState doesn't match this value
+**************************************************************************************/
+uint8_t delay_unless_modeState_changed(uint16_t ms, uint8_t expected)
+{
+    //uint8_t expected = modeState;  // automatic mode; buggy
+    while (ms > 0) {
+        _delay_ms(1);
+        ms --;
+        if (modeState != expected) return 0;
+    }
+    return 1;
+}
+
+/**************************************************************************************
 * DigitBlink - do a # of blinks with a speed in msecs
 * =========
 **************************************************************************************/
@@ -479,19 +496,20 @@ byte DigitBlink(byte val, byte blinkModeState)
     if (modeState != blinkModeState)    // if the mode changed, bail out
         return 0;
 
+    // zeroes get only a short blink
+    if (val == 0) {
+        SetLevel(BLINK_BRIGHTNESS);
+        delay_unless_modeState_changed(8, blinkModeState);
+        SetLevel(0);
+        if(!delay_unless_modeState_changed(375, blinkModeState)) return 0;
+    }
+
     for (; val>0; val--)
     {
         SetLevel(BLINK_BRIGHTNESS);
-        _delay_ms(250);
+        delay_unless_modeState_changed(250, blinkModeState);
         SetLevel(0);
-
-        if (modeState != blinkModeState)    // if the mode changed, bail out
-            return 0;
-
-        _delay_ms(375);
-
-        if (modeState != blinkModeState)    // if the mode changed, bail out
-            return 0;
+        if(!delay_unless_modeState_changed(375, blinkModeState)) return 0;
     }
     return 1;   // Ok, not terminated
 }
@@ -502,7 +520,7 @@ byte DigitBlink(byte val, byte blinkModeState)
 **************************************************************************************/
 void BlinkOutNumber(byte num, byte blinkModeState)
 {
-    // FIXME: handle "0" digits with an extra-short blink
+    // FIXME: handle 1-digit and 3-digit numbers
     // FIXME: don't use "/" or "%"; this MCU doesn't have those
     if (!DigitBlink(num / 10, blinkModeState))
         return;
@@ -899,7 +917,7 @@ ISR(WDT_vect)
             if (wPressDuration >= 62)   // if held more than 1 second
             {
                 b10Clicks = 0;
-                // FIXME: enter thermal calibration mode instead
+                // enter thermal calibration mode
                 modeState = THERMAL_REG_ST;
             }
         }
@@ -1451,15 +1469,12 @@ int main(void)
                     while (modeState == BEACON_ST)  // Beacon mode
                     {
                         SetLevel(memorizedLevel);   // allow user to set level
-                        _delay_ms(300);             // for 1/4 second
+                        // on for 1/4 second
+                        delay_unless_modeState_changed(250, BEACON_ST);
                         SetLevel(0);
 
-                        for (int i=0; i < 22; i++)  // 2.2 secs delay
-                        {
-                            // FIXME: add function for "sleep unless modeState changed"
-                            if (modeState != BEACON_ST) break;
-                            _delay_ms(100);
-                        }
+                        // 2.5 s per cycle
+                        delay_unless_modeState_changed(2250, BEACON_ST);
                     }
                     break;
 
