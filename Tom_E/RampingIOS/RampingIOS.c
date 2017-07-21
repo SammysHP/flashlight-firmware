@@ -13,16 +13,18 @@
 //
 // Change History
 // --------------
-// Vers 1.1.0 2017-07-XX:
-//   - added full thermal regulation
+// Vers 1.1.0 2017-07-21:  (ToyKeeper)
+//   - added full thermal regulation with user-calibrated ceiling
 //   - added mode memory on click-from-off (default 100% 7135)
 //   - made beacon use current ramp level
 //   - made double-click toggle turbo (not just one-way any more)
 //   - made LVP drop down in smaller steps
 //   - calibrated moon to ~0.3 lm on Emisar D4-219c hardware
 //   - blink when passing the 100% 7135 level, for reference
+//   - fixed display of "zero" digits
+//   - fixed potential eeprom corruption
 //   - some code refactoring
-//   - whitespace cleanup
+//   - cleaned whitespace, pruned dead code
 //
 // Vers 1.0.1 2017-05-03:
 //   - changed ramping table to start at 7135 PWM value of 10 rather than 4 (4 was too low for the IOS 7135's)
@@ -850,7 +852,7 @@ ISR(ADC_vect)
 
         // average the last few values to reduce noise
         // (noise will be amplified by predictive thermal algorithm, so noise is bad)
-        if (temperature > 0)
+        if (temperature != 0)
         {
             uint8_t i;
             uint16_t total=0;
@@ -873,6 +875,9 @@ ISR(ADC_vect)
             uint8_t i;
             for(i=0; i<NUM_TEMP_VALUES; i++)
                 temperature_values[i] = adcin;
+            // convert to 13.2 fixed-point
+            //temperature = adcin<<2;
+            // ... or not; all that matters here is that it's non-zero
             temperature = adcin;
         }
     }
@@ -1545,7 +1550,12 @@ int main(void)
                     {
                         // blink out temperature in 2 digits
                         // (divide by 4 to get an integer because the value is 13.2 fixed-point)
-                        BlinkOutNumber(temperature>>2, TEMP_READ_ST);
+                        uint8_t temp = 0;
+                        // don't try to show negative numbers
+                        if (temperature > 0) {
+                            temp = temperature>>2;
+                        }
+                        BlinkOutNumber(temp, TEMP_READ_ST);
                     }
                     break;
             } // switch
@@ -1646,6 +1656,10 @@ int main(void)
                     tempCeil = (temperatures[THERM_HISTORY_SIZE-1]
                                 + (diff<<(THERM_PREDICTION_STRENGTH-1))) >> 2;
                     //tempCeil = (temperature + (diff<<(THERM_PREDICTION_STRENGTH-1))) >> 2;
+                    // Don't let user exceed maximum limit
+                    if (tempCeil > MAX_THERM_CEIL) {
+                        tempCeil = MAX_THERM_CEIL;
+                    }
                 }
                 // too hot, step down (maybe)
                 else if (projected >= THERM_CEIL) {
