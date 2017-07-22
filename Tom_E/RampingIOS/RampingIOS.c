@@ -13,7 +13,7 @@
 //
 // Change History
 // --------------
-// Vers 1.1.0 2017-07-21:  (ToyKeeper)
+// Vers 1.1.0 2017-07-22:  (ToyKeeper)
 //   - added full thermal regulation with user-calibrated ceiling
 //   - added mode memory on click-from-off (default 100% 7135)
 //   - made beacon use current ramp level
@@ -327,7 +327,7 @@ byte tempCeil = DEFAULT_THERM_CEIL;
 
 volatile byte rampingLevel = 0;     // 0=OFF, 1..MAX_RAMP_LEVEL is the ramping table index, 255=moon mode
 volatile byte TargetLevel = 0;      // what the user requested (may be higher than actual level, due to thermal regulation)
-byte ActualLevel;                   // current brightness (may differ from rampingLevel or TargetLevel)
+volatile byte ActualLevel;          // current brightness (may differ from rampingLevel or TargetLevel)
 byte memorizedLevel = 65;           // mode memory (ish, not saved across battery changes)
 byte preTurboLevel = 65;            // only used to return from double-click turbo
 byte rampState = 0;                 // 0=OFF, 1=in lowest mode (moon) delay, 2=ramping Up, 3=Ramping Down, 4=ramping completed (Up or Dn)
@@ -1675,9 +1675,15 @@ int main(void)
                         if (stepdown < THERM_FLOOR) {
                             stepdown = THERM_FLOOR;
                         }
-                        //if (ActualLevel > THERM_FLOOR) {
+                        // avoid a bug: stepping "down" from moon to THERM_FLOOR
+                        // if user turned light down to moon during lowpass period
+                        if (stepdown > TargetLevel) {
+                            stepdown = TargetLevel;
+                        }
+                        // really, don't try to regulate below the floor
+                        if (ActualLevel > THERM_FLOOR) {
                             SetActualLevel(stepdown);
-                        //}
+                        }
                     } else {
                         overheat_count ++;
                     }
