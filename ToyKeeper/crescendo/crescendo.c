@@ -56,6 +56,8 @@
 
 #define VOLTAGE_MON         // Comment out to disable LVP and battcheck
 #define THERMAL_REGULATION  // Comment out to disable thermal regulation
+#define MAX_THERM_CEIL 70   // Highest allowed temperature ceiling
+#define DEFAULT_THERM_CEIL 30  // Temperature limit when unconfigured
 
 // FET-only or Convoy red driver
 // ../../bin/level_calc.py 1 64 7135 1 0.25 1000
@@ -209,11 +211,12 @@
  */
 
 // Config option variables
-#ifdef TEMPERATURE_MON
-uint8_t maxtemp = 79;      // temperature step-down threshold
-#endif
 #ifdef MEMTOGGLE
 uint8_t memory;
+#endif
+#ifdef THERMAL_REGULATION
+uint8_t therm_ceil = DEFAULT_THERM_CEIL;
+//uint8_t maxtemp = 79;      // temperature step-down threshold
 #endif
 // Other state variables
 uint8_t eepos;
@@ -228,6 +231,8 @@ uint8_t mode_idx __attribute__ ((section (".noinit")));
 uint8_t ramp_level __attribute__ ((section (".noinit")));
 int8_t ramp_dir __attribute__ ((section (".noinit")));
 uint8_t next_mode_num __attribute__ ((section (".noinit")));
+uint8_t target_level;  // ramp level before thermal stepdown
+uint8_t actual_level;  // last ramp level activated
 
 uint8_t modes[] = {
     RAMP, STEADY, TURBO, BATTCHECK,
@@ -287,12 +292,18 @@ void _delay_500ms() {
 }
 
 #ifdef MEMORY
-#define WEAR_LVL_LEN (EEPSIZE/2)  // must be a power of 2
+#if (ATTINY == 85) || (ATTINY == 45)
+#define EEP_WEAR_LVL_LEN 128
+#elif (ATTINY == 25)
+#define EEP_WEAR_LVL_LEN 64
+#elif (ATTINY == 13)
+#define EEP_WEAR_LVL_LEN 32
+#endif
 void save_mode() {  // save the current mode index (with wear leveling)
     eeprom_write_byte((uint8_t *)(eepos), 0xff);     // erase old state
     eeprom_write_byte((uint8_t *)(++eepos), 0xff);     // erase old state
 
-    eepos = (eepos+1) & (WEAR_LVL_LEN-1);  // wear leveling, use next cell
+    eepos = (eepos+1) & (EEP_WEAR_LVL_LEN-1);  // wear leveling, use next cell
     // save current mode
     eeprom_write_byte((uint8_t *)(eepos), mode_idx);
     // save current brightness
@@ -300,7 +311,7 @@ void save_mode() {  // save the current mode index (with wear leveling)
 }
 
 #ifdef MEMTOGGLE
-#define OPT_memory (EEPSIZE-1)
+#define OPT_memory (EEP_WEAR_LVL_LEN+1)
 void save_state() {
     save_mode();
     eeprom_write_byte((uint8_t *)OPT_memory, memory);
@@ -323,7 +334,7 @@ void restore_state() {
     #endif
 
     // find the mode index and last brightness level
-    for(eepos=0; eepos<WEAR_LVL_LEN; eepos+=2) {
+    for(eepos=0; eepos<EEP_WEAR_LVL_LEN; eepos+=2) {
         eep = eeprom_read_byte((const uint8_t *)eepos);
         if (eep != 0xff) {
             saved_mode_idx = eep;
@@ -372,6 +383,7 @@ inline void set_output(uint8_t pwm1) {
 }
 
 void set_level(uint8_t level) {
+    actual_level = level;
     TCCR0A = PHASE;
     if (level == 0) {
         #ifdef RAMP_CH3
@@ -496,20 +508,22 @@ inline void biking_mode(uint8_t lo, uint8_t hi) {
 #endif
 
 #ifdef THERMAL_REGULATION
-// max temperature == TEMP_FLOOR + ~250 F (or + ~140 C)
-#define TEMP_FLOOR 230  // roughly -40 F (or -40 C) (ish)
-uint8_t current_temperature() {
+#define TEMP_ORIGIN 275  // roughly 0 C or 32 F (ish)
+int16_t current_temperature() {
     ADC_on_temperature();
     // average a few values; temperature is noisy
+    // (use some of the noise as extra precision, ish)
     uint16_t temp = 0;
     uint8_t i;
     get_temperature();
-    for(i=0; i<16; i++) {
+    for(i=0; i<8; i++) {
         temp += get_temperature();
         _delay_4ms(1);
     }
-    temp = (temp>>4) - TEMP_FLOOR;
-    return (uint8_t)temp;
+    // convert 12.3 fixed-point to 13.2 fixed-point
+    // ... and center it at 0 C
+    temp = (temp>>1) - (TEMP_ORIGIN<<2);
+    return temp;
 }
 #endif  // ifdef THERMAL_REGULATION
 
@@ -614,19 +628,20 @@ int main(void)
     #endif
 
     uint8_t mode;
-#ifdef TEMPERATURE_MON
-    uint8_t overheat_count = 0;
-#endif
-#ifdef VOLTAGE_MON
+    #ifdef VOLTAGE_MON
     uint8_t lowbatt_cnt = 0;
     uint8_t voltage;
     // Make sure voltage reading is running for later
     ADCSRA |= (1 << ADSC);
-#endif
-    #ifdef THERMAL_REGULATION
-    #define NUM_TEMPERATURES 8
-    uint8_t temperatures[NUM_TEMPERATURES];
     #endif
+    #ifdef THERMAL_REGULATION
+    #define THERM_HISTORY_SIZE 8
+    uint8_t temperatures[THERM_HISTORY_SIZE];
+    uint8_t overheat_count = 0;
+    uint8_t underheat_count = 0;
+    uint8_t first_temp_reading = 1;
+    #endif
+    uint8_t first_loop = 1;
     while(1) {
         //mode = pgm_read_byte(modes + mode_idx);
         mode = modes[mode_idx];
@@ -751,7 +766,10 @@ int main(void)
 
             // normal flashlight mode
             if (mode == STEADY) {
-                set_mode(ramp_level);
+                if (first_loop) {
+                    set_mode(ramp_level);
+                    target_level = ramp_level;
+                }
                 // User has 0.5s to tap again to advance to the next mode
                 //next_mode_num = 255;
                 _delay_500ms();
@@ -764,7 +782,10 @@ int main(void)
 
             // turbo is special because it's easier to handle that way
             else {
-                set_mode(RAMP_SIZE);
+                if (first_loop) {
+                    set_mode(RAMP_SIZE);
+                    target_level = RAMP_SIZE;
+                }
                 //next_mode_num = 255;
                 _delay_500ms();
                 // go back to the previously-memorized level
@@ -775,30 +796,88 @@ int main(void)
             }
 
             #ifdef THERMAL_REGULATION
-            // TODO: implement this
-            //thermal_regulation();
-            uint8_t temp = current_temperature();
-            int8_t diff;
-            uint8_t t;
-            uint8_t maxtemp = 100;
-            uint8_t mintemp = 90;
-            for(t=0; t<NUM_TEMPERATURES-1; t++) {
-                temperatures[t] = temperatures[t+1];
-            }
-            temperatures[NUM_TEMPERATURES-1] = temp;
-            diff = temp - temperatures[0];
-            if ((temp + diff) > maxtemp) {
-                // step down
-                // TODO: step down *slower*
-                // TODO: make the minimum level higher
-                // TODO: step down at a speed proportional to how high it is
-                if (ramp_level > 1) {
-                    ramp_level -= 1;
+            {
+                // TODO: implement this
+                //thermal_regulation();
+                // how far ahead should we predict?
+                #define THERM_PREDICTION_STRENGTH 4
+                // how proportional should the adjustments be?
+                #define THERM_DIFF_ATTENUATION 4
+                // how low is the lowpass filter?
+                #define THERM_LOWPASS 8
+                // lowest ramp level; never go below this (sanity check)
+                #define THERM_FLOOR (RAMP_SIZE/8)
+                // highest temperature allowed
+                // (convert configured value to 13.2 fixed-point)
+                #define THERM_CEIL (therm_ceil<<2)
+                // acceptable temperature window size in C
+                #define THERM_WINDOW_SIZE 8
+
+                int16_t temperature = current_temperature();
+                int16_t projected;  // Fight the future!
+                int16_t diff;
+
+                // initial setup, only once
+                if (first_temp_reading) {
+                    first_temp_reading = 0;
+                    for (uint8_t t=0; t<THERM_HISTORY_SIZE; t++)
+                        temperatures[t] = temperature;
                 }
-            }
-            else if ((temp + diff) < mintemp) {
-                // TODO: step back up
-                // TODO: use "actual_level" trick
+
+                // rotate measurements and add a new one
+                for(uint8_t t=0; t<THERM_HISTORY_SIZE-1; t++) {
+                    temperatures[t] = temperatures[t+1];
+                }
+                temperatures[THERM_HISTORY_SIZE-1] = temperature;
+
+                // guess what the temp will be several seconds in the future
+                diff = temperature - temperatures[0];
+                projected = temperature + (diff<<THERM_PREDICTION_STRENGTH);
+
+                // too hot, step down (maybe)
+                if (projected >= THERM_CEIL) {
+                    underheat_count = 0;  // we're definitely not too cold
+                    if (overheat_count > THERM_LOWPASS) {
+                        overheat_count = 0;
+
+                        // how far above the ceiling?
+                        int16_t exceed = (projected - THERM_CEIL) >> THERM_DIFF_ATTENUATION;
+                        if (exceed < 1) { exceed = 1; }
+                        uint8_t stepdown = actual_level - exceed;
+                        // never go under the floor; zombies in the cellar
+                        if (stepdown < THERM_FLOOR) {
+                            stepdown = THERM_FLOOR;
+                        }
+                        // avoid a bug: stepping "down" from moon to THERM_FLOOR
+                        // if user turned the light down during lowpass period
+                        if (stepdown > target_level) {
+                            stepdown = target_level;
+                        }
+                        // really, don't try to regulate below the floor
+                        if (actual_level > THERM_FLOOR) {
+                            //blink(3, BLINK_SPEED/8);
+                            set_mode(stepdown);
+                        }
+                    }
+                    else {
+                        overheat_count ++;
+                    }
+                }
+                else {  // not too hot
+                    overheat_count = 0;  // we're definitely not too hot
+                    // too cold?  step back up?
+                    if (projected < (THERM_CEIL - (THERM_WINDOW_SIZE<<2))) {
+                        if (underheat_count > (THERM_LOWPASS/2)) {
+                            underheat_count = 0;
+                            // never go above the user's requested level
+                            if (actual_level < target_level) {
+                                set_mode(actual_level + 1);  // step up slowly
+                            }
+                        } else {
+                            underheat_count ++;
+                        }
+                    }
+                }
             }
             #endif  // ifdef THERMAL_REGULATION
 
@@ -1019,6 +1098,7 @@ int main(void)
             ADCSRA |= (1 << ADSC);
         }
 #endif  // ifdef VOLTAGE_MON
+        first_loop = 0;
     }
 
     //return 0; // Standard Return Code
