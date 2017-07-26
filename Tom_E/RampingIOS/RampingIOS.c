@@ -931,7 +931,7 @@ ISR(WDT_vect)
             wPressDuration++;
 
 
-        // Toggle thermal regulation on/off
+        // Enter thermal calibration mode
         if (b10Clicks)
         {
             if (wPressDuration >= 62)   // if held more than 1 second
