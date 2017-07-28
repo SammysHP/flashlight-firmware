@@ -411,6 +411,7 @@ Extras
     thermal regulation:
         ToyKeeper/bistro
         ToyKeeper/bistro/tripledown
+        ToyKeeper/crescendo
 
     thermal step-down:
         JonnyC/STAR/MTN_momentary_temp
@@ -695,6 +696,7 @@ Modes
         ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
+        ToyKeeper/crescendo
         gchart/babka
         gchart/ramping-ui
         pilotdog68/xintd-x3
