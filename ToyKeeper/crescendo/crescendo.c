@@ -187,11 +187,9 @@
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 
 #include <avr/pgmspace.h>
-//#include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
 #include <avr/sleep.h>
-//#include <avr/power.h>
 #include <string.h>
 
 #define OWN_DELAY           // Don't use stock delay functions.
@@ -222,7 +220,6 @@ uint8_t memory;
 #endif
 #ifdef THERMAL_REGULATION
 uint8_t therm_ceil = DEFAULT_THERM_CEIL;
-//uint8_t maxtemp = 79;      // temperature step-down threshold
 #endif
 // Other state variables
 uint8_t eepos;
@@ -348,10 +345,7 @@ void restore_state() {
     uint8_t eep;
     #ifdef MEMTOGGLE
     // memory is either 1 or 0
-    // (if it's unconfigured, 0xFF, clip it)
-    //memory = eeprom_read_byte((uint8_t *)OPT_memory) & 0x01;
-    // off by default (oops, makes it be always off)
-    //memory = ! (eeprom_read_byte((uint8_t *)OPT_memory) & 0x01);
+    // (if it's unconfigured, 0xFF, assume it's off)
     eep = eeprom_read_byte((uint8_t *)OPT_memory);
     if (eep < 2) { memory = eep; }
     else { memory = 0; }
@@ -737,10 +731,6 @@ int main(void)
             // if they didn't tap quickly, go to the memorized mode/level
             mode_idx = saved_mode_idx;
             ramp_level = saved_ramp_level;
-            // ... and skip the rest of the blinkies
-            //next_mode_num = 1;  // redundant
-            // reset to avoid potential wrong state changes
-            //fast_presses = 0;  // redundant
             // remember for next time
             save_mode();
             // restart as if this were the first loop
@@ -850,12 +840,8 @@ int main(void)
         #ifdef POLICE_STROBE
         else if (mode == POLICE_STROBE) {
             // police-like strobe
-            //for(i=0;i<8;i++) {
-                strobe(20/4,40/4);
-            //}
-            //for(i=0;i<8;i++) {
-                strobe(40/4,80/4);
-            //}
+            strobe(20/4,40/4);
+            strobe(40/4,80/4);
         }
         #endif // ifdef POLICE_STROBE
 
@@ -1030,31 +1016,26 @@ int main(void)
                     mode_idx = 1;
                     //mode = STEADY;
                     ramp_level = RAMP_SIZE/4;
-                    //break;
                 }
                 else {
                     if (ramp_level > 1) {  // solid non-moon mode
-                        // step down from solid modes somewhat gradually
-                        // drop by 25% each time
-                        //ramp_level = (ramp_level >> 2) + (ramp_level >> 1);
-                        //ramp_level = (actual_level >> 2) + (actual_level >> 1);
                         // drop by 50% each time
                         ramp_level = (actual_level >> 1);
                     } else { // Already at the lowest mode
                         // Turn off the light
                         poweroff();
                     }
-                    set_mode(ramp_level);
                 }
+                set_mode(ramp_level);
                 target_level = ramp_level;
                 //save_mode();  // we didn't actually change the mode
                 lowbatt_cnt = 0;
                 // Wait before lowering the level again
-                //_delay_ms(250);
                 _delay_s();
             }
 
             // Make sure conversion is running for next time through
+            // (not relevant with thermal regulation also active)
             //ADCSRA |= (1 << ADSC);
         }
         #endif  // ifdef VOLTAGE_MON
@@ -1148,7 +1129,6 @@ int main(void)
                     }
                     // really, don't try to regulate below the floor
                     if (actual_level > THERM_FLOOR) {
-                        //blink(3, BLINK_SPEED/8);
                         set_mode(stepdown);
                     }
                 }
@@ -1174,10 +1154,8 @@ int main(void)
         }
         #endif  // ifdef THERMAL_REGULATION
 
-        //if (first_loop) first_loop --;
         first_loop = 0;
         loop_count ++;
     }
 
-    //return 0; // Standard Return Code
 }
