@@ -101,7 +101,7 @@
 //------------- Driver Board Settings -------------------------------------
 //
 #define VOLTAGE_MON         // Comment out to disable - ramp down and eventual shutoff when battery is low
-//#define VOLT_MON_PIN7     // Note: Not Yet Supported!!
+//#define VOLT_MON_PIN7       // Use voltage divider on pin7 instead of raw voltage on VCC pin.
 #define VOLT_MON_INTREF     // uses the 1.1V internal reference
 
 //
@@ -168,7 +168,24 @@
 #define DBL_CLICK_TICKS   15    //  fast click time for enable/disable of Lock-Out, batt check,
                                 // and double/triple click timing (15=0.240s, was 14=0.224s)
 
-#ifdef VOLT_MON_INTREF
+#ifdef VOLT_MON_PIN7
+// 1S cell configuration:
+#define BATT_LOW   30  // Cell voltage to step light down = 3.0 V
+#define BATT_CRIT  28  // Cell voltage to shut the light off = 2.8 V
+// measure values for a full and empty battery, then plug them in
+#define VOLTS_MAX  42  // 4.2V
+#define ADC_MAX   172
+#define VOLTS_MIN  28  // 2.8V
+#define ADC_MIN   116
+// 2S cell configuration:
+//#define BATT_LOW   61  // Cell voltage to step light down = 6.1 V
+//#define BATT_CRIT  59  // Cell voltage to shut the light off = 5.9 V
+// measure values for a full and empty battery, then plug them in
+//#define VOLTS_MAX  84  // 8.4V
+//#define ADC_MAX   225
+//#define VOLTS_MIN  50  // 5.0V
+//#define ADC_MIN   134
+#else
 #define BATT_LOW          30    // Cell voltage to step light down = 3.0 V
 #define BATT_CRIT         28    // Cell voltage to shut the light off = 2.8 V
 #endif
@@ -208,16 +225,18 @@
 
 #include "tk-delay.h"
 
-#ifdef VOLT_MON_PIN7
-#include "tk-calibWight.h"  // use this for the BLF Q8 driver (and wight drivers)
-#endif
-
 // MCU I/O pin assignments (most are now in tk-attiny.h):
 #define SWITCH_PIN PB3      // Star 4,  MCU pin #2 - pin the switch is connected to
 
 #define ADCMUX_TEMP 0b10001111  // ADCMUX register setup to read temperature
+#ifdef VOLT_MON_PIN7
+// ADCMUX register setup to read PIN7 referenced divider
+//#define ADC_CHANNEL 0x01  // MUX 01 corresponds with PB2 (pin 7)
+//#define ADCMUX_VCC	((1 << V_REF) | (0 << ADLAR) | ADC_CHANNEL)
+#define ADCMUX_VCC	0b10000001
+#else
 #define ADCMUX_VCC  0b00001100  // ADCMUX register setup to read Vbg referenced to Vcc
-
+#endif
 
 #define DEBOUNCE_BOTH          // Comment out if you don't want to debounce the PRESS along with the RELEASE
                                // PRESS debounce is only needed in special cases where the switch can experience errant signals
@@ -310,18 +329,6 @@ PROGMEM const byte ramp_FET[]  = {
 // unused
 //PROGMEM const word turboTimeOutVals[] = {0, 1875, 3750, 5625, 7500, 11250, 18750, 37500};
 
-#ifdef VOLT_MON_PIN7
-// Map the voltage level to the # of blinks, ex: 3.7V = 3, then 7 blinks
-PROGMEM const uint8_t voltage_blinks[] = {
-    ADC_22,(2<<5)+2,    // less than 2.2V will blink 2.2
-    ADC_23,(2<<5)+3,    ADC_24,(2<<5)+4,    ADC_25,(2<<5)+5,    ADC_26,(2<<5)+6,
-    ADC_27,(2<<5)+7,    ADC_28,(2<<5)+8,    ADC_29,(2<<5)+9,    ADC_30,(3<<5)+0,
-    ADC_31,(3<<5)+1,    ADC_32,(3<<5)+2,    ADC_33,(3<<5)+3,    ADC_34,(3<<5)+4,
-    ADC_35,(3<<5)+5,    ADC_36,(3<<5)+6,    ADC_37,(3<<5)+7,    ADC_38,(3<<5)+8,
-    ADC_39,(3<<5)+9,    ADC_40,(4<<5)+0,    ADC_41,(4<<5)+1,    ADC_42,(4<<5)+2,
-    ADC_43,(4<<5)+3,    ADC_44,(4<<5)+4,    255,   (1<<5)+1,  // Ceiling, don't remove
-};
-#endif
 
 //----------------------------------------------------------------
 // Config Settings via UI, with default values:
@@ -448,46 +455,6 @@ void Strobe(byte ontime, byte offtime)
     SetLevel(0);
     _delay_ms(offtime);
 }
-
-#ifdef VOLT_MON_PIN7
-/**************************************************************************************
-* GetVoltage
-* ===========
-**************************************************************************************/
-uint8_t GetVoltage()
-{
-    ADCSRA |= (1 << ADSC);          // Start conversion
-
-    while (ADCSRA & (1 << ADSC))  ; // Wait for completion
-
-    return ADCH;                    // Send back the result
-}
-
-/**************************************************************************************
-* BattCheck
-* =========
-**************************************************************************************/
-inline byte BattCheck()
-{
-   // Return an composite int, number of "blinks", for approximate battery charge
-   // Uses the table above for return values
-   // Return value is 3 bits of whole volts and 5 bits of tenths-of-a-volt
-   byte i, voltage;
-
-   voltage = GetVoltage();
-
-   // figure out how many times to blink
-   for (i=0; voltage > pgm_read_byte(voltage_blinks + i); i += 2)  ;
-
-    #ifdef USING_360K
-    // Adjust it to the more accurate representative value (220K table is already adjusted)
-    if (i > 0)
-        i -= 2;
-    #endif
-
-    return pgm_read_byte(voltage_blinks + i + 1);
-}
-#endif
 
 /**************************************************************************************
 * Blink - do a # of blinks with a speed in msecs
@@ -841,8 +808,17 @@ ISR(ADC_vect)
     // Voltage Monitoring
     if (adc_step == 1)                          // ignore first ADC value from step 0
     {
-        // Read cell voltage, applying the
-        // FIXME: can we maybe do this without dividing?
+        // Calculate cell voltage from ADC value
+        #ifdef VOLT_MON_PIN7
+        // ADC / 1.1V : ADC goes up with voltage
+        // requires voltage divider on driver, to adjust volts to 0-1.1V range
+        // ADC_MIN and ADC_MAX are 8-bit values, but we need 10-bit
+        adcin = VOLTS_MIN + \
+                 ((adcin - (ADC_MIN<<2)) * (VOLTS_MAX - VOLTS_MIN) / ((ADC_MAX<<2) - (ADC_MIN<<2)));
+        voltageTenths = adcin;
+        #else
+        // 1.1V / ADC : ADC goes down with voltage
+        // requires raw battery voltage on VCC pin, so 5.5V or less
         adcin = (11264 + adcin/2)/adcin + D1;   // in volts * 10: 10 * 1.1 * 1024 / ADC + D1, rounded
         if (voltageTenths > 0)
         {
@@ -853,6 +829,7 @@ ISR(ADC_vect)
         }
         else
             voltageTenths = adcin;              // prime on first read
+        #endif
     }
 
     // Temperature monitoring
@@ -919,9 +896,7 @@ ISR(WDT_vect)
     static byte byModeForMultiClicks = 0;   // the mode that originally was running before the 1st click
 
     #ifdef VOLTAGE_MON
-    #ifdef VOLT_MON_INTREF
     static byte byInitADCTimer = 0;
-    #endif
     static word adc_ticks = ADC_DELAY;
     static byte lowbatt_cnt = 0;
     #endif
@@ -1296,19 +1271,12 @@ ISR(WDT_vect)
             if (adc_ticks == 0)
             {
                 // See if conversion is done
-                #ifdef VOLT_MON_PIN7
-                if (ADCSRA & (1 << ADIF))
-                #endif
                 {
                     byte atLowLimit;
                     atLowLimit = ((ActualLevel == 1));
 
                     // See if voltage is lower than what we were looking for
-                    #ifdef VOLT_MON_PIN7
-                    if (ADCH < (atLowLimit ? ADC_CRIT : ADC_LOW))
-                    #else
                     if (voltageTenths < (atLowLimit ? BATT_CRIT : BATT_LOW))
-                    #endif
                         ++lowbatt_cnt;
                     else
                         lowbatt_cnt = 0;
@@ -1325,10 +1293,6 @@ ISR(WDT_vect)
                     adc_ticks = ADC_DELAY;
                 }
 
-                #ifdef VOLT_MON_PIN7
-                // Make sure conversion is running for next time through
-                ADCSRA |= (1 << ADSC);
-                #endif
             }
 
             #endif
@@ -1337,11 +1301,9 @@ ISR(WDT_vect)
         wPressDuration = 0;
     } // Not pressed
 
-    #ifdef VOLT_MON_INTREF
     // Schedule an A-D conversion every 4th timer (64 msecs)
     if ((++byInitADCTimer & 0x03) == 0)
         ADCSRA |= (1 << ADSC) | (1 << ADIE);    // start next ADC conversion and arm interrupt
-    #endif
 }
 
 /**************************************************************************************
@@ -1553,9 +1515,6 @@ int main(void)
                     while (modeState == BATT_READ_ST)  // Battery Check
                     {
                         // blink out volts and tenths
-                        #ifdef VOLT_MON_PIN7
-                        voltageTenths = BattCheck();
-                        #endif
                         BlinkOutNumber(voltageTenths, BATT_READ_ST);
                     }
                     break;
