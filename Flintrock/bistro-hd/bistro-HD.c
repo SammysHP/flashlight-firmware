@@ -96,13 +96,15 @@
 #define CONFIG_FILE_H "configs/config_default.h"
 
 ///Or select alternative configuration file, last one wins.///
-#define CONFIG_FILE_H "configs/config_testing-HD.h"
+//#define CONFIG_FILE_H "configs/config_testing-HD.h"
 //#define CONFIG_FILE_H "configs/config_BLFA6_EMU-HD.h"
 //#define CONFIG_FILE_H "configs/config_biscotti-HD.h"
 //#define CONFIG_FILE_H "configs/config_trippledown-HD.h"
 //#define CONFIG_FILE_H "configs/config_classic-HD.h"
-//#define CONFIG_FILE_H "configs/config_TAv1-OTC-HD.h"
-//#define CONFIG_FILE_H "configs/config_dual-switch-TA-HD.h"
+#define CONFIG_FILE_H "configs/config_TAv1-OTC-HD.h"
+//#define CONFIG_FILE_H "configs/config_TAv1-OTSM-HD.h"
+//#define CONFIG_FILE_H "configs/config_dual-switch-OTSM-TA-HD.h"
+//#define CONFIG_FILE_H "configs/config_dual-switch-noinit-TA-HD.h"
 //#define CONFIG_FILE_H "configs/config_4channel-dual-switch-HD.h"
 
 //Make it a battcheck build? 
@@ -324,9 +326,11 @@ uint8_t solid_modes;
 #define enable_moon   OPT_array[enable_moon_IDX]
 #define reverse_modes OPT_array[reverse_modes_IDX]
 // next memory element will serve as a dummy toggle variable for all mode-override toggles.
-#define mode_override OPT_array[5]  //GROUP_SELECT 
+#define mode_override OPT_array[MODEGROUP_IDX] // 
 #define offtim3       OPT_array[offtim3_IDX]
-//#define TEMPERATURE_MON_IDX OPT_array[7] // TEMPERATURE_MON
+//#define TEMPERATURE_MON_IDX OPT_array[7] // TEMPERATURE_MON, doesn't need to be defined,
+                                           // re-uses mode_override toggle in old method
+										   // and has no toggle at all in new method.
 #define firstboot     OPT_array[firstboot_IDX]  
 #define lockswitch    OPT_array[lockswitch_IDX]  // don't forget to update n_saves above.
 
@@ -557,21 +561,18 @@ inline void initial_values() {//FR 2017
     #ifdef USE_FIRSTBOOT
 	 firstboot = FIRSTBOOT;               // detect initial boot or factory reset
 	#elif firstboot_IDX <= final_toggles
-//	#elif defined(LOOP_TOGGLES)
 	 firstboot=255;                       // disables menu toggle
 	#endif
 
     #ifdef USE_MOON
 	 enable_moon = INIT_ENABLE_MOON;      // Should we add moon to the set of modes?
 	#elif enable_moon_IDX <= final_toggles
-//	#elif defined(LOOP_TOGGLES)
 	 enable_moon=255;                   //disable menu toggle,	 
 	#endif
 
 	#if defined(USE_REVERSE_MODES) && defined(OFFTIM3)
 	 reverse_modes = INIT_REVERSE_MODES;  // flip the mode order?
 	#elif reverse_modes_IDX <= final_toggles
-//	#elif defined(LOOP_TOGGLES)
 	 reverse_modes=255;                   //disable menu toggle,
 	#endif
 	 memory = INIT_MEMORY;                // mode memory, or not
@@ -579,33 +580,21 @@ inline void initial_values() {//FR 2017
 	#ifdef OFFTIM3
 	 offtim3 = INIT_OFFTIM3;              // enable medium-press?
 	#elif offtim3_IDX <= final_toggles
-//	#elif defined(LOOP_TOGGLES)
 	 offtim3=255;                         //disable menu toggle, 
 	#endif
 
 	#ifdef USE_MUGGLE_MODE
 	 muggle_mode = INIT_MUGGLE_MODE;      // simple mode designed for muggles
 	#elif muggle_mode_IDX <= final_toggles
-//	#elif defined(LOOP_TOGGLES)
- 	 muggle_mode=255;                     //disable menu toggle,
+	 muggle_mode=255;                     //disable menu toggle,
 	#endif
 
 	#ifdef USE_LOCKSWITCH
 	 lockswitch=INIT_LOCKSWITCH;          // E-swtich enabled.
 	#elif lockswitch_IDX <= final_toggles
-//	#elif defined(LOOP_TOGGLES)
 	 lockswitch=255;
 	#endif
 
-    #ifdef LOOP_TOGGLES
-	    overrides[5]=GROUP_SELECT_MODE; 
-        #if defined(TEMPERATURE_MON)&&defined(TEMP_CAL_MODE)
-          overrides[7]=TEMP_CAL_MODE, //7
-  	#elif TEMP_CAL_IDX <= final_toggles
-//		#else
-  	      OPT_array[7]=255;
-		#endif
-	#endif
 
 // Handle non-toggle saves.
 	modegroup = INIT_MODEGROUP;          // which mode group will be default, mode groups below start at zero, select the mode group you want and subtract one from the number to get it by defualt here
@@ -613,6 +602,21 @@ inline void initial_values() {//FR 2017
 	maxtemp = INIT_MAXTEMP;              // temperature step-down threshold, each number is roughly equal to 4c degrees
 	#endif
 	mode_idx=0;                          // initial mode
+
+// Some really uncharacteristically un-agressive (poor even) compiler optimizing 
+//  means it saves bytes to do all the overrides initializations after 
+//  the OPT_ARRAY initializations, to free up registers.
+    #ifdef LOOP_TOGGLES
+       #if !( defined(TEMPERATURE_MON)&&defined(TEMP_CAL_MODE) )
+   	     #if TEMP_CAL_IDX <= final_toggles
+  	       OPT_array[7]=255; // disable the menu toggle 
+		 #endif
+	   #else 
+        overrides[7]=TEMP_CAL_MODE; // enable temp cal mode menu
+	   #endif
+	    overrides[5]=GROUP_SELECT_MODE; 
+	#endif
+
 
 	#ifdef USE_STARS
   	  check_stars();
@@ -1598,7 +1602,7 @@ blink_value(cap_val);
 	//else {
 	//cli(); 
 	//_delay_s(); _delay_s(); // this will increase current for two seconds if otsm_powersave is used.
-	                      //// provides a debug singal through the ameter. 
+	                      //// provides a debug signal through the ammeter. 
 	//sei();
 	//}
 //    wake_time=0;  // use this to make every click act like a fast one for debugging.
@@ -1921,36 +1925,3 @@ blink_value(cap_val);
 }
 
 
-// The old way to do the toggles, in case we need it back:
-            //// Enter or leave "muggle mode"?
-            //toggle(&muggle_mode, 1);
-            //if (muggle_mode) { continue; };  // don't offer other options in muggle mode
-//
-            //toggle(&memory, 2);
-//
-            //toggle(&enable_moon, 3);
-//
-            //toggle(&reverse_modes, 4);
-//
-            //// Enter the mode group selection mode?
-            //mode_idx = GROUP_SELECT_MODE;
-            //toggle(&mode_override, 5);
-            //mode_idx = 0;
-//
-//#ifdef OFFTIM3
-            //toggle(&offtim3, 6);
-//#endif
-//
-//#ifdef TEMPERATURE_MON
-            //// Enter temperature calibration mode?
-            //mode_idx = TEMP_CAL_MODE;
-            //toggle(&mode_override, 7);
-            //mode_idx = 0;
-//#endif
-
-//#ifdef USE_FIRSTBOOT
-            //toggle(&firstboot, 8);
-//#endif
-//#if defined(USE_ESWITCH) && (OTSM_PIN != ESWITCH_PIN)
-            //toggle(&lockswitch, 9);
-//#endif

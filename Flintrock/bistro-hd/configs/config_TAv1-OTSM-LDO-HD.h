@@ -3,7 +3,7 @@
 /*
  *  Firmware configuration header. 
  *
- * Bistro configuration file for dual switch TA-based tripple driver, (C) Flintrock (FR).
+ * Bistro configuration file for TA driver 2017, (C) Flintrock (FR).
  * USES voltage divider and OTC.
  * 
  * To work with tk-bistro and other compatible software.
@@ -56,10 +56,10 @@
 #define OFFTIM3      // Use short/med/long off-time presses instead of just short/long
 
 
-#define USE_OTC // use off time cap. 
+// #define USE_OTC // use off time cap. 
 
 // Off-time sleep mode by -FR, thanks to flashy Mike and Mike C for early feasibility test with similar methods.
-//#define USE_OTSM  // USE OTSM.  Pin must be defined in the layout too.
+#define USE_OTSM  // USE OTSM.  Pin must be defined in the layout too.
 
 //#define OTSM_USES_OTC // use OTC cap for extra power on OTSM (sets it output high to charge up)
 #define OTSM_powersave // Also works without OTSM to reduce moon-mode drain. 
@@ -77,23 +77,23 @@
                                // so 0 is 16, 1 is 32, 2 is 64, 3 is 128, 4 is 0.25s, 5 is 0.5s etc.
 // To allow long click times use 4. For 1/8s resolution, use 3.
 #define wake_time_short 0.5   // 0.5s : Short press is up to 0.5 s
-#define wake_time_med   1.25   // this is limited by cap performance, but setting it high won't hurt 
+#define wake_time_med   1.5   // this is limited by cap performance, but setting it high won't hurt 
                               // Since anything beyond the cap capacity will be read as long anyway.
 							  // It's also the long-press off-threshold for e-switch operation.
 
 /*****************************END OTSM CONGIGS*********************************/
 
-#define USE_ESWITCH  // pin must be defined in the layout too.
-#define USE_ESWITCH_LOCKOUT_TOGGLE  // enables menu to turn off eswitch, experimental, maybe be removed.
+//#define USE_ESWITCH  // pin must be defined in the layout too.
+//#define USE_ESWITCH_LOCKOUT_TOGGLE
 
 /**********************VOLTAGE CONFIG****************************************/
 
 #define VOLTAGE_MON         // Comment out to disable LVP
 //You should leave one (but only one) of the next two uncommented.  
-#define READ_VOLTAGE_FROM_VCC  // inverted "internal" Vcc voltage monitoring
+//#define READ_VOLTAGE_FROM_VCC  // inverted "internal" Vcc voltage monitoring
                                // Works well for 1S lights without worrying about resistor values.
-//#define READ_VOLTAGE_FROM_DIVIDER  // classic voltage reading
-//#define REFERENCE_DIVIDER_READS_TO_VCC // default is 1.1V, but this is needed for divider reading with OTSM on the voltage pin.
+#define READ_VOLTAGE_FROM_DIVIDER  // classic voltage reading
+#define REFERENCE_DIVIDER_READS_TO_VCC // default is 1.1V, but this is needed for divider reading with OTSM on the voltage pin.
                                          // This should normally be used with an LDO.  For 1S (non-LDO or 5.0VLDO) just avoid the problem with READ_VOLTAGE_FROM_VCC.
 
 /*** Enable battery indicator mode?   */
@@ -153,7 +153,7 @@
 #ifdef STRIPPED  // define what you want to remove in stripped mode
 #undef TEMPERATURE_MON
 #undef VOLTAGE_MON
-#define NO_STROBES  // don't use strobes (not automatically stripped from modes though, result can be undefined) 
+#define NO_STROBES  // don't use strobes (not automatically stripped from modes though, probably will produce BLINK_BRIGHTNESS)
 #undef USE_BATTCHECK
 #endif
 

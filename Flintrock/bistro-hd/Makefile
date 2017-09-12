@@ -10,8 +10,8 @@ CONFIG_DIR := configs
 # These must correspond to config headers named like config_<FIRMWARE-NAME>.h
 
 FIRMWARES13 := biscotti-HD BLFA6_EMU-HD 
-FIRMWARES25 := default-HD custom-HD TAv1-OTC-HD  TAv1-OTSM-HD classic-HD trippledown-HD 
-FIRMWARES25 += dual-switch-TA-HD 4channel-dual-switch-HD
+FIRMWARES25 := default-HD custom-HD TAv1-OTC-HD TAv1-OTSM-HD TAv1-OTSM-LDO-HD classic-HD trippledown-HD 
+FIRMWARES25 += dual-switch-OTSM-TA-HD dual-switch-noinit-TA-HD 4channel-dual-switch-HD
 FIRMWARES45 :=
 FIRMWARES85 :=
 FIRMWARES := $(FIRMWARES13) $(FIRMWARES25) $(FIRMWARES45) $(FIRMWARES85)

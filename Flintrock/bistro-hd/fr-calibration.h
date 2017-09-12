@@ -33,11 +33,12 @@
 ///////////////Calibration for traditional voltage-divider//////////////////
 #if !defined(READ_VOLTAGE_FROM_VCC) //Flintrock 2017 (C)
 
+// allow override in main config
+#if !defined(REFERENCE_DIVIDER_READS_TO_VCC)
   #define v_correction  0.0 //in volts for minor calibration adjustment.  
                             // Higher value will increase reading. (earlier cut-off)
 							// Might be better to adjust full scale proportionally though.
 
-  
   #define ADC_full_scale  192.3  // Actual ADC reading at 4.2V.  
                              // Theoretical R1=22k, R2=4.7k: 171.4  (test build measured 174, very close)
 							 //             R1=19.1k, R2=4.7k: 192.3
@@ -50,6 +51,19 @@
 							 //
 							 // Values may vary though since attiny voltage ref has large variance.  Use bistro-battcheck-divider-attinyXX.hex to measure it.
 							 // Now should only need the reading with a full battery.  No longer requires creating full calibration table.
+
+#else  // next version is the value used for LDO OTSM configs where the divider voltage is read relative to Vcc
+  #define v_correction  0.0 //in volts for minor calibration adjustment.
+  #define ADC_full_scale  255  //  If it's setup right this should be pegged at full battery.
+                               // This value CAN go above 255 if 4.2V/cell is slightly off scale on your light.
+							   // Of course the actual reading will still peg because while this calibration factor can
+							   // go over 255, the ADC value will not.
+							   // That's ok though because as soon as the adc comes down to 254, the 
+							   //calibration will then be correct, so maybe 2.54 corresponds to 4.10V for example. 
+							   // It just means your voltage reads peg at about 4.1V
+							   // Better than losing range on the bottom end.
+#endif
+
 
 							
 //get_voltage lookup rounds the voltage up.  

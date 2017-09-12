@@ -16,11 +16,12 @@ Bistro-HD is setup to be easily configurable to produce a bistro (originally by
 ToyKeeper) customized for your needs, your driver board, your attiny version, 
 the features modes, strobes and groups you want, with a one-click build script, 
 and extra work on space savings mean you can fit more features in including 
-some new ones, like e-switch support, voltage read from Vcc pin, OTSM support 
-(highly experimental) and some newly added ones (see below), all into an 
-attiny25.  Builds for attiny13/45/85 also are made though. A large combination of 
-builds already exist in the hex directory including biscotti, TA, classic, and 
-battcheck builds.
+several new ones.  The original flaship feature is OTSM, a stable click-time 
+replacement for OTC. Other new feautres include e-switch support, voltage read 
+from Vcc pin, 4-channel support, and more, all fittin into an attiny25.  Builds 
+for attiny13/45/85 also are made though. A large combination of builds already 
+exist in the hex directory including biscotti, TA, classic, and battcheck 
+builds.
 
 Essentially, while there's a ton of overhaul under the hood and some new 
 features, it's still ToyKeeper's bistro. Short clicks advance to next mode.  
@@ -30,6 +31,7 @@ clicks are enabled in the menu then medium clicks go back one mode or go into
 hidden modes from the lowest mode.  A menu toggle can enable an extra moon mode 
 if compiled in and turned on, and another option allows mode order to be 
 reversed.  See bistro documentation for full details: 
+
 http://bazaar.launchpad.net/~toykeeper/flashlight-firmware/convoy/view/head:/ToyKeeper/bistro/bistro.txt
 
 Many fast clicks enter the menu as described there.  I will try to keep the 
@@ -48,8 +50,10 @@ example.
    8: reset
    9: toggle e-switch on and off (very uncertain feature, may get removed)
 
-(The downside of this approach to fixed menu numbers is that the multi-blink 
-menu can't be shortened to a menu more like the modegroups use.)
+The downside of this approach to fixed menu numbers is that the multi-blink 
+menu can't be shortened as neatly to a menu more like the modegroups menu. Menu 
+options beyond 10 are going to get pretty annoying (that's about 50 blinks and 
+10 strobes to wait through). 
 
 
 					I NEW FEATURES (or renewed)
@@ -146,31 +150,48 @@ too big. But it should work on the attiny25.
         attiny25 compatible builds:
 
 
-TAv1-OTSM: The flagship build, stable no-fuss time-based clik timing for a 
-tripple with the TA modegroups.
+TAv1-OTSM: The flagship build, rock solid no-fuss time-based click timing for a 
+1S tripple channel build with the TA modegroups, using Vcc voltage reads.
+
+TAv1-OTSM-LDO:  A version for LDO build (2S 3S etc mostly).  It reads voltage 
+from the divider instead of Vcc, but requires more precise resistor selection, 
+and of course an LDO voltage regulator. See OTSM build section below.
 
 classic:  Original bistro configuration and modes.
 
 trippledown: Original trippledown configuration and modes
 
-TAv1-OTC: the TA version of trippledown and it's great modes.
+TAv1-OTC: Essentially the original TA version of trippledown and its great 
+modes. OTC for first generation builds.  Room left to add many more modes.
 
+dual-switch-noinit-TA:  There at least a couple of ways to do this, more with 
+some minor code changes.  This one use TA modegroups, and trippledown layout 
+and noinit RAM decay check for timing the clicking switch (no medium presses on 
+the clicking switch).  This requires the e-switch and OTC are on the same pins 
+and probably want some resitance inline with teh switch to bring the cap down 
+softly. 
 
-dual-switch-TA:  There at least a couple of ways to do this, more with some 
-minor code changes.  This one use TA modegroups, and trippledown layout.  It 
-assumes both an eswitch and OTC cap are on the cap pin (you probably want some 
-inline resistance on the switch to drain the cap nicely).  The voltage pin 
-senses power-off (so clicking switch).  And voltage is monitored on Vcc (for a 
-1S light). I will probably make a divider monitored version soon specifically 
-with the Q8 in mind.
+dual-switch-OTSM-TA:  
+If the driver is built with OTSM the click switch will have normal 
+functionality.  There is an issue with this configuration that high divider 
+resitance needed for low switch drain is contradictory to low divider resistance 
+needed for OTSM.  For now, using the click switch when putting the light on the 
+shelf is the solution.  
+
+If the driver is built without OTSM the click switch will reset (long press) 
+based on mode memory, which can be useful too. The voltage pin senses power-off 
+(so clicking switch).  And voltage is monitored on Vcc (for a 1S light). I will 
+probably make a divider monitored version soon  and will add a default click 
+mode so the click switch can come on in a pre-set mode even with OTSM or noinit
 
 4channel-dual-switch: Places the ESWITCH on the voltage pin, and uses OTSM for 
-timing the clicking switch.  Since OTSM doesn't really fully work now a better 
-option would probably be to use safe_presses.  However that combination isn't 
-supported yet.  For now, the clicking switch will always get read as a long 
-press, which isn't so bad really as a lockout.  More thought needs to go 
-into dual switch builds.   
+timing the clicking switch, same issues as the three switch version.  Another 
+option is to use safe_presses.  However that combination isn't supported yet.  
+If a normal C2 cap is used, the clicking switch will always get read as a long 
+press, either resetting to the first mode, or the last used mode.  More thought 
+needs to go into dual switch builds.   
 
+All this dual switch stuff is very in flux.
 
 .. others emerging.
 
@@ -178,7 +199,7 @@ into dual switch builds.
 					III Quickest Start
                     
 Go to the hex directory, choose one for the right version and attiny, and flash 
-it. 
+it. See fuses chapter below.
 
 					IV Compiling:
 
@@ -281,7 +302,7 @@ An example build summary looks like this:
 			   1686	      0	     35	   1721	    6b9	.\bin\bistro-trippledown-HD-attiny45.elf
 			   1686	      0	     35	   1721	    6b9	.\bin\bistro-trippledown-HD-attiny85.elf	
 
-The latest OTSM builds are not listed.
+The latest OTSM build and dual switch builds are not listed.
 
 
 					V Customizing 
@@ -291,7 +312,8 @@ Start with fr-tk-attiny.h.  This defines the driver board configuration or
 "layout".  There are many predefined layouts and you can make your own or just 
 use the "custom-layout" for your needs.   For now you only need to identify one 
 you like and modify it, or create a new one.  We'll select the one to actually 
-use later. 
+use later.  Configuration is significantly simplified from the past but the 
+basic idea is the same.
 
 PWM channels: 
 
@@ -301,8 +323,8 @@ things should match, the channels defined here, the channels tied to a FET,
 modegroup.h.  You can disable channels in modegroups.h by commenting out the 
 ramp, and you CAN use a layout that enables more channels than your board has. 
 (There's a chance this will cause issues with OTSM builds.  OTSM sleep is very 
-sensitive to how pin states are defined).  This makes trippledown-layout a good 
-all-around choice for most purposes.  
+sensitive to how pin states are defined, but you can try).  This makes 
+trippledown-layout a good all-around choice for most purposes.  
 
 What you cannot do is use a layout that is missing channels that are wired on 
 your board. Channels not included in the layout get set to input high (for good 
@@ -321,7 +343,10 @@ OTSM you will still want a voltage sense pin to detect power on.  For eswitch
 only without OTSM, especially if your voltage pin is disconnected, you should 
 comment it out. The voltage PIN is left floating by the firmware if defined.
 
-V.2 Customizing the Configuratoin:
+It is no longer required to match ADMUX values and such to the pins.  This is 
+done automatically at the bottom of the file.
+
+V.2 Customizing the Configuration:
 
 Configurations exist in the configs directory.  You can start with one similar 
 to what you need, rename it, and edit it.  
@@ -498,7 +523,7 @@ attiny13:
 
                 VIII OTSM 
                 
-  VIII.1 Parts and build for tested TAv1 board
+VIII.1a Parts and build for tested TAv1 board for 1S
 
 OTSM is working better and better, but getting it there required a combination 
 of software work and the best parts.  It may be possible now to use cheaper or 
@@ -556,6 +581,60 @@ None, unpopulated.
 
 C1:  1uF
 
+VIII.1b Parts and build for tested TAv1 board for LDO (2S, 3S etc)
+
+For 2S or more build, the attiny must be fed power by some form of voltage 
+regulation such an LDO.  This means that Vcc (input voltage) cannot be used to 
+measure the battery voltage.  The divider must be used.  Furthermore because 
+the divider pin must stay logic high to indicate power on, the 1.1V reference 
+cannot be used.  The REFERENCE_DIVIDER_READS_TO_VCC option must be used (It's 
+compiled into the LDO firmware)  This reads pin voltage as a fraction of Vcc 
+with Vcc being the max, allowing the highest possible divider voltages.
+
+There's some difficulty here because a low battery, 2.5V/cell is 0.6 the 
+voltage of a full battery: 4.2V/cell.  0.6Vcc is also the maximum trigger level 
+for a pin change interrupt, which indicates a click and puts the light into 
+sleep. In reality the trigger level should be below this, but by spec it can be 
+this high.  So we need the divider voltage to really stay as high as possible. 
+Furhtermore Vcc is reduced from the LDO voltage by the diode voltage. This 
+fluctuates slightly with temperature and current, so we need to estimate this 
+max voltage as well as possible. From the diode spec sheet a maximum diode 
+voltage of about 0.4V at 2 to 4mA is seen, but more typical is 0.35V and this 
+should be correct within 0.1V even when hot. 
+
+Parts:
+Using a TA generation 1 (v1) LDO board, a diode must be added, the same one as 
+for the 1S configuration above.  The diode can be added in place of the R7 
+0-ohm resistor.   The same caps are used.  
+
+The only other difference is the correct resistor values should be chosen. We 
+want a total resistance R2+R1= about 4kOhms. We need the voltage on pin 7 to be 
+equal to the LDO voltage minus the diode voltage, ie Vcc, when the batteries 
+are at max voltage, Vbm.
+
+So the divider  should be R2/(R1+R2) = Vcc/Vbm.
+Following the TA build specs and the diode used here, Vcc is 5.0-0.35 = 4.65V
+
+This gives R2 = Vcc/Vbm *4kOhm.
+And R1 = 4kOhm-R2
+
+here is the calculated table for various voltage levels:
+        R1          R2           Vcc/Vbm ideal:
+2S:     1786        2214           0.5536  
+3S:     2524	    1476           0.3690  
+4s:     2892	    1107           0.2768
+
+Of course these resistors don't exist, so we need to look for something close, 
+with the ratio being the most important thing.
+
+       R1          R2            Divider Error %
+2S:    1780        2210          0.06
+3S:    2250        1500          0.36 
+4S:    2870        1100          0.1
+
+These should be in 1% tolerance or better.  Any inaccuracy here pushes the 
+measureable voltage range up against the spec limits.
+
 
     VIII.2 OTSM Theory and technicalities
                 
@@ -566,27 +645,37 @@ is fast power-off detection.  DEL recommends a 1uF C1 for stability. C1 must
 discharge to some threshold voltage to trigger a poweroff detection.  C2 must 
 remain high.  This means a diode or LDO/diode combination must exist between C2 
 and C1 and it should have low leakage current even when hot (<1 or2 uA 
-preferably).  This limits diode selection.  If C1 takes too long to drain, C2 
-will also be consumed by the mcu power.  This means the reistance from C1 to 
-ground should not be too big.  This is easy to calculate in principle. 
-Generally resistances less than 4k are ok.  Starting with a voltage close to 
-the threshold helps speed up detection too. Bistro-HD uses pin-change 
-detection. The maximum threshold for logic level detection is 0.6*Vcc so the 
-sense voltage can be reduced safely to 0.75*Vcc or a little more, so a R2:R1 of 
-about 3:1, not much less. The time to drain C1 to the minimum detection 
-threshold (0.3*Vcc) along with the mcu current consumption, determines the 
-voltage/charge/energy used on C2 before power off.  The measured mcu current 
-for an attiny25 is about 4mA in full power, but by enabling OTC_POWERSAVE, is 
-reduced to about 2.1mA.  This measurebly improves OTSM time in some conditions.
+preferably).  This limits diode selection.  If C1 takes too long to drain, 
+Charge on C2 will also be consumed by the mcu power.  This means the reistance 
+from C1 to ground should not be too big.  Starting with a divider voltage close 
+to the maxximum threshold helped minimize the C1 fall time. Bistro-HD uses 
+pin-change detection. The maximum threshold for logic level detection is 
+0.6*Vcc so the sense voltage can be reduced safely to 0.75*Vcc or a little 
+more, so a R2:R1 of about 3:1, not much less. The measured mcu current for an 
+attiny25 is about 4mA in full power, but by enabling OTC_POWERSAVE, is reduced 
+to about 2.1mA.  This measurebly improves OTSM time.
+
+The charge used during off-detection depends strongly on the resistors selected 
+and is easy to calculate. For the first bistro-HD OTSM light, 4.3k total 
+resistance 1uF C1 gave an RC time of 4.3ms. A more precise worst-case time to 
+drain to minum pin change threshold (0.3Vcc) ends up at about 4.0ms. With 2.1mA 
+of idle current draw (in OTSM_POWERSAVE mode), that's 8.5uAs of drain.  
+Assuming a 1V drop before the mcu turns off, the 47uF cap can provide 47uAs of 
+charge before shuttoff, so that's already about 18% of the available charge, or 
+about 10uF worth, or about 1s worth of off-time.   If lower quality caps are 
+used this starts to matter. If you've only got 25uF of real capacitance, that 
+first 10 is important.  For lower quality caps, using a bleeder resistor or a 
+divider in the hundreds of ohms range is a good idea, at the expense of 
+moon-mode consumption.
 
 The next issue is the sleep power.  Sleep power can be as low as about 4uA 
 (measured) but only if BOD (Brown out detection) is disabled.  Unfortunately 
 brown out detection is maybe pretty important for preventing corruption when 
 operating at low voltages (testing by Mike C).  Furthermore a low voltage BOD 
 with a compatible chip, ie the V version 10Mhz chip, is important. Fortunately 
-BOD can be disable during sleep and enabled during running to protect 
+BOD can be disabled during sleep and enabled during running to protect 
 corruption.  This feature is called BODS, but it's only supported on late 
-revision chips, see datasheet page 36 (and parts section above)  for details.  
+revision chips, see datasheet page 36 (and parts section above)  for details. 
 All known attempts to find compatible chips in attiny85 have failed. However 
 recent purchases of attiny25V and attiny45 V have worked. Without BODS about 
 200uF of capacitance is required.  With BODS 47uF is enough.
@@ -625,25 +714,26 @@ software complication.   The adc needs to run asyncronously, and combining
 temperature monitoring, this is change from the usual bistro adc methodws. 
 There was discussion about power use of the ADC, but this is not a serious 
 issue.  The adc can run fine with very low prescale factors, probably 4 or 8 
-for the precision we need.  at prescale 8 that's about 1us per adc cycle and 13 
+for the precision we need.  At prescale 8 that's about 1us per ADC cycle and 13 
 cyles per readout, so about 13us per adc read, probably times two for the 
-software commands themselves, so let's say 30us.  The adc consumes about 150uA 
+software commands themselves, so let's say 30us.  The ADC consumes about 150uA 
 of current but that's irrelevant for the short time it needs run.  What matters 
 is it keeps the mcu awake and the mcu is consuming about 4mA of current for 
 30us so about 0.12uAs of charge.  That's compared to about 0.25s * 10uA=2.5uAs 
 for a total sleep cycle. So the ADC adds about 5%.  Why so low if the wake time 
-is doubling the current draw?  Probably because the time actually waking up is 
-very significant.  The chip takes 4ms to wake up and is presumably in some 
-intermediate power state then. 
+is doubling the current draw and we're at least doubling the wake time? 
+Probably because the time actually waking up is very significant.  The chip 
+takes 4ms to wake up and is presumably in some intermediate power state then. 
+Compared to that the 30us extra probably isn't that much. 
 
-I have run tests with ADC reads during wakes with no significant impact on 
-off-time.
-
-
+Some of the details are missing there, but the average current measurements are 
+the real evidence, and  I have run tests with ADC reads during wakes on 
+bisro-HD with no significant impact on off-time.  The ability to detect pin 
+fall faster could actually save power.
 
 Voltage pin, resistor selection, and OTSM:
 
-OTSM detects power off on the voltage pin.  So how can voltage be detected for 
+OTSM detects power-off on the voltage pin.  So how can voltage be detected for 
 battcheck and LVP? The logic level threshold has a tolerance range between 
 0.3*Vcc and 0.6*Vcc.  For a 1S light with no regulator or zener, this just 
 means we need the R2:R3 3:1 or greater to have a little safety margin.  Making 
@@ -661,7 +751,7 @@ voltage corresponds exactly to 3.0V or maybe 1 or 2 % less. The voltage should
 be read from the divider and the option to reference divider-reads to Vcc 
 should be set, since these voltages are necessarily above the 1.1V internal 
 reference.
-                   IV E-switch
+                   IV E-switch & Dual Switch
                    
 An eswitch works very similarly to OTSM, checking for voltage rises and falls 
 and timing on a pin.  So it was natural to add e-switch support.  The eswith 
@@ -676,13 +766,26 @@ with a small series resitor in the switch line.
 
 The eswitch and OTSM should also be able to work on the same pin, the voltage 
 pin. Flexibility to develop differentiated functionality may be reduced but 
-would need consideration.  Presently it is possible to tell difference in which 
-switch was pressed in some circumstances.  For example for long presses the 
-clicky switch will create a full reset and the eswitch won't. This is 
-detectable by initialization values.  Also if noinit 
-is used instead of OTSM or OTC for the clicky, then this will be true even for 
-short presses, but medium presses won't be available on the clicking switch 
-then.
+would need consideration.  Presently, even then, is possible to tell difference 
+in which switch was pressed in some circumstances.  For example for long 
+presses the clicky switch will create a full reset and the eswitch won't. This 
+is detectable by initialization values.  Actually unless an OTSM cap is 
+included any click of the power switch will create a detectable reset.  
+
+An entersting option at the moment, is to configure the firmware for OTSM and 
+eswitch, but use a non-OTSM build.  In this case all click presses will 
+result in a long click, allowing the click switch to always start in first or 
+last-used mode.  This is interesting mostly because it takes no further 
+software tweaks.
+
+A significant problem with running OTSM on an e-switch light is that an 
+e-switch light would normally have a very high resistance from C1 to ground to 
+avoid parasitic drain.  This conflicts with the OTSM need to have a fast 
+voltage drop on C1 after power off.  The obvious but not simple solution is to 
+use a transistor to drain C1.  The other option is to simply live with it.  You 
+have a power-off switch, so use it.  Other options are just to not use that 
+combination.  Use OTC or noinit for the clicky. Noinit is probably not yet 
+supported in this combination.
 
 It's also possible to run the e-switch on the reset pin.  The reset voltage 
 threshold is very low (maybe 0.1V I think).  So the switch would need a 
@@ -690,9 +793,10 @@ resistor network such as to pull the voltage down only to about 0.5V.  A
 capacitor may be required in that case to prevent noise from triggering the 
 reset.
 
-                   V Under the Hood
+
+                   X Under the Hood
                     
-V.1 Space savings
+X.1 Space savings
 
 Looping configs:  Bistro uses several EEPROM saved variables, most of them 
 representing selections in the main menu, or "toggles" that get turned on and 
@@ -720,7 +824,7 @@ reverse modes it's done in two.
 In the new OTSM and eswitch code, much space was conserved (not gained) by 
 using naked or OS_task interrupt handlers. Details in the comments.
 
-V.2 OTSM/ESWITCH 
+X.2 OTSM/ESWITCH 
 
 An always-on e-switch light could start up in some mode and sit in loop doing 
 basically nothing while interrupts control ADC reads and switch detection.  If 
@@ -764,7 +868,7 @@ way to set aside specific registers that the calling program doesn't touch,
 since the interrupt can happen anywhere.  Every register used must be saved 
 and resotred.  But we're not ever going to return.  We're going to blow up the 
 world and start over anyway.  For this reason the usual overhead is avoided by 
-declaring the function with the OTSM_task attribute.  However since the same 
+declaring the function with the OS_task attribute.  However since the same 
 interrupt is used for the rising pin, we interrupt the interrupt on pin rise, 
 and THEN we do return, to the first instance of the interrupt.  That seems to 
 pose a problem.  By carefully controlling what registers are touched in the 
