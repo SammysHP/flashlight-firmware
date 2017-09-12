@@ -3,6 +3,7 @@ Description: "Bistro-HD", bistro your way. OTSM, eswitch, Vcc reads, safe_presse
   of new things.  Primarily OTSM (off time sleep mode), which makes button
   press timings consistent regardless of temperature, with no need for an
   analog OTC (off time capacitor).
+  http://budgetlightforum.com/node/52798
 Button-Type: clicky, momentary
 Memory: offtime, OTC, OTSM, configurable
 MCU: attiny25, attiny45, attiny85

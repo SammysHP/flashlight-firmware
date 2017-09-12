@@ -41,7 +41,7 @@
 //**** You can now easily customize layouts in fr-tk-attiny.h :
 
 // choose the file that defines your modegruops (so we can easily keep more)
-#define MODEGROUPS_H "modegroups/modegroups-TA-tripple.h"
+#define MODEGROUPS_H "modegroups/modegroups-TA-tripple-v1.3plus.h"
 //#define MODEGROUPS_H "modegroups/modegroups-biscotti.h"
 //#define MODEGROUPS_H "modegroups/modegroups-BLFA6.h"
 
@@ -105,7 +105,8 @@
 
 /******theremal protection:  ***/
 #define TEMPERATURE_MON          // You can set starting temperature in the "maxtemp" setting in config options first boot options.
-#define USE_TEMP_CAL
+#define USE_TEMP_CAL    // include a TEMP_CAL mode in the menu.
+#define TEMP_STEP_DOWN //Requires TEMPERATURE_MON, Use step-down and tap-up instead of regulate/oscillate
 
 /*******Mode features***********/
 #define USE_MUGGLE_MODE  // compile in use of muggle mode

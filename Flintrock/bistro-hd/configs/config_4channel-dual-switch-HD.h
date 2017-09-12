@@ -41,7 +41,7 @@
 //**** You can now easily customize layouts in fr-tk-attiny.h :
 
 // choose the file that defines your modegruops (so we can easily keep more)
-#define MODEGROUPS_H "modegroups/modegroups-TA-tripple.h"
+#define MODEGROUPS_H "modegroups/modegroups-TA-tripple-v1.3plus.h"
 //#define MODEGROUPS_H "modegroups/modegroups-biscotti.h"
 //#define MODEGROUPS_H "modegroups/modegroups-BLFA6.h"
 
@@ -93,7 +93,13 @@
 /*****************************END OTSM CONGIGS*********************************/
 
 #define USE_ESWITCH  // pin must be defined in the layout too.
-#define USE_ESWITCH_LOCKOUT_TOGGLE  // enables menu to turn off eswitch, experimental, maybe be removed.
+  #define USE_ESWITCH_LOCKOUT_TOGGLE  // enables menu to turn off eswitch, experimental, maybe be removed.
+
+  #define DUAL_SWITCH_NOINIT // clicking switch on dual switch light uses noinit to measure long/short presses.
+                             //No OTSM or OTC.
+
+//  #define DUMB_CLICK   //Power switch on dual-switch light doesn't change the mode.
+                       //Better not use it with USE_ESWITCH_LOCKOUT_TOGGLE
 
 /**********************VOLTAGE CONFIG****************************************/
 
@@ -114,7 +120,7 @@
 
 /******theremal protection:  ***/
 #define TEMPERATURE_MON          // You can set starting temperature in the "maxtemp" setting in config options first boot options.
-#define USE_TEMP_CAL
+#define USE_TEMP_CAL    // include a TEMP_CAL mode in the menu.
 
 /*******Mode features***********/
 #define USE_MUGGLE_MODE  // compile in use of muggle mode

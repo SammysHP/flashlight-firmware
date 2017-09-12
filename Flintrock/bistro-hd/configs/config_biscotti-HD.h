@@ -60,7 +60,7 @@
 //#define USE_OTSM  // USE OTSM.  Pin must be defined in the layout too.
 
 //#define OTSM_USES_OTC // use OTC cap for extra power on OTSM (sets it output high to charge up)
-//#define OTSM_powersave // Also works without OTSM to reduce moon-mode drain. 
+#define OTSM_powersave // Also works without OTSM to reduce moon-mode drain. 
              // Squeeze out a bit more off-time by saving power during
              // shutoff detection (so at all times).  Implements ms resolution (could be less) idle sleeps in place of delay.
              // Seems to add at 0.5s of sleep at 3.1V 30uF cap, starting with only 0.75 that matters.  
@@ -102,14 +102,14 @@
 
 /******theremal protection:  ***/
 //#define TEMPERATURE_MON          // You can set starting temperature in the "maxtemp" setting in config options first boot options.
-//#define USE_TEMP_CAL
+//#define USE_TEMP_CAL    // include a TEMP_CAL mode in the menu.
 
 #if ATTINY==13  // thermal control depending on chip.
   #define USE_TURBO_TIMEOUT
   #define TURBO_TIMEOUT 45   // timeout in seconds.
 #else
   #define TEMPERATURE_MON
-  #define USE_TEMP_CAL
+  #define USE_TEMP_CAL    // include a TEMP_CAL mode in the menu.
 #endif
 
 /*******Mode features***********/

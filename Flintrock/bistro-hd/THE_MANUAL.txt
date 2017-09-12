@@ -171,7 +171,7 @@ the clicking switch).  This requires the e-switch and OTC are on the same pins
 and probably want some resitance inline with teh switch to bring the cap down 
 softly. 
 
-dual-switch-OTSM-TA:  
+dual-switch-dumbclick-TA:  
 If the driver is built with OTSM the click switch will have normal 
 functionality.  There is an issue with this configuration that high divider 
 resitance needed for low switch drain is contradictory to low divider resistance 
@@ -209,34 +209,79 @@ the battcheck hex must correspond to your driver layout and attiny chip.  It
 also must correspond to the voltage reading method you're using. This is why a 
 battcheck is made corresponding to every firmware combination.
 
-You can compile with atmel studio or with WinAVR using the included batch file.
+You can compile from within atmel studio you can use the included batch files 
+together with either Atmel Studio 7.0 installed or  WinAVR 20100110 using the 
+included batch files. The batch files use the included Makefile for compiler 
+configuration.  Within Atmel Studio you can use the included Makefile , or the 
+normal atmel studio way.  Both are described here, but using the Makefile means 
+you'll get the same build configuration as the default builds and should be 
+able to recreate exactly the same build sizes. On the other hand using the 
+normal Atmel Studio way allows the debugger to work.  Note that hex's built 
+with the Makefil will end up in the hex/ directory and hex's built the AS way 
+and without the Makefile will end up somwhere like Release/bin/ so don't use 
+the wrong one.
 
-To use WinAVR, first simply install it. If you have the usual version 20100110 
-in the standard  C:\WinAVR-20100110\ directory, then you can just double-click 
-build-all.bat to compile everything. If needed you can edit the .bat file with 
-your install path information.  Or you can edit the GCC_DIR and INCLUDES in 
-Makefile itself if you want to just type "make all" on the command line. Even 
-if using Atmel Studio for editing and debugging, WinAVR seems to compile 
-faster, which matters with >50 hex builds.
+IV.1 Using Atmel Studio, without the Makefile: 
 
-To use Atmel Studio, edit Makefile and make sure the GCC_DIR and INCLUDES 
-matches your atmel install, but by default it  should work for AS 7.0. You want 
-to conslut a guide on building firmware in AS if you don't know how already. 
-After you get the code imported into an AS project,  in 
+You can compile a single build in the usual way in AS. You can even use two 
+build configurations under Build->Configuration Manager, one for Makefile use  
+and one for normal single-hex compiling. For single hex compiling without the 
+Makefile, be sure to select the correct device in device tab of properties. 
+Selecting it in the code configuration alone is not sufficient when compiling 
+with AS.  Debugging without the Makefile is fine, but to be sure get the best 
+compiling options, for the final build, your best bet is to use the Makefile.  
+The resulting hex file will normally be found in the "Release/bin" subdirectory.
+
+IV.2 Compiling with the Makefile
+
+IV.2.1  One-click compiling (double click really)
+
+Advantages: uses some compiler options as release builds used. Does not require 
+importing files/project into Atmel Studio.  You can edit code and configuration 
+files in any editor you want, including Atmel Studio, but you don't need to 
+import or create a project.
+
+There is an included Makefile that configures what hex's to build and how to 
+build them.  Two different bat files are included.  You can install either 
+Atmel Studio 7.0 or WinAVR 20100110.  Tested builds were made with Atmel Studio 
+7.0.  
+
+If you installed Atmel Studio 7.0 with default directory choices, simply double 
+click on "buildall-AS.bat" in windows file explorere to build all standard 
+configurations.
+
+If you installed WinAVR 20100110 with default directory choices simply double 
+click on "buildall.bat" to build all standard configurations.
+
+The hex files built this way will be left in the hex subdirectory.
+
+If needed you can edit the buildall-WinAVR.bat file with your install path 
+information.  Or you can edit the GCC_DIR and INCLUDES in Makefile itself if 
+you want to just type "make all" on the command line. Even if using Atmel 
+Studio for editing and debugging, WinAVR seems to compile faster, which matters 
+with >50 hex builds.
+
+To configure which hex's are built see notes on editing the Makefile in next 
+sub-section
+
+IV.2.2 Atmel Studio with the Makefile:
+To use Atmel Studio with the MAkefile, edit the Makefile and make sure the 
+GCC_DIR and INCLUDES matches your atmel install, but by default it  should work 
+for AS 7.0. You want to conslut a guide on building firmware in AS if you don't 
+know how already. After you get the code imported into an AS project,  in 
 Project->Properties->Build click Use External Makefile and select the file: 
 Makefile. Then cntrl-alt-F7 to compile as usual.
 
-Note that the AS debugger won't work with this setup.  After building, the 
-output window will show the size of all build combinations produced. This build 
-method is particularly useful when modifying the code, to make sure all 
-configurations still compile, and with anticipated sizes.
+IV.2.3 Makefile tips and tricks:
+ 
+After building, the output window will show the size of all build combinations 
+produced. This build method is particularly useful when modifying the code, to 
+make sure all configurations still compile, and with anticipated sizes.
 
-With or without AS you can instead compile a single firmware by uncommenting a 
-ONE_BUILD define in the Makefile.  See comments and examples there.
-
-You can also compile a single build in the usual way in AS with the debugger 
-working. You can use two  build configurations under Build->Configuration 
-Manager, one for Makefile use  and one for normal single-hex compiling.
+Using any of the Makefile methods you can instead compile only single firmware 
+by uncommenting a ONE_BUILD define in the Makefile.  See comments and examples 
+there.  The configuration that is built in that case is determined by that 
+option, *not* by the configurationg file defined in bistro-HD.c
 
 Have a look at the Makefile to customize which files to build. Notice that 
 pre-processed source code is output in the Preprocessor-out subdirectory.  This 
@@ -245,64 +290,84 @@ is very helpful for debugging.
 Finally you can uncomment NO_BATTCHECK to disable battcheck builds (saves a 
 little time)
 
-You can find your hex files in hex subdirectory.
 
 An example build summary looks like this:
-                text	   data	    bss	    dec	    hex	filename
-			    736	      0	     41	    777	    309	.\bin\battcheck-4channel-dual-switch-HD-attiny25.elf
-			    744	      0	     41	    785	    311	.\bin\battcheck-4channel-dual-switch-HD-attiny45.elf
-			    744	      0	     41	    785	    311	.\bin\battcheck-4channel-dual-switch-HD-attiny85.elf
-			    338	      0	     26	    364	    16c	.\bin\battcheck-biscotti-HD-attiny13.elf
-			    364	      0	     29	    393	    189	.\bin\battcheck-biscotti-HD-attiny25.elf
-			    368	      0	     29	    397	    18d	.\bin\battcheck-biscotti-HD-attiny45.elf
-			    368	      0	     29	    397	    18d	.\bin\battcheck-biscotti-HD-attiny85.elf
-			    408	      0	     32	    440	    1b8	.\bin\battcheck-BLFA6_EMU-HD-attiny13.elf
-			    434	      0	     33	    467	    1d3	.\bin\battcheck-BLFA6_EMU-HD-attiny25.elf
-			    438	      0	     33	    471	    1d7	.\bin\battcheck-BLFA6_EMU-HD-attiny45.elf
-			    438	      0	     33	    471	    1d7	.\bin\battcheck-BLFA6_EMU-HD-attiny85.elf
-			    566	      0	     35	    601	    259	.\bin\battcheck-classic-HD-attiny25.elf
-			    570	      0	     35	    605	    25d	.\bin\battcheck-classic-HD-attiny45.elf
-			    570	      0	     35	    605	    25d	.\bin\battcheck-classic-HD-attiny85.elf
-			    548	      0	     39	    587	    24b	.\bin\battcheck-default-HD-attiny25.elf
-			    552	      0	     39	    591	    24f	.\bin\battcheck-default-HD-attiny45.elf
-			    552	      0	     39	    591	    24f	.\bin\battcheck-default-HD-attiny85.elf
-			    704	      0	     41	    745	    2e9	.\bin\battcheck-dual-switch-TA-HD-attiny25.elf
-			    712	      0	     41	    753	    2f1	.\bin\battcheck-dual-switch-TA-HD-attiny45.elf
-			    712	      0	     41	    753	    2f1	.\bin\battcheck-dual-switch-TA-HD-attiny85.elf
-			    532	      0	     38	    570	    23a	.\bin\battcheck-TAv1-OTC-HD-attiny25.elf
-			    536	      0	     38	    574	    23e	.\bin\battcheck-TAv1-OTC-HD-attiny45.elf
-			    536	      0	     38	    574	    23e	.\bin\battcheck-TAv1-OTC-HD-attiny85.elf
-			    592	      0	     34	    626	    272	.\bin\battcheck-trippledown-HD-attiny25.elf
-			    596	      0	     34	    630	    276	.\bin\battcheck-trippledown-HD-attiny45.elf
-			    596	      0	     34	    630	    276	.\bin\battcheck-trippledown-HD-attiny85.elf
-			   1936	      0	     42	   1978	    7ba	.\bin\bistro-4channel-dual-switch-HD-attiny25.elf
-			   1944	      0	     42	   1986	    7c2	.\bin\bistro-4channel-dual-switch-HD-attiny45.elf
-			   1944	      0	     42	   1986	    7c2	.\bin\bistro-4channel-dual-switch-HD-attiny85.elf
-			    976	      0	     29	   1005	    3ed	.\bin\bistro-biscotti-HD-attiny13.elf
-			   1088	      0	     32	   1120	    460	.\bin\bistro-biscotti-HD-attiny25.elf
-			   1092	      0	     32	   1124	    464	.\bin\bistro-biscotti-HD-attiny45.elf
-			   1092	      0	     32	   1124	    464	.\bin\bistro-biscotti-HD-attiny85.elf
-			   1068	      0	     33	   1101	    44d	.\bin\bistro-BLFA6_EMU-HD-attiny13.elf
-			   1246	      0	     34	   1280	    500	.\bin\bistro-BLFA6_EMU-HD-attiny25.elf
-			   1250	      0	     34	   1284	    504	.\bin\bistro-BLFA6_EMU-HD-attiny45.elf
-			   1250	      0	     34	   1284	    504	.\bin\bistro-BLFA6_EMU-HD-attiny85.elf
-			   1686	      0	     36	   1722	    6ba	.\bin\bistro-classic-HD-attiny25.elf
-			   1690	      0	     36	   1726	    6be	.\bin\bistro-classic-HD-attiny45.elf
-			   1690	      0	     36	   1726	    6be	.\bin\bistro-classic-HD-attiny85.elf
-			   1742	      0	     40	   1782	    6f6	.\bin\bistro-default-HD-attiny25.elf
-			   1746	      0	     40	   1786	    6fa	.\bin\bistro-default-HD-attiny45.elf
-			   1746	      0	     40	   1786	    6fa	.\bin\bistro-default-HD-attiny85.elf
-			   1902	      0	     42	   1944	    798	.\bin\bistro-dual-switch-TA-HD-attiny25.elf
-			   1910	      0	     42	   1952	    7a0	.\bin\bistro-dual-switch-TA-HD-attiny45.elf
-			   1910	      0	     42	   1952	    7a0	.\bin\bistro-dual-switch-TA-HD-attiny85.elf
-			   1722	      0	     39	   1761	    6e1	.\bin\bistro-TAv1-OTC-HD-attiny25.elf
-			   1726	      0	     39	   1765	    6e5	.\bin\bistro-TAv1-OTC-HD-attiny45.elf
-			   1726	      0	     39	   1765	    6e5	.\bin\bistro-TAv1-OTC-HD-attiny85.elf
-			   1682	      0	     35	   1717	    6b5	.\bin\bistro-trippledown-HD-attiny25.elf
-			   1686	      0	     35	   1721	    6b9	.\bin\bistro-trippledown-HD-attiny45.elf
-			   1686	      0	     35	   1721	    6b9	.\bin\bistro-trippledown-HD-attiny85.elf	
-
-The latest OTSM build and dual switch builds are not listed.
+text	   data	    bss	    dec	    hex	filename
+		    704	      0	     41	    745	    2e9	.\bin\battcheck-4channel-dual-switch-HD-attiny25.elf
+		    712	      0	     41	    753	    2f1	.\bin\battcheck-4channel-dual-switch-HD-attiny45.elf
+		    712	      0	     41	    753	    2f1	.\bin\battcheck-4channel-dual-switch-HD-attiny85.elf
+		    352	      0	     25	    377	    179	.\bin\battcheck-biscotti-HD-attiny13.elf
+		    372	      0	     29	    401	    191	.\bin\battcheck-biscotti-HD-attiny25.elf
+		    376	      0	     29	    405	    195	.\bin\battcheck-biscotti-HD-attiny45.elf
+		    376	      0	     29	    405	    195	.\bin\battcheck-biscotti-HD-attiny85.elf
+		    542	      0	     35	    577	    241	.\bin\battcheck-classic-HD-attiny25.elf
+		    546	      0	     35	    581	    245	.\bin\battcheck-classic-HD-attiny45.elf
+		    546	      0	     35	    581	    245	.\bin\battcheck-classic-HD-attiny85.elf
+		    526	      0	     39	    565	    235	.\bin\battcheck-custom-HD-attiny25.elf
+		    530	      0	     39	    569	    239	.\bin\battcheck-custom-HD-attiny45.elf
+		    530	      0	     39	    569	    239	.\bin\battcheck-custom-HD-attiny85.elf
+		    526	      0	     39	    565	    235	.\bin\battcheck-default-HD-attiny25.elf
+		    530	      0	     39	    569	    239	.\bin\battcheck-default-HD-attiny45.elf
+		    530	      0	     39	    569	    239	.\bin\battcheck-default-HD-attiny85.elf
+		    684	      0	     40	    724	    2d4	.\bin\battcheck-dual-switch-dumbclick-TA-HD-attiny25.elf
+		    692	      0	     40	    732	    2dc	.\bin\battcheck-dual-switch-dumbclick-TA-HD-attiny45.elf
+		    692	      0	     40	    732	    2dc	.\bin\battcheck-dual-switch-dumbclick-TA-HD-attiny85.elf
+		    640	      0	     34	    674	    2a2	.\bin\battcheck-dual-switch-noinit-TA-HD-attiny25.elf
+		    648	      0	     34	    682	    2aa	.\bin\battcheck-dual-switch-noinit-TA-HD-attiny45.elf
+		    648	      0	     34	    682	    2aa	.\bin\battcheck-dual-switch-noinit-TA-HD-attiny85.elf
+		    656	      0	     39	    695	    2b7	.\bin\battcheck-dual-switch-turboclick-TA-HD-attiny25.elf
+		    664	      0	     39	    703	    2bf	.\bin\battcheck-dual-switch-turboclick-TA-HD-attiny45.elf
+		    664	      0	     39	    703	    2bf	.\bin\battcheck-dual-switch-turboclick-TA-HD-attiny85.elf
+		    508	      0	     38	    546	    222	.\bin\battcheck-TAv1-OTC-HD-attiny25.elf
+		    512	      0	     38	    550	    226	.\bin\battcheck-TAv1-OTC-HD-attiny45.elf
+		    512	      0	     38	    550	    226	.\bin\battcheck-TAv1-OTC-HD-attiny85.elf
+		    584	      0	     39	    623	    26f	.\bin\battcheck-TAv1-OTSM-HD-attiny25.elf
+		    592	      0	     39	    631	    277	.\bin\battcheck-TAv1-OTSM-HD-attiny45.elf
+		    592	      0	     39	    631	    277	.\bin\battcheck-TAv1-OTSM-HD-attiny85.elf
+		    572	      0	     38	    610	    262	.\bin\battcheck-TAv1-OTSM-LDO-HD-attiny25.elf
+		    580	      0	     38	    618	    26a	.\bin\battcheck-TAv1-OTSM-LDO-HD-attiny45.elf
+		    580	      0	     38	    618	    26a	.\bin\battcheck-TAv1-OTSM-LDO-HD-attiny85.elf
+		    568	      0	     34	    602	    25a	.\bin\battcheck-trippledown-HD-attiny25.elf
+		    572	      0	     34	    606	    25e	.\bin\battcheck-trippledown-HD-attiny45.elf
+		    572	      0	     34	    606	    25e	.\bin\battcheck-trippledown-HD-attiny85.elf
+		   1924	      0	     42	   1966	    7ae	.\bin\bistro-4channel-dual-switch-HD-attiny25.elf
+		   1932	      0	     42	   1974	    7b6	.\bin\bistro-4channel-dual-switch-HD-attiny45.elf
+		   1932	      0	     42	   1974	    7b6	.\bin\bistro-4channel-dual-switch-HD-attiny85.elf
+		    990	      0	     28	   1018	    3fa	.\bin\bistro-biscotti-HD-attiny13.elf
+		   1102	      0	     32	   1134	    46e	.\bin\bistro-biscotti-HD-attiny25.elf
+		   1106	      0	     32	   1138	    472	.\bin\bistro-biscotti-HD-attiny45.elf
+		   1106	      0	     32	   1138	    472	.\bin\bistro-biscotti-HD-attiny85.elf
+		   1676	      0	     36	   1712	    6b0	.\bin\bistro-classic-HD-attiny25.elf
+		   1680	      0	     36	   1716	    6b4	.\bin\bistro-classic-HD-attiny45.elf
+		   1680	      0	     36	   1716	    6b4	.\bin\bistro-classic-HD-attiny85.elf
+		   1742	      0	     40	   1782	    6f6	.\bin\bistro-custom-HD-attiny25.elf
+		   1746	      0	     40	   1786	    6fa	.\bin\bistro-custom-HD-attiny45.elf
+		   1746	      0	     40	   1786	    6fa	.\bin\bistro-custom-HD-attiny85.elf
+		   1718	      0	     40	   1758	    6de	.\bin\bistro-default-HD-attiny25.elf
+		   1722	      0	     40	   1762	    6e2	.\bin\bistro-default-HD-attiny45.elf
+		   1722	      0	     40	   1762	    6e2	.\bin\bistro-default-HD-attiny85.elf
+		   1904	      0	     40	   1944	    798	.\bin\bistro-dual-switch-dumbclick-TA-HD-attiny25.elf
+		   1912	      0	     40	   1952	    7a0	.\bin\bistro-dual-switch-dumbclick-TA-HD-attiny45.elf
+		   1912	      0	     40	   1952	    7a0	.\bin\bistro-dual-switch-dumbclick-TA-HD-attiny85.elf
+		   1684	      0	     35	   1719	    6b7	.\bin\bistro-dual-switch-noinit-TA-HD-attiny25.elf
+		   1692	      0	     35	   1727	    6bf	.\bin\bistro-dual-switch-noinit-TA-HD-attiny45.elf
+		   1692	      0	     35	   1727	    6bf	.\bin\bistro-dual-switch-noinit-TA-HD-attiny85.elf
+		   1876	      0	     40	   1916	    77c	.\bin\bistro-dual-switch-turboclick-TA-HD-attiny25.elf
+		   1884	      0	     40	   1924	    784	.\bin\bistro-dual-switch-turboclick-TA-HD-attiny45.elf
+		   1884	      0	     40	   1924	    784	.\bin\bistro-dual-switch-turboclick-TA-HD-attiny85.elf
+		   1690	      0	     39	   1729	    6c1	.\bin\bistro-TAv1-OTC-HD-attiny25.elf
+		   1694	      0	     39	   1733	    6c5	.\bin\bistro-TAv1-OTC-HD-attiny45.elf
+		   1694	      0	     39	   1733	    6c5	.\bin\bistro-TAv1-OTC-HD-attiny85.elf
+		   1780	      0	     40	   1820	    71c	.\bin\bistro-TAv1-OTSM-HD-attiny25.elf
+		   1788	      0	     40	   1828	    724	.\bin\bistro-TAv1-OTSM-HD-attiny45.elf
+		   1788	      0	     40	   1828	    724	.\bin\bistro-TAv1-OTSM-HD-attiny85.elf
+		   1760	      0	     39	   1799	    707	.\bin\bistro-TAv1-OTSM-LDO-HD-attiny25.elf
+		   1768	      0	     39	   1807	    70f	.\bin\bistro-TAv1-OTSM-LDO-HD-attiny45.elf
+		   1768	      0	     39	   1807	    70f	.\bin\bistro-TAv1-OTSM-LDO-HD-attiny85.elf
+		   1666	      0	     35	   1701	    6a5	.\bin\bistro-trippledown-HD-attiny25.elf
+		   1670	      0	     35	   1705	    6a9	.\bin\bistro-trippledown-HD-attiny45.elf
+		   1670	      0	     35	   1705	    6a9	.\bin\bistro-trippledown-HD-attiny85.elf
+           
 
 
 					V Customizing 
@@ -416,6 +481,29 @@ resolution (at expense OTSM shutdown time) nomally don't edit this.
 wake_time_short/med,  sets timing thresholds for OTSM or ESWITCH presses. Set 
 in actual floating point seconds!
 
+USE_ESWITCH:Self explanatory, the eswitch.  Make sure it's defined on your 
+layout.  
+
+  ***Dual switch options***
+The options under this are all for dual switch lights. None of them are tested.
+
+USE_ESWITCH_LOCKOUT_TOGGLE:  Enables menu option 9 that disables the Eswitch.  
+Not really sure how useful this is.  Probably need a more general lockout 
+mechanism anyway.
+
+DUAL_SWITCH_NOINIT: The clicking switch (power switch) uses the noinit click 
+time.  OTC and off-time caps should not be used.  No medium clicks will be 
+recognized on the power switch.
+
+DUMB_CLICK:  The power switch does not change the mode.  Just turns the light 
+off and on.
+
+TURBO_CLICK:  The power switch always brings the light on to the first hidden 
+mode (the last one defined in hiddenmodes, since we enter hiddenmodes 
+backwards).  This is usually turbo.
+  ***End of Dual-switch options***
+
+
 READ_VOLTAGE_FROM_VCC:  Reads the voltage from the Vcc pin instead of voltage 
 divider pin.  This works well for 1S drivers with not voltage regulator (LDO) 
 on the mcu, and doesn't require adjustment for resistor selection.
@@ -428,9 +516,30 @@ USE_TURBO_TIMEOUT:  This re-implements BLFA6 style turbo timeout for attiny13
 builds, especially HD-biscotti (thanks to much space savings).  It needed some 
 changes to work in bistro, but here it is. (untested actually). If you 
 uncomment the whole preprocessor conditional you will get TURBO_TIMEOUT on 
-attiny13 builds and thermal moniotoring on attiny25/45/85 builds.
+attiny13 builds and thermal moniotoring on attiny25/45/85 builds.  
 
-USE_STAR3  uses BLFA6 star3 sensing code.  
+TURBO_STEPDOWN:Possibly hidden control for USE_TURBO_TIMEOUT and TEMP_STEP_DOWN 
+You can define this to a ramp level to step down to in your modegroups.h, but 
+default is RAMP_SIZE/2.
+
+TEMPERATURE_MON:  Allows temperature regulation (various options)
+By default this uses classic bsitro temperature regulation, which attempts to 
+regulate the output at the max defined temperature. See note and end of section 
+about this.
+
+TEMP_STEP_DOWN: Requires TEMPERATURE_MON is defined, uses a hybrid of TURBO 
+timeout and bistro temp mon.  After hitting a max temp, it just jumps back to 
+TURBO_STEPDOWN level, and a short click bumps it back up. Note that the first 
+line of defense is your thumb.  If the light is too hot, you turn it off.  The 
+second, not first, line of protection is this.  So if this cuts in too soon, 
+raise the temp threshold with the calibration mode.  Then you shouldn't really 
+need to use the tap-up feature until after the light has cooled some.  However, 
+if you tap up while it's still hot you'll get a default of 10s minimum in turbo 
+before the temp will be checked again. You can adjust this with the 
+MINIUMUM_TURBO_TIME option.
+
+
+USE_STAR3  uses BLFA6 star3 sensing code, you probably don't need it.  
 
 USE_MUGGLE/REVERSE/MOON: Can now disable the lights menu options for these.
 
@@ -581,7 +690,21 @@ None, unpopulated.
 
 C1:  1uF
 
-VIII.1b Parts and build for tested TAv1 board for LDO (2S, 3S etc)
+VIII.1b Parts and build for TAv1 board for LDO (2S, 3S etc)
+
+Quick version:
+See section VIII.1a for mcu, cap and diode selection.
+Place the diode on the R7 resistor pad with the anode (+ side) pointing away 
+from C2.  No OTC cap is needed.  Use the following divider resistors:
+
+       R1          R2           
+2S:    1780        2210          
+3S:    2250        1500          
+4S:    2870        1100      
+
+No bleeder.  That's it.
+
+Long version:
 
 For 2S or more build, the attiny must be fed power by some form of voltage 
 regulation such an LDO.  This means that Vcc (input voltage) cannot be used to 
@@ -751,7 +874,7 @@ voltage corresponds exactly to 3.0V or maybe 1 or 2 % less. The voltage should
 be read from the divider and the option to reference divider-reads to Vcc 
 should be set, since these voltages are necessarily above the 1.1V internal 
 reference.
-                   IV E-switch & Dual Switch
+                   IX E-switch & Dual Switch
                    
 An eswitch works very similarly to OTSM, checking for voltage rises and falls 
 and timing on a pin.  So it was natural to add e-switch support.  The eswith 
@@ -883,4 +1006,5 @@ loop, reset the stack, and jump to main.
 Eswitch uses the same loop but adds a more complex sequence, with status bits, 
 cycling back to sleep even after a pin rise in some conditions (long press to 
 power off) and requiring another pair of pin changes to come back on.
+
 

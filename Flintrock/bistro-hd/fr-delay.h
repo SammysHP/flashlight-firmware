@@ -26,11 +26,11 @@
 // adding a global time counter (costs a bit more) to allow timeout of fast-presses
 
 #ifndef USE_PWM4 // uses PWM4 instead if active
-ISR(TIMER0_OVF_vect, ISR_NAKED){	
+ISR(_TIMER0_OVF_vect_, ISR_NAKED){	
    __asm__ volatile("reti");
 } // timer overflow wake interrupt.
 #endif
-
+  
 // global clock is an alternative method to alternative method to determine
 // timeout of fast_presses (to get to config)
 //register uint16_t global_clock asm ("r2");
@@ -39,7 +39,7 @@ void _delay_sleep_ms(uint16_t n)
 	set_sleep_mode(SLEEP_MODE_IDLE);
 	uint8_t counter;
 	#if ! defined(PWM4_LVL)  // prefer timer 0 because it's setup twice slower
-  	   TIMSK |= (1<<TOIE0); // enable timer overflow interrupt.
+  	   _TIMSK_ |= (1<<TOIE0); // enable timer overflow interrupt.
   	   TCNT0 = 1; // restart the clock.  Will glitch the PWM, but that's fine.
 	   #define cycle_counts 500  // approximate for timing math, to get int result 
     #else  // else an interrupt is already setup in PWM.

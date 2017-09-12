@@ -9,17 +9,20 @@ CONFIG_DIR := configs
 # Versions for all compatible attiny's will be built unless ONE_BUILD is defined.
 # These must correspond to config headers named like config_<FIRMWARE-NAME>.h
 
-FIRMWARES13 := biscotti-HD BLFA6_EMU-HD 
-FIRMWARES25 := default-HD custom-HD TAv1-OTC-HD TAv1-OTSM-HD TAv1-OTSM-LDO-HD classic-HD trippledown-HD 
-FIRMWARES25 += dual-switch-OTSM-TA-HD dual-switch-noinit-TA-HD 4channel-dual-switch-HD
-FIRMWARES45 :=
-FIRMWARES85 :=
+FIRMWARES13 += biscotti-HD
+# unforutnately BLFA6_EMU doesn't actually fit on an attiny13 yet: 
+#FIRMWARES13 += BLFA6_EMU-HD 
+FIRMWARES25 += BLFA6_EMU-HD 
+FIRMWARES25 += default-HD custom-HD TAv1-OTC-HD TAv1-OTSM-HD TAv1-OTSM-LDO-HD classic-HD trippledown-HD 
+FIRMWARES25 += dual-switch-dumbclick-TA-HD dual-switch-noinit-TA-HD dual-switch-turboclick-TA-HD 4channel-dual-switch-HD
+FIRMWARES45 +=
+FIRMWARES85 +=
 FIRMWARES := $(FIRMWARES13) $(FIRMWARES25) $(FIRMWARES45) $(FIRMWARES85)
 
 # Uncomment next to override multiple builds and build one specific file. 
 #  Must be named like bistr-<config-name>-attinyXX.hex, where XX is a valid attiny model number.
 #ONE_BUILD := bistro-biscotti-HD-attiny13.hex
-#ONE_BUILD := bistro-TAv1-OTC-HD-attiny25.hex
+#ONE_BUILD := bistro-TAv1-OTSM-HD-attiny25.hex
 #ONE_BUILD := bistro-testing-HD-attiny25.hex
 #ONE_BUILD := bistro-BLFA6_EMU-HD-attiny13.hex
 
@@ -42,7 +45,7 @@ INCLUDES := C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.1.1
 #Not sure of the include path..
 
 #Files to pack up to copy it all
-PACKAGE_FILES := bistro-HD.c *.h THE_MANUAL.txt license.txt buildall.bat Makefile configs modegroups hex
+PACKAGE_FILES := bistro-HD.c *.h THE_MANUAL.txt license.txt buildall-AS.bat buildall-WinAVR.bat Makefile configs modegroups hex
 PACKAGE_DIR := C:\firmware\HD
 7ZIP := C:\Program Files\7-Zip\7z.exe
 

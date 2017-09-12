@@ -4,7 +4,6 @@
  *  Firmware configuration header. 
  *
  * Bistro configuration file for dual switch TA-based tripple driver, (C) Flintrock (FR).
- * USES voltage divider and OTC.
  * 
  * To work with tk-bistro and other compatible software.
  *
@@ -41,7 +40,7 @@
 //**** You can now easily customize layouts in fr-tk-attiny.h :
 
 // choose the file that defines your modegruops (so we can easily keep more)
-#define MODEGROUPS_H "modegroups/modegroups-TA-tripple.h"
+#define MODEGROUPS_H "modegroups/modegroups-TA-tripple-v1.2.h"
 //#define MODEGROUPS_H "modegroups/modegroups-biscotti.h"
 //#define MODEGROUPS_H "modegroups/modegroups-BLFA6.h"
 
@@ -59,7 +58,7 @@
 //#define USE_OTC // use off time cap. 
 
 // Off-time sleep mode by -FR, thanks to flashy Mike and Mike C for early feasibility test with similar methods.
-#define USE_OTSM  // USE OTSM.  Pin must be defined in the layout too.
+//#define USE_OTSM  // USE OTSM.  Pin must be defined in the layout too.
 
 //#define OTSM_USES_OTC // use OTC cap for extra power on OTSM (sets it output high to charge up)
 #define OTSM_powersave // Also works without OTSM to reduce moon-mode drain. 
@@ -82,9 +81,16 @@
 							  // It's also the long-press off-threshold for e-switch operation.
 
 /*****************************END OTSM CONGIGS*********************************/
-
 #define USE_ESWITCH  // pin must be defined in the layout too.
-#define USE_ESWITCH_LOCKOUT_TOGGLE  // enables menu to turn off eswitch, experimental, maybe be removed.
+//  #define USE_ESWITCH_LOCKOUT_TOGGLE  // enables menu to turn off eswitch, experimental, maybe be removed.
+
+//  #define DUAL_SWITCH_NOINIT // clicking switch on dual switch light uses noinit to measure long/short presses.
+                             //No OTSM or OTC.
+
+//  #define DUMB_CLICK   //Power switch on dual-switch light doesn't change the mode.
+                        //Better not use it with USE_ESWITCH_LOCKOUT_TOGGLE
+
+  #define TURBO_CLICK  // Power switch always goes to first hidden mode in dual-switch light.
 
 /**********************VOLTAGE CONFIG****************************************/
 
@@ -105,7 +111,8 @@
 
 /******theremal protection:  ***/
 #define TEMPERATURE_MON          // You can set starting temperature in the "maxtemp" setting in config options first boot options.
-#define USE_TEMP_CAL
+#define USE_TEMP_CAL    // include a TEMP_CAL mode in the menu.
+//#define TEMP_STEP_DOWN  // Step down with user bump up instead of regulation/oscillation.
 
 /*******Mode features***********/
 #define USE_MUGGLE_MODE  // compile in use of muggle mode

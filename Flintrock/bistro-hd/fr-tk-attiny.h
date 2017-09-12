@@ -33,6 +33,8 @@
 /******************** hardware-specific values **************************/
 #if (ATTINY == 13)
     #define F_CPU 4800000UL
+	#define _TIMSK_ TIMSK0
+	#define _TIMER0_OVF_vect_ TIM0_OVF_vect
     #define EEPSIZE 64
     #define V_REF REFS0
     #define BOGOMIPS 950
@@ -41,6 +43,8 @@
 
 #elif (ATTINY == 25) || (ATTINY == 45) || (ATTINY ==85)
     // TODO: Use 6.4 MHz instead of 8 MHz?
+	#define _TIMSK_ TIMSK
+	#define _TIMER0_OVF_vect_ TIMER0_OVF_vect
     #define F_CPU 8000000UL
     #define EEPSIZE 128
     #define V_REF REFS1    // just defines which bit controls the voltage reference.

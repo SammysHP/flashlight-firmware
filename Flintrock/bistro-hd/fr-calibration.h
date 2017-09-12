@@ -164,22 +164,26 @@ No calibration table defined for VCC mode.  Disable USE_CAL_TABLE or choose use 
 // See battcheck/otc-readings.txt for reference values.
 // These #defines are the edge boundaries, not the center of the target.
 #ifdef OFFTIM3
+//UPdated values from V1.2 of TA-bistro, it seems this slows down the clicks a bit.
 // The OTC value 0.5s after being disconnected from power
 // (anything higher than this is a "short press")
-//#define CAP_SHORT           190 // stock value
-#define CAP_SHORT           248 // Texas Avenger 0603 OTC value
+//#define CAP_SHORT           180 // Very long timing
+  #define CAP_SHORT           190 // stock value
+//#define CAP_SHORT           215 // Texas Avenger faster timing
+//#define CAP_SHORT           248 // Texas Avenger fastest timing
 // The OTC value 1.5s after being disconnected from power
 // Between CAP_MED and CAP_SHORT is a "medium press"
+  #define CAP_MED             80 // Very long timing
 //#define CAP_MED             94 // Stock value
-#define CAP_MED             210 // Texas Avenger 0603 OTC value
+//#define CAP_MED             150 // Texas Avenger faster timing
+//#define CAP_MED             210 // Texas Avenger fastest Timing
 // Below CAP_MED is a long press
 #else
 // The OTC value 1.0s after being disconnected from power
 // Anything higher than this is a short press, lower is a long press
-//#define CAP_SHORT           115 // Stock value
-#define CAP_SHORT           215 // Texas Avenger 0603 OTC value
-
-
+//#define CAP_SHORT           100 // Very long timing
+  #define CAP_SHORT           115 // Stock value
+//#define CAP_SHORT           165 // Texas Avenger faster timing
+//#define CAP_SHORT           215 // Texas Avenger fastest Timing
 #endif
-
 #endif  // TK_CALIBRATION_H

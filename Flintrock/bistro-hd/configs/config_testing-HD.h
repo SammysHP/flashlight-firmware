@@ -43,7 +43,7 @@
 //**** You can now easily customize layouts in fr-tk-attiny.h :
 
 // choose the file that defines your modegruops (so we can easily keep more)
-#define MODEGROUPS_H "modegroups/modegroups-TA-tripple.h"
+#define MODEGROUPS_H "modegroups/modegroups-TA-tripple-v1.3plus.h"
 //#define MODEGROUPS_H "modegroups/modegroups-biscotti.h"
 //#define MODEGROUPS_H "modegroups/modegroups-BLFA6.h"
 //#define MODEGROUPS_H "modegroups/modegroups-classic.h"

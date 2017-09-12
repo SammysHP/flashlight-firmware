@@ -95,14 +95,14 @@
 
 /******theremal protection:  ***/
 //#define TEMPERATURE_MON          // You can set starting temperature in the "maxtemp" setting in config options first boot options.
-//#define USE_TEMP_CAL
+//#define USE_TEMP_CAL    // include a TEMP_CAL mode in the menu.
 
 #if ATTINY==13  // thermal control depending on chip.
  #define USE_TURBO_TIMEOUT
  #define TURBO_TIMEOUT 45   // timeout in seconds.
 #else
  #define TEMPERATURE_MON
- #define USE_TEMP_CAL
+ #define USE_TEMP_CAL    // include a TEMP_CAL mode in the menu.
 #endif
 
 /*******Mode features***********/

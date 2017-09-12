@@ -106,7 +106,7 @@
 
 /******theremal protection:  ***/
 #define TEMPERATURE_MON          // You can set starting temperature in the "maxtemp" setting in config options first boot options.
-#define USE_TEMP_CAL
+#define USE_TEMP_CAL    // include a TEMP_CAL mode in the menu.
 
 /*******Mode features***********/
 #define USE_MUGGLE_MODE  // compile in use of muggle mode

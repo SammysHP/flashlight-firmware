@@ -24,7 +24,7 @@
 //#include "tk-attiny.h"
 #include "fr-calibration.h"
 
-/* Probably should not have un-inlined functions in a header :P, but
+/* Probably should not have un-inlined functions and data initialization in a header :P, but
  *  the idea here anyway is this only gets included in one translation unit. */
 
 // Added by FR:  Setup stuff defines and functions for inverted voltage reads
@@ -109,7 +109,7 @@ inline void set_adc_normal_mode(){ //-by Flintrock
 #endif
 #endif
 
-void ADC_on() {
+inline void ADC_on() {
 	// modified by FR for variable configuration.
     // disable digital input on ADC pin to reduce power consumption
 //    DIDR0 |= (1 << ADC_DIDR); // moved to initialization
@@ -117,9 +117,11 @@ void ADC_on() {
     ADMUX  = (v_ref << V_REF) | (1 << ADLAR) | adc_channel;
 ////    ADMUX  = (v_ref << V_REF) | (1 << ADLAR) | adc_channel;
     // enable, start, prescale
+//if we define it, we don't need to |= it in get_voltage and elsewhere.  Saves a read and an or.
     ADCSRA = (1 << ADEN ) | (1 << ADSC ) | ADC_PRSCL;
+
 //	ADCSRA &= ~(1<<7); //ADC off
-	ADCSRA |= (1 << ADSC);
+//	ADCSRA |= (1 << ADSC);
 	    // Wait for completion
    if (!v_ref)	{ // if not 1.0V reference, need stabilization time, for switching back from temperature ADC.
 	  while (ADCSRA & (1 << ADSC));
@@ -132,9 +134,9 @@ void ADC_on() {
 uint8_t get_voltage() {
     // Start conversion
     //	_delay_ms(50); // wait for adc to stablize.
-	            // works better in ADC on, ADC doesn't even need to be on during stabilization.
-    ADCSRA |= (1 << ADSC);
+    ADCSRA |= (1 << ADSC); // this is an SBIC, not an RMW
     // Wait for completion
+//	_delay_ms(1);
     while (ADCSRA & (1 << ADSC));
     // Send back the result
 #ifdef READ_VOLTAGE_FROM_DIVIDER
@@ -147,7 +149,10 @@ uint8_t get_voltage() {
 }
 
 void ADC_off() {
-    ADCSRA &= ~(1<<7); //ADC off
+//    ADCSRA &= ~(1<<7); //ADC off
+// &= takes 6 bytes instead of 2. no need to save the value,
+// If we did need it, it's defined in ADC_INIT macro
+    ADCSRA = ~(1<<7)&0xff; //ADC off
 }
 
 
@@ -262,7 +267,7 @@ inline uint8_t battcheck() {
     // Uses the table above for return values
     // Return value is 3 bits of whole volts and 5 bits of tenths-of-a-volt
     uint8_t i, voltage;
-	ADC_on();
+//	ADC_on();
     voltage = get_voltage();
     // figure out how many times to blink
     for (i=0;
@@ -276,7 +281,7 @@ inline uint8_t battcheck() {
     // Return an int, number of "blinks", for approximate battery charge
     // Uses the table above for return values
     uint8_t i, voltage;
-	ADC_on();
+//	ADC_on();
     voltage = get_voltage();
     // figure out how many times to blink
     for (i=0;
