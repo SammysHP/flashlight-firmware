@@ -22,6 +22,9 @@ Summary of each project
     DrJones/luxdrv:
         DrJones' first clicky EDC firmware
 
+    Flintrock/bistro-hd:
+        "Bistro-HD", bistro your way. OTSM, eswitch, Vcc reads, safe_presses, turbo timeout...
+
     JonnyC/STAR/MTN_momentary_temp:
         STAR momentary plus temperature monitoring
 
@@ -159,6 +162,9 @@ Authors
         DrJones/luxdrv
         odd/MGdriver
 
+    Flintrock:
+        Flintrock/bistro-hd
+
     JonnyC:
         JonnyC/STAR/MTN_momentary_temp
         JonnyC/STAR/STAR
@@ -190,6 +196,7 @@ Authors
         Tom_E/narsil
 
     ToyKeeper:
+        Flintrock/bistro-hd
         Tom_E/RampingIOS
         Tom_E/narsil
         ToyKeeper/Ferrero_Rocher
@@ -250,6 +257,7 @@ Button-Type
         DrJones/MiniDrv
         DrJones/NLITE
         DrJones/luxdrv
+        Flintrock/bistro-hd
         JonnyC/STAR/STAR
         JonnyC/STAR/STAR_dual_switch
         JonnyC/STAR/STAR_off_time
@@ -281,6 +289,7 @@ Button-Type
 
     momentary:
         DrJones/MiniMo
+        Flintrock/bistro-hd
         JonnyC/STAR/MTN_momentary_temp
         JonnyC/STAR/STAR_dual_switch
         JonnyC/STAR/STAR_momentary
@@ -307,6 +316,7 @@ Extras
         dthoang
 
     LVP:
+        Flintrock/bistro-hd
         Tamagotchi/7135x8v2
         Tom_E/RampingIOS
         Tom_E/narsil
@@ -317,6 +327,9 @@ Extras
         gchart/babka
         gchart/ramping-ui
 
+    OTSM:
+        Flintrock/bistro-hd
+
     battery indicator LEDs:
         ToyKeeper/Ferrero_Rocher
 
@@ -324,6 +337,7 @@ Extras
         Tom_E/narsil
 
     dual PWM:
+        Flintrock/bistro-hd
         JonnyC/STAR/STAR
         JonnyC/STAR/STAR_momentary
         JonnyC/STAR/STAR_off_time
@@ -344,6 +358,7 @@ Extras
         ToyKeeper/blf-a6/cypreus2
 
     hidden modes:
+        Flintrock/bistro-hd
         JonnyC/STAR/STAR_momentary
         ToyKeeper/bistro
         ToyKeeper/bistro/tripledown
@@ -356,6 +371,7 @@ Extras
         Tom_E/narsil
 
     mode groups:
+        Flintrock/bistro-hd
         Tom_E/narsil
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
@@ -366,6 +382,7 @@ Extras
         pilotdog68/xintd-x3
 
     offtime-3:
+        Flintrock/bistro-hd
         ToyKeeper/bistro
         ToyKeeper/bistro/tripledown
         ToyKeeper/blf-a6
@@ -397,6 +414,7 @@ Extras
         Tom_E/narsil
 
     soft start:
+        Flintrock/bistro-hd
         ToyKeeper/bistro
         ToyKeeper/bistro/tripledown
 
@@ -420,6 +438,7 @@ Extras
         ToyKeeper/STAR_noinit
 
     thermal regulation:
+        Flintrock/bistro-hd
         Tom_E/RampingIOS
         ToyKeeper/bistro
         ToyKeeper/bistro/tripledown
@@ -443,6 +462,7 @@ License
         Tido/BLF-VLD
 
     GPLv3:
+        Flintrock/bistro-hd
         Mike_C/X85
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
@@ -496,6 +516,7 @@ MCU
         pilotdog68/xintd-x3
 
     attiny25:
+        Flintrock/bistro-hd
         ToyKeeper/battcheck
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
@@ -504,6 +525,7 @@ MCU
         ToyKeeper/crescendo
 
     attiny45:
+        Flintrock/bistro-hd
         Tom_E/RampingIOS
         Tom_E/narsil
         ToyKeeper/bistro
@@ -512,6 +534,7 @@ MCU
         ToyKeeper/crescendo
 
     attiny85:
+        Flintrock/bistro-hd
         Mike_C/X85
         Tom_E/RampingIOS
         Tom_E/narsil
@@ -527,6 +550,7 @@ MCU
 Memory
 
     OTC:
+        Flintrock/bistro-hd
         JonnyC/STAR/STAR_off_time
         Mike_C/X85
         ToyKeeper/bistro
@@ -539,7 +563,11 @@ Memory
         _the_/TheStar
         pilotdog68/xintd-x3
 
+    OTSM:
+        Flintrock/bistro-hd
+
     configurable:
+        Flintrock/bistro-hd
         Mike_C/X85
         Tom_E/narsil
         ToyKeeper/bistro
@@ -579,6 +607,7 @@ Memory
         odd/MGdriver
 
     offtime:
+        Flintrock/bistro-hd
         JonnyC/STAR/STAR_off_time
         Mike_C/X85
         ToyKeeper/STAR_noinit
@@ -657,6 +686,7 @@ Modes
 
     battcheck:
         DrJones/luxdrv
+        Flintrock/bistro-hd
         Tamagotchi/7135x8v2
         Tom_E/RampingIOS
         Tom_E/narsil
@@ -691,6 +721,7 @@ Modes
         tterev3/power_cycle_light
 
     bike flasher:
+        Flintrock/bistro-hd
         Tamagotchi/7135x8v2
         Tom_E/narsil
         ToyKeeper/bistro
@@ -708,6 +739,7 @@ Modes
 
     config:
         DrJones/luxdrv
+        Flintrock/bistro-hd
         Tom_E/narsil
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
@@ -742,6 +774,7 @@ Modes
         Tom_E/RampingIOS
 
     muggle:
+        Flintrock/bistro-hd
         ToyKeeper/bistro
         ToyKeeper/bistro/tripledown
 
@@ -755,6 +788,7 @@ Modes
         Tamagotchi/7135x8v2
 
     police strobe:
+        Flintrock/bistro-hd
         Tom_E/narsil
         ToyKeeper/bistro
         ToyKeeper/bistro/tripledown
@@ -771,6 +805,7 @@ Modes
         gchart/ramping-ui
 
     random strobe:
+        Flintrock/bistro-hd
         ToyKeeper/bistro
         ToyKeeper/bistro/tripledown
 
@@ -786,6 +821,7 @@ Modes
 
     tactical strobe:
         DrJones/luxdrv
+        Flintrock/bistro-hd
         Tom_E/eswitch-13
         Tom_E/narsil
         ToyKeeper/bistro
@@ -810,6 +846,7 @@ Modes
         ToyKeeper/s7
 
     voltage readout:
+        Flintrock/bistro-hd
         Tom_E/narsil
         ToyKeeper/bistro
         ToyKeeper/bistro/tripledown
