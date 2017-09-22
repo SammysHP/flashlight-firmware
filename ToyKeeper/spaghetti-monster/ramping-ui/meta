@@ -10,6 +10,6 @@ MCU: attiny45, attiny85
 Button-Type: momentary
 Memory: yes
 Modes: ramp, discrete ramp,
-    battcheck, tempcheck, party strobe, tactical strobe,
+    battcheck, tempcheck, party strobe, tactical strobe
 Extras: ramping UI, thermal regulation, LVP, dual PWM, triple PWM
 

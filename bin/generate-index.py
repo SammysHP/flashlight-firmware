@@ -69,7 +69,7 @@ def parse(path, results):
         for v2 in v.split(', '):
             if v2.strip() in ('', ):
                 continue
-            key = (k,v2)
+            key = (k,v2.strip())
             if key not in results:
                 results[key] = []
             results[key].append(path)

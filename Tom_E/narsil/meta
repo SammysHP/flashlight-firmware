@@ -8,6 +8,6 @@ MCU: attiny45, attiny85
 Button-Type: momentary
 Memory: configurable
 Modes: ramp, config, tactical strobe, police strobe, bike flasher, beacon,
-  alpine beacon, battcheck, voltage readout, soft lock
+  alpine beacon, battcheck, tempcheck, voltage readout, soft lock
 Extras: mode groups, ramping UI, thermal step-down, LVP,
   indicator LED, dual PWM, triple PWM
