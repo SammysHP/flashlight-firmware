@@ -303,7 +303,7 @@ register uint8_t eepos asm("r7");  // eeprom read/write position for wear-leveli
 // as a side effect it saves several in/out operations that save more space.
 register uint8_t wake_count asm  ("r8");
 #endif
-/////////////////////END REGISTERVARIABLE/////////////////////////////////
+/////////////////////END REGISTER VARIABLE/////////////////////////////////
 
 // fast_presses
 // counter for entering config mode, remembers click count with tk noinit trick.
@@ -483,8 +483,22 @@ typedef struct
 #if defined(USE_OTSM) || defined(USE_ESWITCH) || defined(USE_OTC)
 // math done by compiler, not runtime:
 // plus 1 because there's always an extra un-timed pin-change wake:
+
+#if defined(USE_OTC) && !defined(USE_ESWITCH)
+#define wake_count_med (255-CAP_MED)
+#define wake_count_short (255-CAP_SHORT)
+#else
+// updated with two components, first 4 wakecounts are double speed.
+//#define wake_interval ( (uint16_t)1<<(6-SLEEP_TIME_EXPONENT) )
+//#define wake_count_short (uint8_t)(1+((double)wake_time_short)*((uint16_t)1<<(6-SLEEP_TIME_EXPONENT) ) 
+
 #define wake_count_short (uint8_t)(1+((double)wake_time_short)*((uint16_t)1<<(6-SLEEP_TIME_EXPONENT)))
 #define wake_count_med (uint8_t)(1+((double)wake_time_med)*((uint16_t)1<<(6-SLEEP_TIME_EXPONENT)))
+
+//#define wake_count_short (uint8_t)(1+((double)wake_time_short)*((uint16_t)1<<(6-SLEEP_TIME_EXPONENT)))
+//#define wake_count_med (uint8_t)(1+((double)wake_time_med)*((uint16_t)1<<(6-SLEEP_TIME_EXPONENT)))
+
+#endif
 #endif
 
 
@@ -1659,11 +1673,13 @@ void __attribute__((OS_task, used, externally_visible)) PCINT0_vect (void) {
 
 /***************** Wake on either a power-up (pin change) or a watchdog timeout************/
 		// At every watchdog wake, increment the wake counter and go back to sleep.
-	 
 	    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 // 		WDTCR = (1<<WDCE) |(1<<WDE);
 //		WDTCR = (0<<WDE);  // might already be in use, so we have to clear it.
-		WDTCR = (1<<WDIE) |(!!(sleep_time_exponent&8)<<WDP3)|(sleep_time_exponent&7<<WDP0); // set the watchdog timer: 2^n *16 ms datasheet pg 46 for table.
+        uint8_t ste;
+		ste=sleep_time_exponent>>(wake_count<5);// for first 4 sleeps, cut wake time in half (right shift 1 if wake_count is <5)
+//		WDTCR = (1<<WDIE) |(!!(sleep_time_exponent&8)<<WDP3)|(sleep_time_exponent&7<<WDP0); // set the watchdog timer: 2^n *16 ms datasheet pg 46 for table.
+		WDTCR = (1<<WDIE) |(!!(ste&8)<<WDP3)|(ste&7<<WDP0); // set the watchdog timer: 2^n *16 ms datasheet pg 46 for table.
 		sleep_bod_disable();
 		sei(); // yep, we're going to nest interrupts, even re-entrenty into this one!
 		sleep_cpu();
@@ -1750,6 +1766,8 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
 			// We can't translate the CAP thresholds, because they are compile-time constants,
 			// and this is a run-time conditional.
 			// Instead translate the cap values to wake_count values.
+			// A matching preprocessor conditional above stores 255-CAP_MED and 255-CAP_SHORT in the wake_count macros.
+			//     in the case that OTC is used.  
 			  uint8_t cap_val = read_otc();
 		      if (cap_val>CAP_MED) {
 				 wake_count=wake_count_med; // long press (>= is long)
@@ -1775,10 +1793,6 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
 		// But high cap is short time, so have to invert.
 		  wake_count = 255-read_otc(); // 255 - OTC adc value.
 		  // define wake_count thresholds from cap thresholds:
-		  #undef wake_count_med
-		  #undef wake_count_short
-		  #define wake_count_med (255-CAP_MED)
-		  #define wake_count_short (255-CAP_SHORT)
 	   #else 
 		 #error You cannot define USE_OTSM and USE_OTC at the same time.
 	   #endif //handle eswitch and OTC below
