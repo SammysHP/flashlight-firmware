@@ -8,25 +8,25 @@
 #define RAMPINGTABLES_H_
 
 
-#define RAMP_SIZE  150
 
 //---------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------
-#if   OUT_CHANNELS == 2			// FET+1
+#if   OUT_CHANNELS == 2			// FET+1 or Buck driver
 //---------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------
-
-	#define TIMED_STEPDOWN_MIN 115	// min level in ramping the timed stepdown will engage,
-	//    level 115 = 106 PWM, this is ~43%
-	#define TIMED_STEPDOWN_SET 102	// the level timed stepdown will set,
-	//    level 102 = 71 PWM, this is ~32%
 
 	//----------------------------------------------------
 	// Ramping Mode Levels, 150 total entries (2.4 secs)
 	//----------------------------------------------------
 	#if USING_3807135_BANK
 	//---------------------------------------------------------------------------------------
+		#define RAMP_SIZE  150
 		#define FET_START_LVL 68
+
+		#define TIMED_STEPDOWN_MIN 115	// min level in ramping the timed stepdown will engage,
+		//    level 115 = 110 PWM, this is ~43% (for 350's)
+		#define TIMED_STEPDOWN_SET 102	// the level timed stepdown will set,
+		//    level 102 = 72 PWM, this is ~32% (for 350's)
 
 		// For MtnE 32x7135 380 driver (slight delay at transition point):
 		//    level_calc.py 2 150 7135 5 0.3 180 7135 5 1 1500
@@ -57,10 +57,56 @@
 		};
 	//---------------------------------------------------------------------------------------
 
-	#else // regular FET+1 support
-	//---------------------------------------------------------------------------------------
+	#else // regular FET+1 or Buck support
 
+	  #ifdef GT_BUCK
+		//---------------------------------------------------------------------
+		//  Buck driver 2 channel modes
+		//---------------------------------------------------------------------
+		#define RAMP_SIZE  132
+		#define FET_START_LVL 53
+
+		#define TIMED_STEPDOWN_MIN 113	// min level in ramping the timed stepdown will engage,
+		//    level 113 = 108 PWM, this is 1.01 amps
+		#define TIMED_STEPDOWN_SET 100	// the level timed stepdown will set,
+		//    level 100 = 76 PWM, this is 0.66 amps
+
+		// For GT-Buck, 2.5 A
+		PROGMEM const byte ramp_7135[] = {
+			6,7,8,10,11,12,14,15,				17,19,21,23,25,27,30,32,
+			35,38,41,44,48,51,55,59,			63,68,72,77,82,87,92,98,
+			103,109,115,122,128,135,142,150,	157,165,173,182,191,199,209,218,
+			228,238,248,255,255,255,255,255,	255,255,255,255,255,255,255,255,
+			255,255,255,255,255,255,255,255,	255,255,255,255,255,255,255,255,
+			255,255,255,255,255,255,255,255,	255,255,255,255,255,255,255,255,
+			255,255,255,255,255,255,255,255,	255,255,255,255,255,255,255,255,
+			255,255,255,255,255,255,255,255,	255,255,255,255,255,255,255,255,
+			255,255,255,255
+		};
+
+		PROGMEM const byte ramp_FET[]  = {
+			25,25,25,25,25,25,25,25,			25,25,25,25,25,25,25,25,
+			25,25,25,25,25,25,25,25,			25,25,25,25,25,25,25,25,
+			25,25,25,25,25,25,25,25,			25,25,25,25,25,25,25,25,
+			25,25,25,25,26,26,27,27,			28,28,29,30,30,31,32,32,
+			33,34,34,35,36,37,38,38,			39,40,41,42,43,44,45,46,
+			47,49,50,51,52,53,55,56,			58,59,60,62,64,65,67,69,
+			70,72,74,76,78,80,82,84,			87,89,91,94,96,99,102,105,
+			108,111,114,118,121,125,129,133,	137,141,146,151,156,161,167,173,
+			179,186,193,201
+		};
+	  #else
+		//---------------------------------------------------------------------
+		//  Standard FET+1 2 channel modes
+		//---------------------------------------------------------------------
+		//#define RAMP_SIZE  130	// for using TURBO_LEVEL_SUPPORT
+		#define RAMP_SIZE  150
 		#define FET_START_LVL 66
+
+		#define TIMED_STEPDOWN_MIN 115	// min level in ramping the timed stepdown will engage,
+		//    level 115 = 110 PWM, this is ~43% (for 350's)
+		#define TIMED_STEPDOWN_SET 102	// the level timed stepdown will set,
+		//    level 102 = 72 PWM, this is ~32% (for 350's)
 
 		// For FET+1: FET and one 350 mA 7135 (tested/verified to be smooth):
 		//    level_calc.py 2 150 7135 3 0.3 150 FET 1 1 1500
@@ -84,11 +130,12 @@
 			0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,												// 49-64
 			0,2,3,4,5,7,8,9,  11,12,14,15,17,18,20,22,
 			23,25,27,29,30,32,34,36,  38,40,42,44,47,49,51,53,
-			56,58,60,63,66,68,71,73,  76,79,82,85,87,90,93,96,							// 96-112
+			56,58,60,63,66,68,71,73,  76,79,82,85,87,90,93,96,							// 97-112
 			100,103,106,109,113,116,119,123,  126,130,134,137,141,145,149,153,	// 113-128
 			157,161,165,169,173,178,182,186,  191,196,200,205,210,214,219,224,	// 129-144
 			229,234,239,244,250,255																// 145-150
 		};
+	  #endif
 	#endif
 		
 //---------------------------------------------------------------------------------------
@@ -97,16 +144,20 @@
 //---------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------
 	#ifdef TRIPLE_3_7135			// 3 7135's
-		#define RAMP_SIZE  150
-		#define TIMED_STEPDOWN_MIN 115		// min level in ramping the timed stepdown will engage,
-		//    level 115 = 106 PWM, this is ~43%
-		#define TIMED_STEPDOWN_SET 102		// the level timed stepdown will set,
-		//    level 102 = 71 PWM, this is ~32%
+		#define RAMP_SIZE  150
+
+		#define TIMED_STEPDOWN_MIN 136
+		// min level in ramping the timed stepdown will engage,
+		//    level 136 = 130 PWM on the FET, this is ~50%
+		#define TIMED_STEPDOWN_SET 130
+		// the level timed stepdown will set,
+		//    level 129 = 71 PWM, this is ~32%
 
 		#define BANK_START_LVL 71
 		#define FET_START_LVL 121
 
-		// Ramping Modes, 150 total entries (2.4 secs)
+		// Ramping Modes, 150 total entries (2.4 secs)
+
 		//  level_calc.py 3 150 7135 3 0.3 150 7135 3 1.0 500 FET 1 1 1200
 		//  Manual changes: edited to add 255 max entries without an overlap,
 		//         v1.4: changed 1st level of 7135 bank from 4 to 5 (71st value)
@@ -123,7 +174,8 @@
 			255,255,255,255,255,255,255,255,	255,255,255,255,255,255,255,255,	// 70 entries, 0-69
 			255,255,255,255,255,0
 		};
-		PROGMEM const byte ramp_7135s[] = {
+		PROGMEM const byte ramp_7135s[] = {
+
 			0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
 			0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
 			0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
@@ -135,7 +187,8 @@
 			255,255,255,255,255,255,255,255,	255,255,255,255,255,255,255,255,	// 50 entries, 70-119
 			255,255,255,255,255,0
 		};
-		PROGMEM const byte ramp_FET[]  = {
+		PROGMEM const byte ramp_FET[]  = {
+
 			0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
 			0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
 			0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
@@ -150,17 +203,76 @@
 	#endif
 
 	//---------------------------------------------------------------------------------------
+	
 	#ifdef TRIPLE_8_7135
-		#define RAMP_SIZE  150
-		#define TIMED_STEPDOWN_MIN 115		// min level in ramping the timed stepdown will engage,
+		#define RAMP_SIZE 150
+
+		#define TIMED_STEPDOWN_MIN 135
+		// min level in ramping the timed stepdown will engage,
+		//    level 135 = 130 PWM, this is ~50%
+		#define TIMED_STEPDOWN_SET 126
+		// the level timed stepdown will set,
+		//    level 126 = 71 PWM, this is ~32%
+		
+		#define BANK_START_LVL 63
+		#define FET_START_LVL 113
+
+		// Ramping Modes, 150 total entries (2.4 secs)
+		//   manually edited, provided by Lexel
+		PROGMEM const byte ramp_7135[] = {	// 63 entries, 0-62 
+						 3,3,3,4,4,4,5,5,						5,6,6,7,7,8,8,9,
+						10,11,12,14,16,18,20,22,			25,28,31,34,37,41,45,49,
+						53,57,61,66,71,76,81,86,			92,98,104,110,116,125,132,139,
+						146,153,161,169,177,185,194,203,	212,221,231,241,251,255,255,255, 
+						255,255,255,255,255,255,255,255, 255,255,255,255,255,255,255,255,
+						255,255,255,255,255,255,255,255,	255,255,255,255,255,255,255,255,
+						255,255,255,255,255,255,255,255,	255,255,255,255,255,255,255,255,
+						255,255,255,255,255,255,255,255,	255,255,255,255,255,255,255,255,
+						255,255,255,255,255,255,255,255,	255,255,255,255,255,255,255,255,
+						255,255,255,255,255,0
+		};
+		PROGMEM const byte ramp_7135s[] = {	// 50 entries, 63-112
+						0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
+						0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
+						0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
+						0,0,0,0,0,0,0,0,						0,0,0,0,0,5,7,10,
+						13,16,19,23,26,30,33,37,			40,44,48,52,56,60,64,69,
+						73,78,82,87,92,96,101,106,			111,117,122,127,133,139,144,150,
+						156,162,168,174,181,187,194,201,	207,214,221,228,236,245,255,255,
+						255,255,255,255,255,255,255,255,	255,255,255,255,255,255,255,255,
+						255,255,255,255,255,255,255,255,	255,255,255,255,255,255,255,255,
+						255,255,255,255,255,0
+		};
+		PROGMEM const byte ramp_FET[] = {	// 36 entries, 113-149 
+						0,0,0,0,0,0,0,0,					0,0,0,0,0,0,0,0,
+						0,0,0,0,0,0,0,0,					0,0,0,0,0,0,0,0,
+						0,0,0,0,0,0,0,0,					0,0,0,0,0,0,0,0,
+						0,0,0,0,0,0,0,0,					0,0,0,0,0,0,0,0,
+						0,0,0,0,0,0,0,0,					0,0,0,0,0,0,0,0,
+						0,0,0,0,0,0,0,0,					0,0,0,0,0,0,0,0,
+						0,0,0,0,0,0,0,0,					0,0,0,0,0,0,5,7,
+						10,14,17,20,24,28,32,36,		40,45,50,55,60,65,71,77,
+						83,89,95,102,109,116,123,130,	138,146,154,162,170,179,188,197,
+						206,215,225,235,245,255
+		};
+	#endif
+	
+	
+	#ifdef OLD_TRIPLE_8_7135
+		#define RAMP_SIZE  150
+
+		#define TIMED_STEPDOWN_MIN 115
+		// min level in ramping the timed stepdown will engage,
 		//    level 115 = 106 PWM, this is ~43%
-		#define TIMED_STEPDOWN_SET 102		// the level timed stepdown will set,
+		#define TIMED_STEPDOWN_SET 102
+		// the level timed stepdown will set,
 		//    level 102 = 71 PWM, this is ~32%
 
 		#define BANK_START_LVL 71
 		#define FET_START_LVL 139
 
-		// Ramping Modes, 150 total entries (2.4 secs)
+		// Ramping Modes, 150 total entries (2.4 secs)
+
 		//  level_calc.py 3 150 7135 3 0.3 150 7135 3 2.0 800 FET 1 1 1200
 		//  (manually edited to add 255 max entries without an overlap)
 		PROGMEM const byte ramp_7135[] = {
@@ -175,7 +287,8 @@
 			255,255,255,255,255,255,255,255,	255,255,255,255,255,255,255,255,
 			255,255,255,255,255,0
 		};
-		PROGMEM const byte ramp_7135s[] = {
+		PROGMEM const byte ramp_7135s[] = {
+
 			0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
 			0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
 			0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
@@ -187,7 +300,8 @@
 			203,208,214,219,225,231,237,242,	248,255,255,255,255,255,255,255,	// 68 entries, 70-137
 			255,255,255,255,255,0
 		};
-		PROGMEM const byte ramp_FET[]  = {
+		PROGMEM const byte ramp_FET[]  = {
+
 			0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
 			0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
 			0,0,0,0,0,0,0,0,						0,0,0,0,0,0,0,0,
@@ -206,9 +320,13 @@
 #elif OUT_CHANNELS == 1		// single FET or single bank of 7135's
 //---------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------
-	#define TIMED_STEPDOWN_MIN 137	// min level in ramping the timed step down will engage,
+	#define RAMP_SIZE  150
+	
+	#define TIMED_STEPDOWN_MIN 137
+	// min level in ramping the timed step down will engage,
 	//    level 137 = 200 PWM, this is ~80%
-	#define TIMED_STEPDOWN_SET 105	// the level timed stepdown will set,
+	#define TIMED_STEPDOWN_SET 105
+	// the level timed stepdown will set,
 	//    level 105 = 100 PWM, this is ~40%
 	
 	#define FET_START_LVL 50	// use about 20% for 1 channel

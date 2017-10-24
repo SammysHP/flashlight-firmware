@@ -24,3 +24,19 @@ May 28th:
 -->7448 bytes - Setups-31S, for triple channel, no R1/R2, Ind. LED
 -->7028 bytes - Setups-32S, for triple channel, R1/R2, no Ind. LED
 -->6780 bytes - Setups-1Chan, for single channel, no R1/R2, Ind. LED
+
+May 29th:
+-->7178 bytes - Setups-Q8, 2 channels, no R1/R2, Ind. LED
+-->7448 bytes - Setups-31S, for triple channel, no R1/R2, Ind. LED
+-->7028 bytes - Setups-32S, for triple channel, R1/R2, no Ind. LED
+-->6780 bytes - Setups-1Chan, for single channel, no R1/R2, Ind. LED
+
+June 1st - 7448 bytes for OTR M3: 31S, -3 for temp cal, thermal stepdown
+
+Aug 12 - 7192 bytes for GT Buck Driver
+
+Aug 08 - 7378 bytes for BLF Q8
+Aug 08 - 7354 bytes for GT Buck Driver
+
+Oct 16 - 7348 bytes for 3C2S
+Oct 16 - 7476 bytes for Q8 2C1S

@@ -109,16 +109,43 @@
     <Compile Include="ModeSets.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="ModeSets_HiPerf.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="NarsilM.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="RampingTables.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="RampingTables_HiPerf.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="RegisterSettings.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="Setups.h">
+    <Compile Include="Setups_1C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_2C2S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_3C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_3C2S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_GTBuck.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_OTRM3.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_Q8_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="tk-calibGT.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="tk-calibMTN17DDm.h">

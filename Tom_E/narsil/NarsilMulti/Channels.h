@@ -36,7 +36,7 @@
 
 //---------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------
-#if   OUT_CHANNELS == 2			// FET+1
+#if   OUT_CHANNELS == 2			// FET+1 or Buck driver
 //---------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------
 
@@ -80,11 +80,16 @@ void DefineModeSet()
 	{
 		offset = 2;
 		by7135Modes[1] = moonlightLevel;	// PWM value to use for moonlight mode
+	  #ifdef GT_BUCK
+		byFETModes[1] = 25;					// for GT-buck, set analog dimming to 10%
+	  #else
 		byFETModes[1] = 0;
+	  #endif
 	}
 
 	// Populate the RAM based current mode set
-	for (int i = 0; i < modesCnt; i++)
+	int i;									// winAVR does not like this inside the for loop (weird!!)
+	for (i = 0; i < modesCnt; i++)
 	{
 		by7135Modes[offset+i] = pgm_read_byte(modeTable7135[modeSetIdx]+i);
 		byFETModes[offset+i] = pgm_read_byte(modeTableFet[modeSetIdx]+i);
@@ -105,7 +110,7 @@ inline void SetOutput(byte pwm7135, byte pwmFet)
 
 /**************************************************************************************
 * SetLevel - uses the ramping levels to set the PWM output
-* ========		(0 is OFF, 1..RAMP_SIZE is the ramping index level)
+* ========		(0 is OFF, 1..TURBO_LEVEL is the ramping index level)
 **************************************************************************************/
 void SetLevel(byte level)
 {
@@ -120,8 +125,24 @@ void SetLevel(byte level)
 	}
 	else
 	{
+	  #ifdef TURBO_LEVEL_SUPPORT
+		if (level == TURBO_LEVEL)
+		{
+		  #ifdef GT_BUCK
+			SetOutput(255, 255);
+		  #else
+			SetOutput(0, 255);
+		  #endif
+		}
+		else
+		{
+			level -= 1;	// make it 0 based
+			SetOutput(pgm_read_byte(ramp_7135 + level), pgm_read_byte(ramp_FET  + level));
+		}
+	  #else
 		level -= 1;	// make it 0 based
 		SetOutput(pgm_read_byte(ramp_7135 + level), pgm_read_byte(ramp_FET  + level));
+	  #endif
 		
 	  #ifdef ONBOARD_LED
 		if (locatorLed)
@@ -214,25 +235,38 @@ void DefineModeSet()
 * SetOutput - sets the PWM output value directly
 * =========
 **************************************************************************************/
-inline void SetOutput(byte pwm7135, byte pwm7135s, byte pwmFet){
+inline void SetOutput(byte pwm7135, byte pwm7135s, byte pwmFet)
+{
 	ONE7135_PWM_LVL = pwm7135;
 	BANK_PWM_LVL = pwm7135s;
 	FET_PWM_LVL = pwmFet;
-}
+}
+
 /**************************************************************************************
 * SetLevel - uses the ramping levels to set the PWM output
 * ========		(0 is OFF, 1..RAMP_SIZE is the ramping index level)
 **************************************************************************************/
-void SetLevel(byte level){	if (level == 0)	{		SetOutput(0,0,0);
+void SetLevel(byte level)
+{
+	if (level == 0)
+	{
+		SetOutput(0,0,0);
 	  #ifdef ONBOARD_LED
-		if (locatorLed)			TurnOnBoardLed(1);
+		if (locatorLed)
+			TurnOnBoardLed(1);
 	  #endif
-	}	else	{		level -= 1;	// make it 0 based
+	}
+	else
+	{
+		level -= 1;	// make it 0 based
 		SetOutput(pgm_read_byte(ramp_7135 + level), pgm_read_byte(ramp_7135s + level), pgm_read_byte(ramp_FET  + level));
 	  #ifdef ONBOARD_LED
-		if (locatorLed)			TurnOnBoardLed(0);
+		if (locatorLed)
+			TurnOnBoardLed(0);
 	  #endif
-	}}
+	}
+}
+
 /**************************************************************************************
 * SetMode
 * =======

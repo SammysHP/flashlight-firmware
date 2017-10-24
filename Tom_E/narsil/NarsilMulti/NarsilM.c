@@ -58,12 +58,19 @@
  *  The higher values reduce parasitic drain - important for e-switch lights.
  *      
  */
-#define FIRMWARE_VERS (10)	// v1.0 (in 10ths)
+#define FIRMWARE_VERS (12)	// v1.2 (in 10ths)
 
 #define FET_7135_LAYOUT
 #define ATTINY 85
 
-#include "setups.h"
+//-----------------------------------------------------------------------------
+// SETUPS Header File defined here:
+//-----------------------------------------------------------------------------
+//#include "setups_2C2S.h"
+//#include "setups_GTBuck.h"
+#include "setups_Q8_2C1S.h"
+//#include "setups_3C1S.h"
+//#include "setups_3C2S.h"
 
 #if OUT_CHANNELS == 3
  #ifdef VOLT_MON_R1R2
@@ -99,10 +106,14 @@
 #include "tk-delay.h"
 #include "tk-random.h"
 
-#include "tk-calibWight.h"		// use this for the BLF Q8 driver (and wight drivers)
-//#include "tk-calibMTN17DDm.h"		// use this for the MtnE MTN17DDm v1.1 driver
+// Comment out all tk-calib headers if not using R1/R2 (for example: for the BLF Q8)
+//#include "tk-calibGT.h"				// use this for the GT-buck driver 
+//#include "tk-calibWight.h"			// use this for the wight style drivers using external R1/R2's
+//#include "tk-calibMTN17DDm.h"		// use this for the MtnE MTN17DDm v1.1 driver with external R1/R2
 
 
+//#include "RampingTables_HiPerf.h"	// for very high performance, high output custom mods
+//#include "ModeSets_HiPerf.h"		// for very high performance, high output custom mods
 #include "RampingTables.h"
 #include "ModeSets.h"
 
@@ -142,10 +153,18 @@ volatile byte onboardLedEnable;		// On Board LED support - 1=enabled, 0=disabled
 //----------------------------------------------------------------
 
 volatile byte OffTimeEnable = OFFTIME_ENABLE;	// 1: Do OFF time mode memory for Mode Sets on power switching (tailswitch), 0: disabled
+volatile byte momentaryState = 0;					// 1: momentary mode in effect, 0: ramping or mode sets
 
 
 // Ramping :
 #define MAX_RAMP_LEVEL (RAMP_SIZE)
+
+#ifdef TURBO_LEVEL_SUPPORT
+ #define TURBO_LEVEL (MAX_RAMP_LEVEL+1)
+#else
+ #define TURBO_LEVEL (MAX_RAMP_LEVEL)
+#endif
+
 
 volatile byte rampingLevel = 0;		// 0=OFF, 1..MAX_RAMP_LEVEL is the ramping table index, 255=moon mode
 byte rampState = 0;						// 0=OFF, 1=in lowest mode (moon) delay, 2=ramping Up, 3=Ramping Down, 4=ramping completed (Up or Dn)
@@ -269,8 +288,15 @@ void SetConfigDefaults()
 void Strobe(byte ontime, byte offtime)
 {
 	FET_PWM_LVL = 255;
+
+#ifdef GT_BUCK
+	ONE7135_PWM_LVL = 255;	//  for GT-buck
+	_delay_ms(ontime);
+	ONE7135_PWM_LVL = 0;		//  for GT-buck
+#else	
 	_delay_ms(ontime);
 	FET_PWM_LVL = 0;
+#endif
 	_delay_ms(offtime);
 }
 
@@ -483,13 +509,7 @@ void ConfigBlink(byte num)
 **************************************************************************************/
 inline static void ClickBlink()
 {
-  #if OUT_CHANNELS == 3		// Triple Channel
-	SetOutput(20,0,0);
-  #elif OUT_CHANNELS == 2	// two channels
-	SetOutput(20,0);
-  #else
-	SetOutput(16);
-  #endif
+	SetOutput(CLICK_BRIGHTNESS);
 	_delay_ms(100);
 	SetOutput(OFF_OUTPUT);
 }
@@ -874,7 +894,7 @@ ISR(ADC_vect)
 	  #ifdef VOLT_MON_R1R2
 		byVoltage = (byte)(wAdcVal >> 2);		// convert to 8 bits, throw away 2 LSB's
 	  #else
-		// Read cell voltage, applying the 
+		// Read cell voltage, applying the equation
 		wAdcVal = (11264 + (wAdcVal >> 1))/wAdcVal + D1_DIODE;		// in volts * 10: 10 * 1.1 * 1024 / ADC + D1_DIODE, rounded
 		if (byVoltage > 0)
 		{
@@ -931,6 +951,8 @@ ISR(WDT_vect)
 {
 	static word wStepdownTicks = 0;
 	static byte byModeForClicks = 0;
+	static byte initialLevelForClicks = 0;
+	static byte turboRestoreLevel = 0;
 	
   #ifdef VOLTAGE_MON
 	static word wLowBattBlinkTicks = 0;
@@ -962,7 +984,7 @@ ISR(WDT_vect)
 		//---------------------------------------------------------------------------------------
 		// Handle "button stuck" safety timeout
 		//---------------------------------------------------------------------------------------
-		if (wPressDuration == 1250)	// 20 seconds
+		if ((wPressDuration == 1250) && !momentaryState)	// 20 seconds
 		{
 			modeIdx = outLevel = rampingLevel = 0;
 			rampState = 0;
@@ -995,13 +1017,25 @@ ISR(WDT_vect)
 
 		if (!holdHandled)
 		{
+			// For Tactical, turn on MAX while button is depressed
+			if (momentaryState)
+			{
+				if ((wPressDuration == 1) && !byLockOutSet)
+				{
+					outLevel = rampingLevel = TURBO_LEVEL;
+					SetLevel(outLevel);
+				}
+			}
+			
 			//------------------------------------------------------------------------------
 			//	Ramping - pressed button
 			//------------------------------------------------------------------------------
-			if (ramping)
+			else if (ramping)
 			{
 				if ((wPressDuration >= SHORT_CLICK_DUR) && !byLockOutSet && !byDelayRamping && (modeIdx < BATT_CHECK_MODE))
 				{
+					turboRestoreLevel = 0;	// reset on press&holds (for 2X click exit of turbo feature)
+					
 					switch (rampState)
 					{
 					 case 0:		// ramping not initialized yet
@@ -1010,12 +1044,17 @@ ISR(WDT_vect)
 							rampState = 1;
 							rampPauseCntDn = RAMP_MOON_PAUSE;	// delay a little on moon
 
-						  #if OUT_CHANNELS == 3		// Triple Channel
-							SetOutput(moonlightLevel,0,0);						  #elif OUT_CHANNELS == 2	// two channels
-							SetOutput(moonlightLevel,0);
+						 #if OUT_CHANNELS == 3		// Triple Channel
+							SetOutput(moonlightLevel,0,0);
+						 #elif OUT_CHANNELS == 2	// two channels
+						  #ifdef GT_BUCK
+							SetOutput(moonlightLevel,25);    // 10% for GT-buck analog control channel
 						  #else
-							SetOutput(moonlightLevel);
+							SetOutput(moonlightLevel,0);
 						  #endif
+						 #else
+							SetOutput(moonlightLevel);
+						 #endif
 
 #ifdef ONBOARD_LED
 							if (locatorLed)
@@ -1043,16 +1082,17 @@ ISR(WDT_vect)
 							#else
 								rampState = 2;	// lo->hi
 							#endif
-							if (rampingLevel == MAX_RAMP_LEVEL)
-							{
-								rampState = 3;	// hi->lo
-								outLevel = MAX_RAMP_LEVEL;
-								SetLevel(outLevel);
-							}
-							else if (rampingLevel == 255)	// If stopped in ramping moon mode, start from lowest
+
+							if (rampingLevel == 255)	// If stopped in ramping moon mode, start from lowest
 							{
 								rampState = 2; // lo->hi
 								outLevel = rampingLevel = 1;
+								SetLevel(outLevel);
+							}
+							else if (rampingLevel >= MAX_RAMP_LEVEL)
+							{
+								rampState = 3;	// hi->lo
+								outLevel = MAX_RAMP_LEVEL;
 								SetLevel(outLevel);
 							}
 							else if (rampingLevel == 1)
@@ -1115,26 +1155,25 @@ ISR(WDT_vect)
 			//---------------------------------------------------------------------------------------
 			if (!ramping && (wPressDuration == LONG_PRESS_DUR) && !byLockOutSet)
 			{
-				if (modeIdx < 16)
+				if ((modeIdx < 16) && !momentaryState)
 				{
 					// Long press
 					if (highToLow)
 						NextMode();
 					else
+					{
+						if (modeIdx == 1)	// wrap around from lowest to highest
+							modeIdx = 0;
 						PrevMode();
+					}
 				}
 				else if (modeIdx > SPECIAL_MODES)
 				{
 					if (specModeIdx > 0)
-					{
 						--specModeIdx;
-						modeIdx = specialModes[specModeIdx];
-					}
 					else
-					{
-						byDelayRamping = 1;		// ensure no ramping handling takes place for this hold
-						ExitSpecialModes();		// bail out of special modes
-					}
+						specModeIdx = specialModesCnt - 1;	// wrap around to last special mode
+					modeIdx = specialModes[specModeIdx];
 				}
 			}
 
@@ -1192,7 +1231,7 @@ ISR(WDT_vect)
 						configClicks = 0;
 						holdHandled = 1;		// suppress more hold events on this hold
 					}
-					else if (!ramping && (blinkyMode > 0) && (modeIdx != BATT_CHECK_MODE))
+					else if (!ramping && (blinkyMode > 0) && (modeIdx != BATT_CHECK_MODE) && !momentaryState)
 					{
 						// Engage first special mode!
 						EnterSpecialModes ();
@@ -1203,7 +1242,7 @@ ISR(WDT_vect)
 			//---------------------------------------------------------------------------------------
 			// CONFIG hold - if it is not locked out or lock-out was just exited on this hold
 			//---------------------------------------------------------------------------------------
-			if (byLockOutSet == 0)
+			if ((byLockOutSet == 0) && !momentaryState)
 			{
 				if ((!ramping && (wPressDuration == CONFIG_ENTER_DUR) && (fastClicks != 2) && (modeIdx != BATT_CHECK_MODE))
 											||
@@ -1259,6 +1298,12 @@ ISR(WDT_vect)
 		{
    		// Was previously pressed
 
+			if (momentaryState)
+			{
+				outLevel = rampingLevel = 0;		// turn off output as soon as the user lets the switch go
+				SetLevel(outLevel);
+			}
+			
 			//------------------------------------------------------------------------------
 			//	Ramping - button released
 			//------------------------------------------------------------------------------
@@ -1275,7 +1320,7 @@ ISR(WDT_vect)
 					if (fastClicks == 1)
 					{
 						byModeForClicks = modeIdx;		// save current mode
-						if ((modeIdx < 16) && (rampingLevel == MAX_RAMP_LEVEL))
+						if ((modeIdx < 16) && (rampingLevel == TURBO_LEVEL))
 							byModeForClicks = 255;
 						
 						if ((modeIdx == BATT_CHECK_MODE) || (modeIdx == TEMP_CHECK_MODE) || (modeIdx == FIRM_VERS_MODE))
@@ -1284,8 +1329,10 @@ ISR(WDT_vect)
 							outLevel = rampingLevel = 0;	// 08/28/16 TE: zero out outLevel here as well (used in LVP)
 							byDelayRamping = 1;		// don't act on ramping button presses
 						}
+						
+						initialLevelForClicks = rampingLevel;
 
-						if (!byLockOutSet && !byDelayRamping)
+						if (!byLockOutSet && !byDelayRamping && !momentaryState)
 						{
 							//---------------------------------
 							// Normal click ON in ramping mode
@@ -1306,6 +1353,8 @@ ISR(WDT_vect)
 								if (onboardLedEnable)
 									byBlinkActiveChan = 1;
 							  #endif
+							  
+								wThermalTicks = TEMP_ADJ_PERIOD/3;	// Delay a temperature step down at least 15 secs or so
 							}
 							else        				// light is ON, turn it OFF
 							{
@@ -1314,13 +1363,17 @@ ISR(WDT_vect)
 
 							if (outLevel == 255)
 							{
-							  #if OUT_CHANNELS == 3		// Triple Channel
+							 #if OUT_CHANNELS == 3		// Triple Channel
 								SetOutput(moonlightLevel,0,0);
-							  #elif OUT_CHANNELS == 2	// two channels
-								SetOutput(moonlightLevel,0);
+							 #elif OUT_CHANNELS == 2	// two channels
+							  #ifdef GT_BUCK
+								SetOutput(moonlightLevel,25); // for GT-buck
 							  #else
-								SetOutput(moonlightLevel);
+								SetOutput(moonlightLevel,0);
 							  #endif
+							 #else
+								SetOutput(moonlightLevel);
+							 #endif
 
 							  #ifdef ONBOARD_LED
 								if (locatorLed)
@@ -1374,24 +1427,30 @@ ISR(WDT_vect)
 						{
 							if (modeMemoryEnabled && (modeMemoryLastModeIdx > 0) && (modeIdx == 0))
 							{
-								modeIdx = modeMemoryLastModeIdx;
-								modeMemoryLastModeIdx = 0;
+								if (!momentaryState)
+								{
+									modeIdx = modeMemoryLastModeIdx;
+									modeMemoryLastModeIdx = 0;
+								}
 							}
 							else if (modeIdx < 16)
 							{
-								if ((modeIdx > 0) && (wIdleTicks >= IDLE_TIME))
+								if (!momentaryState)
 								{
-									modeMemoryLastModeIdx = modeIdx;
-									prevModeIdx = modeIdx;
-									modeIdx = 0;	// Turn OFF the light
-								}
-								else
-								{
-									// Short press - normal modes
-									if (highToLow)
-										PrevMode();
+									if ((modeIdx > 0) && (wIdleTicks >= IDLE_TIME))
+									{
+										modeMemoryLastModeIdx = modeIdx;
+										prevModeIdx = modeIdx;
+										modeIdx = 0;	// Turn OFF the light
+									}
 									else
-										NextMode();
+									{
+										// Short press - normal modes
+										if (highToLow)
+											PrevMode();
+										else
+											NextMode();
+									}
 								}
 							}
 							else  // special modes
@@ -1454,20 +1513,32 @@ ISR(WDT_vect)
 				// Process multi clicks here, after it times out
 				//-----------------------------------------------------------------------------------
 
+				if (fastClicks == 5)	// --> 5X clicks: toggle momentary mode (click&hold - light ON at max)
+				{
+					if (ramping && !byLockOutSet && !momentaryState)
+					{
+						momentaryState = 1;
+						modeIdx = outLevel = rampingLevel = 0;
+						SetOutput(OFF_OUTPUT);	// suppress main LED output
+					}
+				}
+
 				// For Lock-Out, always support 4 quick clicks regardless of mode/state
 			  #ifdef LOCKOUT_ENABLE
-				if (fastClicks == 4)	// --> 4X clicks: do a lock-out
+				else if (fastClicks == 4)	// --> 4X clicks: do a lock-out
 				{
-					modeIdx = outLevel = rampingLevel = 0;
-					rampState = 0;
-					byLockOutSet = 1 - byLockOutSet;		// invert "LOCK OUT"
-					byDelayRamping = 1;		// don't act on ramping button presses (ramping ON/OFF code below)
+					if ((ramping || byLockOutSet) && !momentaryState)	// only for ramping, or un-locking out
+					{
+						modeIdx = outLevel = rampingLevel = 0;
+						rampState = 0;
+						byLockOutSet = 1 - byLockOutSet;		// invert "LOCK OUT"
+						byDelayRamping = 1;		// don't act on ramping button presses (ramping ON/OFF code below)
+					}
 				}
-				else
 			  #endif
 
 				// Support 2X clicks for Batt and Temp blink outs in ramping
-				if ((byModeForClicks == BATT_CHECK_MODE) || (byModeForClicks == TEMP_CHECK_MODE))	// battery check - multi-click checks
+				else if ((byModeForClicks == BATT_CHECK_MODE) || (byModeForClicks == TEMP_CHECK_MODE))	// battery check - multi-click checks
 				{
 					if (fastClicks == 2)			// --> double click: blink out the firmware vers #
 					{
@@ -1479,7 +1550,7 @@ ISR(WDT_vect)
 						SetOutput(OFF_OUTPUT);	// suppress main LED output
 					}
 				}
-				else if (ramping && !byLockOutSet)
+				else if (ramping && !byLockOutSet  && !momentaryState)
 				{
 				  #ifdef TRIPLE_CLICK_BATT
 					if (fastClicks == 3)						// --> triple click: display battery check/status
@@ -1492,23 +1563,35 @@ ISR(WDT_vect)
 
 					if (fastClicks == 2)						// --> double click: set to MAX level
 					{
-						if (byModeForClicks == 255)
+						if (byModeForClicks == 255)	// Turbo
 						{
 							if (blinkyMode > 0) // must be enabled
 								EnterSpecialModes ();	// Engage first special mode!
+							else
+							{
+								// Restore the saved level (last mode memory)
+								if (savedLevel != MAX_RAMP_LEVEL)
+									outLevel = rampingLevel = turboRestoreLevel;
+								else
+									outLevel = rampingLevel = 0;
+								SetLevel(outLevel);
+							}
 						}
 						else
 						{
-							rampingLevel = MAX_RAMP_LEVEL;
+							rampingLevel = TURBO_LEVEL;
 							outLevel = rampingLevel;
 							SetLevel(outLevel);
+							turboRestoreLevel = initialLevelForClicks;
+
+							wThermalTicks = TEMP_ADJ_PERIOD/3;	// Delay a temperature step down at least 15 secs or so
 						}
 					}
-				}
-
+				} // ramping && !byLockOutSet
 
 				fastClicks = 0;	// clear it after processing it
-			}
+				
+			} // wIdleTicks > DBL_CLICK_TICKS
 
 			// Only do timed stepdown check when switch isn't pressed
 			if (stepdownMode > 1)
@@ -1684,7 +1767,7 @@ int main(void)
 		modeIdx = modesCnt - 1;
 		if (ramping)
 		{
-			outLevel = rampingLevel = MAX_RAMP_LEVEL;
+			outLevel = rampingLevel = TURBO_LEVEL;
 			SetLevel(outLevel);
 		}
 	  #endif
@@ -1704,7 +1787,8 @@ int main(void)
 
 	last_modeIdx = 250;	// make it invalid for first time
 	
-   byte byPrevLockOutSet = 0;
+   byte byPrevLockOutSet = 0;			// copy of byLockOutSet to detect transitions
+	byte byPrevMomentaryState = 0;	// copy of momentaryState to detect transitions
 
    byte prevConfigClicks = 0;
 
@@ -1725,13 +1809,13 @@ int main(void)
 		if (ConfigMode == 0)					// Normal mode
       //---------------------------------------------------------------------------------------
 		{
+			// Handle Lockout mode transtions
 			if (byPrevLockOutSet != byLockOutSet)
 			{
 				byPrevLockOutSet = byLockOutSet;
 
 				SetOutput(OFF_OUTPUT);
-				_delay_ms(250);
-				Blink(4, 60);
+				Blink(4, 75);
 				
 				byDelayRamping = 0;		// restore acting on ramping button presses
 				
@@ -1739,6 +1823,16 @@ int main(void)
 					last_modeIdx = modeIdx;	// entering - no need to configure mode 0 (keep the locator LED off)
 				else
 					last_modeIdx = 255;		// exiting - force a mode handling to turn on locator LED
+			}
+
+			// Handle momentary/tactical mode transitions
+			if (byPrevMomentaryState != momentaryState)
+			{
+				byPrevMomentaryState = momentaryState;
+
+				Blink(2, 60);		// Special blink sequence for momentary mode (into or out of)
+				_delay_ms(250);
+				Blink(3, 75);
 			}
 
 			//---------------------------------------------------
@@ -1951,7 +2045,9 @@ int main(void)
 				// Blink the Indicator LED twice
 				if (onboardLedEnable)
 				{
-					if ((modeIdx > 0) || (locatorLed == 0))
+					// Be sure to leave the indicator LED in it's proper state after blinking twice
+					if ((locatorLed != 0) &&
+							((ramping && (outLevel != 0)) || (!ramping && (modeIdx > 0))))
 					{
 						BlinkIndLed(500, 2);
 					}
@@ -1978,7 +2074,7 @@ int main(void)
 			{
 				if (ramping)
 				{
-					if (outLevel >= FET_START_LVL)
+					if ((outLevel >= FET_START_LVL) && (outLevel < 255))	// 255 is special value for moon mode (use 1)
 					{
 						int newLevel = outLevel - outLevel/6;	// reduce by 16.7%
 					

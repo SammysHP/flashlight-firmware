@@ -8,8 +8,68 @@
 #define MODESETS_H_
 
 //---------------------------------------------------------------------------------------
-#if   OUT_CHANNELS == 2			// FET+1
+#if   OUT_CHANNELS == 2			// FET+1 or Buck driver
 //---------------------------------------------------------------------------------------
+
+#ifdef GT_BUCK
+//---------------------------------------------------------------------
+//  Buck driver 2 channel modes
+//---------------------------------------------------------------------
+
+// 2.0 A max modes
+// 1 mode                               2.0A
+PROGMEM const byte modeFetSet1[] =  {   201};	// for analog control
+PROGMEM const byte mode7135Set1[] = {   255};	// for LM3409 enable/PWM
+
+// 2 modes /4                            25%   2.0A
+PROGMEM const byte modeFetSet2[] =  {    42,   201};	// for analog control
+PROGMEM const byte mode7135Set2[] = {   255,   255};	// for LM3409 enable/PWM
+
+// 3 modes /3			                 11%    33%   2.0A
+PROGMEM const byte modeFetSet3[] =  {    26,    53,   201};	// for analog control
+PROGMEM const byte mode7135Set3[] = {   255,   255,   255};	// for LM3409 enable/PWM
+
+// 4 modes /2		                   12.5%    25%    50%    2.0A
+PROGMEM const byte modeFetSet4[] =  {    27,    42,    77,    201};	// for analog control
+PROGMEM const byte mode7135Set4[] = {   255,   255,   255,    255};	// for LM3409 enable/PWM
+
+// 5 modes cube-oot                       1%     7%    22%    52%   2.0A
+PROGMEM const byte modeFetSet5[] =  {    25,    25,    39,    80,   201};	// for analog control
+PROGMEM const byte mode7135Set5[] = {    24,   170,   255,   255,   255};	// for LM3409 enable/PWM
+
+// 6 modes cube-root                      1%     5%    15%    32%    60%   2.0A
+PROGMEM const byte modeFetSet6[] =  {    25,    25,    30,    51,    94,   201};	// for analog control
+PROGMEM const byte mode7135Set6[] = {    24,   126,   255,   255,   255,   255};	// for LM3409 enable/PWM
+
+// 2.5 A max modes
+// 1 mode                               2.5A
+PROGMEM const byte modeFetSet7[] =  {   255};	// for analog control
+PROGMEM const byte mode7135Set7[] = {   255};	// for LM3409 enable/PWM
+
+// 2 modes /4                            25%   2.5A
+PROGMEM const byte modeFetSet8[] =  {    45,   255};	// for analog control
+PROGMEM const byte mode7135Set8[] = {   255,   255};	// for LM3409 enable/PWM
+
+// 3 modes /3			                 11%    33%   2.5A
+PROGMEM const byte modeFetSet9[] =  {    27,    58,   255};	// for analog control
+PROGMEM const byte mode7135Set9[] = {   255,   255,   255};	// for LM3409 enable/PWM
+
+// 4 modes /2		                   12.5%    25%    50%    2.5A
+PROGMEM const byte modeFetSet10[] =  {    29,    45,    86,    255};	// for analog control
+PROGMEM const byte mode7135Set10[] = {   255,   255,   255,    255};	// for LM3409 enable/PWM
+
+// 5 modes cube-oot                       1%     7%    22%    52%   2.5A
+PROGMEM const byte modeFetSet11[] =  {    25,    25,    41,    90,   255};	// for analog control
+PROGMEM const byte mode7135Set11[] = {    26,   185,   255,   255,   255};	// for LM3409 enable/PWM
+
+// 6 modes cube-root                      1%     5%    15%    32%    60%   2.5A
+PROGMEM const byte modeFetSet12[] =  {    25,    25,    31,    56,   106,   255};	// for analog control
+PROGMEM const byte mode7135Set12[] = {    26,   136,   255,   255,   255,   255};	// for LM3409 enable/PWM
+
+#else
+//---------------------------------------------------------------------
+//  Standard FET+1 2 channel modes
+//---------------------------------------------------------------------
 
 // 1 mode (max)                         max
 PROGMEM const byte modeFetSet1[] =  {   255};
@@ -37,7 +97,6 @@ PROGMEM const byte mode7135Set4[] = {    30,   255,   255,     0 };	// for secon
 // 5 modes (2-10-40-max)                1-2%    ~5%   ~10%   ~40%   max
 PROGMEM const byte modeFetSet5[] =  {     0,     0,     0,    80,   255 };	// Must be low to high
 PROGMEM const byte mode7135Set5[] = {    30,   120,   255,   255,     0 };	// for secondary (7135) output
-//PROGMEM const byte modePwmSet5[] =  {  FAST,  FAST, PHASE,  FAST, PHASE };	// Define one per mode above
 
 // 6 modes - copy of BLF A6 7 mode set
 PROGMEM const byte modeFetSet6[] =  {     0,     0,     7,    56,   137,   255};
@@ -66,7 +125,7 @@ PROGMEM const byte mode7135Set11[] = {   255,   255,     0 };	// for secondary (
 // #12:  4 modes - copy of BLF A6 4 mode
 PROGMEM const byte modeFetSet12[] =  {     0,     0,    90,   255};
 PROGMEM const byte mode7135Set12[] = {    20,   230,   255,     0};
-
+#endif
 
 PROGMEM const byte modeSetCnts[] = {
 		sizeof(modeFetSet1), sizeof(modeFetSet2), sizeof(modeFetSet3), sizeof(modeFetSet4), sizeof(modeFetSet5), sizeof(modeFetSet6),
@@ -84,12 +143,22 @@ byte by7135Modes[10];	// 7135 output
 volatile byte currOutLvl1;			// set to current: by7135modes[mode]
 volatile byte currOutLvl2;			// set to current: byFETmodes[mode]
 
+// Common Output Settings:
+#ifdef GT_BUCK
+ #define MAX_BRIGHTNESS 255,255	// for GT-buck
+ #define MAX_7135 255,25				// for GT-buck, about 117 mA
+ #define BLINK_BRIGHTNESS 100,25	// for GT-buck, about  50 mA
+ #define CLICK_BRIGHTNESS 50,25	// for GT-buck, about  25 mA
+ #define OFF_OUTPUT 0,0
+#else
 // output to use for blinks on battery check mode
 // Use 20,0 for a single-channel driver or 40,0 for a two-channel driver
-#define MAX_BRIGHTNESS 0,255
-#define MAX_7135 255,0
-#define BLINK_BRIGHTNESS 40,0
-#define OFF_OUTPUT 0,0
+ #define MAX_BRIGHTNESS 0,255
+ #define MAX_7135 255,0
+ #define BLINK_BRIGHTNESS 40,0
+ #define CLICK_BRIGHTNESS 20,0
+ #define OFF_OUTPUT 0,0
+#endif
 
 
 //---------------------------------------------------------------------------------------
@@ -124,7 +193,7 @@ PROGMEM const byte mode7135sSet5[] ={     0,     0,     0,   255,     0};
 PROGMEM const byte modeFetSet5[] =  {     0,     0,     0,     0,   255};
 
 // 6 modes 0.8-2-5-10-50-max           ~0.8%    ~2%    ~5%   ~10%   ~50%   max
-PROGMEM const byte mode7135Set6[] = {    20,   110,   255,   255,     0,     0};
+PROGMEM const byte mode7135Set6[] = {    20,   110,   150,   255,     0,     0};
 PROGMEM const byte mode7135sSet6[] ={     0,     0,     0,     0,   255,     0};
 PROGMEM const byte modeFetSet6[] =  {     0,     0,     0,     0,     0,   255};
 
@@ -158,10 +227,12 @@ volatile byte currOutLvl1;			// set to current: by7135Modes[mode]
 volatile byte currOutLvl2;			// set to current: by7135sModes[mode]
 volatile byte currOutLvl3;			// set to current: byFetModes[mode]
 
-// output to use for blinks on battery check mode
+// Common Output Settings:
 #define MAX_BRIGHTNESS 0,0,255
 #define MAX_7135 255,0,0
-#define BLINK_BRIGHTNESS 50,0,0	// use bout 20% of single 7135#define OFF_OUTPUT 0,0,0
+#define BLINK_BRIGHTNESS 50,0,0	// output to use for blinks on battery check mode, use about 20% of single 7135
+#define CLICK_BRIGHTNESS 20,0,0	// use about 8% of single 7135
+#define OFF_OUTPUT 0,0,0
 
 //---------------------------------------------------------------------------------------
 #elif OUT_CHANNELS == 1		// single FET or single bank of 7135's
@@ -218,10 +289,11 @@ byte byMainModes[10];			// main LED output
 
 volatile byte currOutLvl;		// set to current: byMainModes[mode]
 
-// output to use for blinks on battery check mode
+// Common Output Settings:
 #define MAX_BRIGHTNESS 255
 #define MAX_7135 25				// about 10%
-#define BLINK_BRIGHTNESS 20	// about 7.8%
+#define BLINK_BRIGHTNESS 20	// output to use for blinks on battery check mode, about 7.8%
+#define CLICK_BRIGHTNESS 15	// about 6%
 #define OFF_OUTPUT 0
 
 #endif
