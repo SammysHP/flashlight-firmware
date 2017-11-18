@@ -24,45 +24,15 @@
 // ../../bin/level_calc.py 64 1 10 1300 y 3 0.23 140
 #define RAMP_SIZE  7
 #define TURBO     RAMP_SIZE      // Convenience code for turbo mode
-// log curve
-//#define RAMP_PWM2  3,3,3,3,3,3,4,4,4,4,4,5,5,5,6,6,7,7,8,9,10,11,12,13,15,16,18,21,23,27,30,34,39,44,50,57,65,74,85,97,111,127,145,166,190,217,248,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
-//#define RAMP_PWM3   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,6,11,17,23,30,39,48,59,72,86,103,121,143,168,197,255
-// x**2 curve
-//#define RAMP_PWM2  3,5,8,12,17,24,32,41,51,63,75,90,105,121,139,158,178,200,223,247,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
-//#define RAMP_PWM3   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,6,9,12,16,19,22,26,30,33,37,41,45,50,54,59,63,68,73,78,84,89,94,100,106,111,117,123,130,136,142,149,156,162,169,176,184,191,198,206,214,221,255
-// x**3 curve
-// ../../bin/level_calc.py 3 40 7135 3 0.25 140 7135 3 1.5 840 FET 1 10 3000
-// (with some manual tweaks to exactly hit 1x7135 and Nx7135 in the middle)
-//#define ONE7135 14
-//#define ALL7135s 27
-//#define RAMP_PWM2  3,4,7,11,18,25,35,55,75,100,133,169,211,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
-//#define RAMP_PWM1 0,0,0,0,0,0,0,0,0,0,0,0,0,0,11,22,35,49,64,82,101,122,144,169,195,224,255,255,255,255,255,255,255,255,255,255,255,255,255,0
-//#define RAMP_PWM3   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,24,39,55,73,91,111,132,154,177,202,228,255
-//X**3 curve
-// Same as above but with 20 ramp instead of 40 to save space for more mode groups
-// ../../bin/level_calc.py 3 20 7135 3 0.25 140 7135 3 1.5 840 FET 1 10 3000
-// (with some manual tweaks to exactly hit 1x7135 and Nx7135 in the middle, also adjustments to some lower modes to better space them)
+
 #define ONE7135 8
 #define ALL7135s 14
-// These don't define which PWM channels are enabled.  Do that in FR-tk-attiny25.h
+
+//PWM channels only used if defined here AND enabled in FR-tk-attiny25.h
+
 // FET
 #define RAMP_PWM2   1,10,42,75,122,133,255
 
-
-//#define RAMP_PWM4   4,7,20,35,55,100,160,255,255,255,255,255,255,255,255,255,255,255,255,0 // just for testing/example, but doesn't hurt anything.
-// testing only: First 3 modes show each channel individually
-//#define RAMP_PWM2  255,0,0,255,18,27,40,57,77,103,133,169,211,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
-//#define RAMP_PWM1 0,255,0,255,0,0,0,0,0,0,0,0,0,0,11,22,35,49,64,82,101,122,144,169,195,224,255,255,255,255,255,255,255,255,255,255,255,255,255,0
-//#define RAMP_PWM3   0,0,255,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,24,39,55,73,91,111,132,154,177,202,228,255
-// 1200-lm single LED: ../../bin/level_calc.py 3 40 7135 3 0.25 160 7135 3 1.5 760 FET 1 3 1200
-//#define RAMP_PWM2   3,4,5,7,10,14,19,25,33,43,54,67,83,101,121,144,170,198,230,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
-//#define RAMP_PWM1  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,18,28,40,52,65,78,92,107,124,143,163,184,207,230,255,255,255,255,0
-//#define RAMP_PWM3    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,33,103,177,255
-//#define ONE7135 20
-//#define ALL7135s 36
-// x**5 curve
-//#define RAMP_PWM2  3,3,3,4,4,5,5,6,7,8,10,11,13,15,18,21,24,28,33,38,44,50,57,66,75,85,96,108,122,137,154,172,192,213,237,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
-//#define RAMP_PWM3   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,6,9,13,17,21,25,30,35,41,47,53,60,67,75,83,91,101,111,121,132,144,156,169,183,198,213,255
 
 // uncomment to ramp up/down to a mode instead of jumping directly
 // #define SOFT_START          // Cause a flash during mode change with some drivers
@@ -71,6 +41,21 @@
 // output to use for blinks on battery check (and other modes)
 #define BLINK_BRIGHTNESS    RAMP_SIZE/4
 // ms per normal-speed blink
+
+//** Enable "strobes" ****//
+#define USE_BATTCHECK             // use battery check mode
+#define USE_BIKING_STROBE         // Single flash biking strobe mode
+//  #define USE_FULL_BIKING_STROBE     // stutter enhancement to biking strobe, requires USE_BIKING_STROBE
+//#define USE_POLICE_STROBE         // Dual mode alternating strobe
+//#define USE_RANDOM_STROBE
+//#define USE_SOS
+//#define USE_STROBE_8HZ
+#define USE_STROBE_10HZ
+//#define USE_STROBE_16HZ
+//#define USE_STROBE_OLD_MOVIE
+//#define USE_STROBE_CREEPY    // Creepy strobe mode, or really cool if you have a bunch of friends around
+//#define USE_RAMP               //Ramping "strobe"
+
 
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to

@@ -43,10 +43,11 @@
 
 #elif (ATTINY == 25) || (ATTINY == 45) || (ATTINY ==85)
     // TODO: Use 6.4 MHz instead of 8 MHz?
+// FR adds some addresses for use in asm I/O address space
 	#define _TIMSK_ TIMSK
 	#define _TIMER0_OVF_vect_ TIMER0_OVF_vect
     #define F_CPU 8000000UL
-    #define EEPSIZE 128
+    #define EEPSIZE 128  // not actually correct for 45 and 85 (256) but doesn't matter.
     #define V_REF REFS1    // just defines which bit controls the voltage reference.
 	                      // since we don't touch REFS0 2.56V is not available (not very useful anyway).
 	#define VCC_REF_PIN 0x00 // ADC ref when using Vcc as a reference really just a 1 bit value. 
@@ -56,7 +57,7 @@
 	// as defined by _delay_loop2:  
 	// http://www.atmel.com/webdoc/AVRLibcReferenceManual/group__util__delay__basic_1ga74a94fec42bac9f1ff31fd443d419a6a.html
 	// The example there says 65536 corresponds to 261ms for 1Mhz so  250 ticks per ms ie FCPU/4000. 
-	// anyway, the OTSM_powersave delay re-implements this with a timer clock instead.
+	// anyway, the POWERSAVE delay re-implements this with a timer clock instead.
 	#define BOGOMIPS (F_CPU/4000)
 	#define TEMP_CHANNEL 0b00001111
 // Mooved adc_prscl here.  It has nothing to do with layout but does relate to selecte F_CPU above.
@@ -85,8 +86,8 @@
 // ALL numbers use PB numbers
 // First choose which PWM pins to use.  
 //#define ENABLE_PWM1           // PWM on pb1  (pin 5)  Single 7135 usually
-//#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in tripple
-//#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in tripple channel
+//#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in triple
+//#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in triple channel
 //#define ENABLE_PWM4         // PWM on pb3  (pin 2)  Can be used for RGBW setup.  
 
 // ASSIGN PINS FOR EXTRA FEATURES, You can change the pin numbers within reason. They can overlap in some cases.
@@ -94,7 +95,7 @@
 //#define VOLTAGE_PIN    PB2       // set to pb number or VCC Only PB2,PB3, PB4 and VCC are really valid
 //#define OTSM_PIN       PB2       // PIN to check for voltage shutoff.  Requires #define OTSM in bistro.c to activate.
 //#define ESWITCH_PIN    PB3       // Usually instead of CAP_PIN. Requires #define USE_ESWITCH in bistro.c to activate.
-                                 // Can double/tripple up on the OTSM/Voltage PIN (e: 4 channel driver) by shorting R2 with the e_switch.
+                                 // Can double/triple up on the OTSM/Voltage PIN (e: 4 channel driver) by shorting R2 with the e_switch.
 								 // Could even pull it to 0.5V and distinguish the two switches with ADC. (not implemented)
 
 //#define STAR2_PIN      PB0 // These have no purpose in the bistro software.
@@ -120,28 +121,29 @@
 #ifdef TRIPLEDOWN_LAYOUT
 /*
  *             ----
- *        PB5       Reset -|1  8|- VCC
- *        PB3         OTC -|2  7|- Voltage ADC   PB2    
- *        PB4   PWM (FET) -|3  6|- PWM (6x7135)  PB1    
- *                    GND -|4  5|- PWM (1x7135)  PB0    
+ *        PB5        Reset -|1  8|- VCC
+ *        PB3  ESWITCH/OTC -|2  7|- Voltage ADC/OTSM/INDICATOR   PB2    
+ *        PB4   PWM3 (FET) -|3  6|- PWM1 (6x7135)                PB1    
+ *                     GND -|4  5|- PWM2 (1x7135)                PB0    
  *             ----
  */
 
 // ALL numbers use PB numbers
 // First choose which PWM pins to use.  
 #define ENABLE_PWM1           // PWM on pb1  (pin 5)  Single 7135 usually
-#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in tripple
-#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in tripple channel
+#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in triple
+#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in triple channel
 //#define ENABLE_PWM4         // PWM on pb3  (pin 2)  Can be used for RGBW setup
 
 // SELECT PINS FOR EXTRA FEATURES, these may overlap in some cases.
 #define CAP_PIN        PB3       // OTC CAP or secondary OTSM CAP
 #define VOLTAGE_PIN    PB2       //  PB2,PB3, PB4 are only really valid.  If using VCC it's ignored.
+#define INDICATOR_PIN  PB2       // This only gets used if enabled with #define USE_INDICATOR in main config
 #define OTSM_PIN       PB2       // PIN to check for voltage shutoff (clicky).  Requires #define OTSM in bistro.c to activate.
                                  // This can be the same as the voltage pin, if the voltage is kept > 1.8V while on.
 								 // That generally requires using an LDO as a VCC voltage reference.
 #define ESWITCH_PIN    PB3       // Usually instead of CAP_PIN. Requires #define USE_ESWITCH in bistro.c to activate.
-                                 // Can double/tripple up on the OTSM/Voltage PIN (e: 4 channel driver) by shorting R2 with the e_switch.
+                                 // Can double/triple up on the OTSM/Voltage PIN (e: 4 channel driver) by shorting R2 with the e_switch.
 								 // Could even pull it to 0.5V and distinguish the two switches with ADC. (not implemented)
 
 //#define STAR2_PIN      PB0 // These have no purpose in the bistro software.
@@ -167,7 +169,7 @@
 /*
  *             ----
  *        PB5        Reset -|1  8|- VCC
- *        PB3          OTC -|2  7|- PWM4 Blue    PB2    
+ *        PB3    PWM4 Blue -|2  7|- Voltage ADC  PB2    
  *        PB4     PWM3 Red -|3  6|- PWM1 White   PB1    
  *                     GND -|4  5|- PWM2 Green   PB0    
  *             ----
@@ -176,8 +178,8 @@
 // ALL numbers use PB numbers
 // First choose which PWM pins to use.  
 #define ENABLE_PWM1           // PWM on pb1  (pin 5)  Single 7135 usually
-#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in tripple
-#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in tripple channel
+#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in triple
+#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in triple channel
 #define ENABLE_PWM4         // PWM on pb3  (pin 2)  Can be used for RGBW setup
 
 // SELECT PINS FOR EXTRA FEATURES, these may overlap in some cases.
@@ -185,7 +187,7 @@
 #define VOLTAGE_PIN    PB2       // set to pb number or VCC Only PB2,PB3, PB4 and VCC are really valid
 #define OTSM_PIN       PB2       // PIN to check for voltage shutoff.  Requires #define OTSM in bistro.c to activate.
 #define ESWITCH_PIN    PB2       // Usually instead of CAP_PIN. Requires #define USE_ESWITCH in bistro.c to activate.
-                                 // Can double/tripple up on the OTSM/Voltage PIN (e: 4 channel driver) by shorting R2 with the e_switch.
+                                 // Can double/triple up on the OTSM/Voltage PIN (e: 4 channel driver) by shorting R2 with the e_switch.
 								 // Could even pull it to 0.5V and distinguish the two switches with ADC. (not implemented)
 
 //#define STAR2_PIN      PB0     // These have no purpose in the bistro software.
@@ -197,6 +199,37 @@
 #endif // QUADRUPLE_DOWN_LAYOUT
 
 /*********************************************************************/
+
+/*********************************************************************/
+
+//* Q8  Diagram
+/*
+ *             ----
+ *        PB5        Reset -|1  8|- VCC
+ *        PB3     e-switch -|2  7|- Voltage         PB2 (stock: unused)    
+ *        PB4  IndicatorLED-|3  6|- PWM (FET)       PB1    
+ *                     GND -|4  5|- PWM2 (1x7135)   PB0    
+ *             ----
+ */
+
+#ifdef Q8_LAYOUT
+// First choose which PWM pins to use.
+#define ENABLE_PWM1           // PWM on pb1  (pin 5)  Single 7135 usually
+#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in triple
+//#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in triple channel
+//#define ENABLE_PWM4         // PWM on pb3  (pin 2)  Can be used for RGBW setup
+
+// SELECT PINS FOR EXTRA FEATURES, these may overlap in some cases.
+//#define CAP_PIN        PB3       // OTC CAP or secondary OTSM CAP
+#define VOLTAGE_PIN    PB2       // set to pb number or VCC Only PB2,PB3, PB4 and VCC are really valid
+//#define OTSM_PIN       PB2       // PIN to check for voltage shutoff
+#define ESWITCH_PIN    PB3       // usually instead of CAP_PIN but could double up on OTSM PIN
+#define INDICATOR_PIN  PB4         // indicator LED.
+//#define STAR3_PIN        PB4
+
+// adc rate is F_CPU/13/prescale
+
+#endif  // BLFA6_LAYOUT
 
 
 #ifdef FET_7135_LAYOUT
@@ -213,8 +246,8 @@
 // ALL numbers use PB numbers
 // First choose which PWM pins to use.
 #define ENABLE_PWM1           // PWM on pb1  (pin 5)  Single 7135 usually
-#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in tripple
-//#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in tripple channel
+#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in triple
+//#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in triple channel
 //#define ENABLE_PWM4         // PWM on pb3  (pin 2)  Can be used for RGBW setup
 
 // SELECT PINS FOR EXTRA FEATURES, these may overlap in some cases.
@@ -242,8 +275,8 @@
 // ALL numbers use PB numbers
 // First choose which PWM pins to use.
 #define ENABLE_PWM1           // PWM on pb1  (pin 5)  Single 7135 usually               (PWM)
-#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in tripple  (GREEN)
-#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in tripple channel            (RED)
+#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in triple  (GREEN)
+#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in triple channel            (RED)
 //#define ENABLE_PWM4         // PWM on pb3  (pin 2)  Can be used for RGBW setup
 
 // SELECT PINS FOR EXTRA FEATURES, these may overlap in some cases.
@@ -275,8 +308,8 @@
 #ifdef BLFA6_LAYOUT
 // First choose which PWM pins to use.
 #define ENABLE_PWM1           // PWM on pb1  (pin 5)  Single 7135 usually
-#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in tripple
-//#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in tripple channel
+#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in triple
+//#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in triple channel
 //#define ENABLE_PWM4         // PWM on pb3  (pin 2)  Can be used for RGBW setup
 
 // SELECT PINS FOR EXTRA FEATURES, these may overlap in some cases.
@@ -304,8 +337,8 @@
 #ifdef NANJG105D_LAYOUT
 // First choose which PWM pins to use.
 //#define ENABLE_PWM1           // PWM on pb1  (pin 5)  Single 7135 usually
-#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in tripple
-//#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in tripple channel
+#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in triple
+//#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in triple channel
 //#define ENABLE_PWM4         // PWM on pb3  (pin 2)  Can be used for RGBW setup
 
 // SELECT PINS FOR EXTRA FEATURES, these may overlap in some cases.
@@ -323,8 +356,8 @@
 #ifdef NANJG_LAYOUT // is this even right for anything?
 // First choose which PWM pins to use.
 #define ENABLE_PWM1           // PWM on pb1  (pin 5)  Single 7135 usually
-//#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in tripple
-//#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in tripple channel
+//#define ENABLE_PWM2           // PWM on pb0  (pin 6)  FET in FET+1 or 7135s in triple
+//#define ENABLE_PWM3           // PWM on pb4  (pin 3)  FET in triple channel
 //#define ENABLE_PWM4         // PWM on pb3  (pin 2)  Can be used for RGBW setup
 
 // SELECT PINS FOR EXTRA FEATURES, these may overlap in some cases.

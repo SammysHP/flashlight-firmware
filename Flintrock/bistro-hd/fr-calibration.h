@@ -30,11 +30,13 @@
  */
 
 /********************** Voltage ADC calibration **************************/
-///////////////Calibration for traditional voltage-divider//////////////////
 #if !defined(READ_VOLTAGE_FROM_VCC) //Flintrock 2017 (C)
 
 // allow override in main config
 #if !defined(REFERENCE_DIVIDER_READS_TO_VCC)
+
+//*****Calibration for traditional voltage-divider, NON LDO **********/////////
+//
   #define v_correction  0.0 //in volts for minor calibration adjustment.  
                             // Higher value will increase reading. (earlier cut-off)
 							// Might be better to adjust full scale proportionally though.
@@ -52,6 +54,9 @@
 							 // Values may vary though since attiny voltage ref has large variance.  Use bistro-battcheck-divider-attinyXX.hex to measure it.
 							 // Now should only need the reading with a full battery.  No longer requires creating full calibration table.
 
+
+//*********LDO OTSM calibrataion***********//
+//
 #else  // next version is the value used for LDO OTSM configs where the divider voltage is read relative to Vcc
   #define v_correction  0.0 //in volts for minor calibration adjustment.
   #define ADC_full_scale  255  //  If it's setup right this should be pegged at full battery.
@@ -71,7 +76,7 @@
 #define ADC_val(x) (uint8_t)( ((double)x/10.0E0+(double)0.05E0-(double)v_correction)*(double)(ADC_full_scale)/(double)(4.2E0))
 
 #else 
-///////////////Calibration for Vcc voltage reading voltage-divider//////////////////
+//*************Calibration for Vcc voltage reading voltage-divider*****************//
 
 //Flintrock 2017 (C)
 // Try 0.3 and 1.1  or 0.2 and 1.15.  

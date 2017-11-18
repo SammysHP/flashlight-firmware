@@ -38,7 +38,7 @@ void _delay_sleep_ms(uint16_t n)
 {// 2017 by Flintrock
 	set_sleep_mode(SLEEP_MODE_IDLE);
 	uint8_t counter;
-	#if ! defined(PWM4_LVL)  // prefer timer 0 because it's setup twice slower
+	#if ! defined(USE_PWM4)  // prefer timer 0 because it's setup twice slower
   	   _TIMSK_ |= (1<<TOIE0); // enable timer overflow interrupt.
   	   TCNT0 = 1; // restart the clock.  Will glitch the PWM, but that's fine.
 	   #define cycle_counts 500  // approximate for timing math, to get int result 

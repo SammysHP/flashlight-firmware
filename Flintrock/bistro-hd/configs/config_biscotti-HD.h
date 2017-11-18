@@ -44,6 +44,7 @@
 //USE redundancy to make noinit off memory safer (if used at all) redundancy 4 requires 38 bytes.
 // This is only used if OTC and OTSM are not used and you have a clicking switch.
 #define USE_SAFE_PRESSES // enable
+
 // redundancy 4 requires 38 bytes.
 // redundancy level. Default is 4, but 3 could save some space, 2 has lower than 1 in 255 chance of failure:
                      // 3 has maybe 1 in 2,800 odds (based observations that 1's twice as probable as 0's)
@@ -60,7 +61,7 @@
 //#define USE_OTSM  // USE OTSM.  Pin must be defined in the layout too.
 
 //#define OTSM_USES_OTC // use OTC cap for extra power on OTSM (sets it output high to charge up)
-#define OTSM_powersave // Also works without OTSM to reduce moon-mode drain. 
+#define POWERSAVE // Also works without OTSM to reduce moon-mode drain. 
              // Squeeze out a bit more off-time by saving power during
              // shutoff detection (so at all times).  Implements ms resolution (could be less) idle sleeps in place of delay.
              // Seems to add at 0.5s of sleep at 3.1V 30uF cap, starting with only 0.75 that matters.  
@@ -93,14 +94,12 @@
 //#define REFERENCE_DIVIDER_READS_TO_VCC // default is 1.1V, but this is needed for divider reading with OTSM on the voltage pin.
                                          // This should normally be used with an LDO.  For 1S (non-LDO or 5.0VLDO) just avoid the problem with READ_VOLTAGE_FROM_VCC.
 
-/*** Enable battery indicator mode?   */
-#define USE_BATTCHECK
-// Choose a battery indicator style
+/***** Choose a battery indicator style (if enabled in modegroups)*******/
 #define BATTCHECK_4bars  // up to 4 blinks
 //#define BATTCHECK_8bars  // up to 8 blinks
 //#define BATTCHECK_VpT  // Volts + tenths
 
-/******theremal protection:  ***/
+/******thermal protection:  ***/
 //#define TEMPERATURE_MON          // You can set starting temperature in the "maxtemp" setting in config options first boot options.
 //#define USE_TEMP_CAL    // include a TEMP_CAL mode in the menu.
 
@@ -108,8 +107,10 @@
   #define USE_TURBO_TIMEOUT
   #define TURBO_TIMEOUT 45   // timeout in seconds.
 #else
-  #define TEMPERATURE_MON
-  #define USE_TEMP_CAL    // include a TEMP_CAL mode in the menu.
+  #define TEMPERATURE_MON          // You can set starting temperature in the "maxtemp" setting in config options first boot options.
+    #define USE_TEMP_CAL    // include a TEMP_CAL mode in the menu.  
+    #define TEMP_STEP_DOWN //Requires TEMPERATURE_MON, Use step-down and tap-up instead of oscillate
+      #define MINIMUM_TURBO_TIME  10 //Turbo will never run less than this long. Requires TEMP_STEP_DOWN
 #endif
 
 /*******Mode features***********/
@@ -125,7 +126,7 @@
 
 // Options for first bootup/default:
 
-//#define USE_FIRSTBOOT // Disabling this doesn't always save much
+//#define USE_FIRSTBOOT //Enables reset menu option, only costs a couple of bytes.
 
 #define INIT_MODEGROUP      0       // which mode group will be default, mode groups below start at zero, select the mode group you want and subtract one from the number to get it by defualt here
 #define INIT_ENABLE_MOON    0       // Should we add moon to the set of modes?

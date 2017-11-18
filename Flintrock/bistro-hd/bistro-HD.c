@@ -1,11 +1,11 @@
 /*
  * "Bistro-HD" firmware  
- * This code runs on a single-channel or dual-channel (or tripple or quad) driver (FET+7135)
+ * This code runs on a single-channel or dual-channel (or triple or quad) driver (FET+7135)
  * with an attiny13/25/45/85 MCU and several options for measuring off time.
  *
  * Original version Copyright (C) 2015 Selene Scriven, 
  * Modified significantly by Texas Ace (triple mode groups) and 
- * Flintrock (code size, Vcc, OTSM, eswitch, 4-chan, delay-sleep,.. more, see manual) 
+ * Flintrock (code size, Vcc, OTSM, eswitch, 4-channel, delay-sleep,.. more, see manual) 
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -55,34 +55,14 @@
  * CALIBRATION
  *   FR's new method Just adjust parameters in fr-calibration.h
  *   Now uses something between fully calculated and fully measured method.
- *   You can make simple adjustments to the calculations to get a good result.
- *
- *   To find out what values to use, flash the driver with battcheck.hex
- *   and hook the light up to each voltage you need a value for.  This is
- *   much more reliable than attempting to calculate the values from a
- *   theoretical formula.
- *
- *   Same for off-time capacitor values.  Measure, don't guess.
+ *   You can probably get close using calculations in the comments, and 
+ *   you can make simple adjustments from there to get a good result.
+ *   Or, use the battcheck builds with a full baterry (4.2V) to get a 1-point calibration.
  *
  * 
  */
 
 
-/* Latest Changes
- * Fixed minor startup lag. (hopefully doesn't mess up voltage or temp ADC stabilization).
- * Fixed an array overwrite, in some cases messed up first boot initialization.
- *
- * Bug fix in TURBO_TIMEOUT.
- *  Added TURBO_STEPDOWN config to control mode to step down to.
- *
- * Enabled "OTSM_powersave" (not only for OTSM) in attiny 13, drops current from 4mA to ~2mA.
- *
- * Added TEMP_STEP_DOWN thermal control alternative, like BLFA6, steps down to safe mode, tap up, but with temp sensing.
- *    Brings MINIMUM_TURBO_TIME option (mostly effects tapping up while still hot)
- *    TURBO_STEPDOWN Variable also applies.
- *    More space savings. TA tripple with OTSM now about 1770 bytes give or take.
- *    
- */ 
 
 #ifndef ATTINY
 /************ Choose your MCU here, or override in Makefile or build script*********/
@@ -90,7 +70,7 @@
 
 //  choices are now 13, 25, 45, and 85.  Yes, 45 and 85 are now different
 
-#define ATTINY 25
+#define ATTINY 85
 //#define ATTINY 25
 //#define ATTINY 45  // yes these are different now, hopefully only in ways we already know.
 //#define ATTINY 85  //   bust specifically they have a 2 byte stack pointer that OTSM accesses.
@@ -106,19 +86,21 @@
 //#define CONFIG_FILE_H "configs/config_default.h"
 
 ///Or select alternative configuration file, last one wins.///
-//#define CONFIG_FILE_H "configs/config_testing-HD.h"
+//#define CONFIG_FILE_H "configs/config_custom-HD.h"
 //#define CONFIG_FILE_H "configs/config_BLFA6_EMU-HD.h"
 //#define CONFIG_FILE_H "configs/config_biscotti-HD.h"
-//#define CONFIG_FILE_H "configs/config_trippledown-HD.h"
+//#define CONFIG_FILE_H "configs/config_tripledown-HD.h"
 //#define CONFIG_FILE_H "configs/config_classic-HD.h"
 //#define CONFIG_FILE_H "configs/config_TAv1-OTC-HD.h"
-#define CONFIG_FILE_H "configs/config_TAv1-OTSM-HD.h"
+//#define CONFIG_FILE_H "configs/config_TAv1-OTSM-HD.h"
 //#define CONFIG_FILE_H "configs/config_TAv1-OTSM-LDO-HD.h"
+//#define CONFIG_FILE_H "configs/config_eswitch-TA-HD.h"
 //#define CONFIG_FILE_H "configs/config_dual-switch-TA-HD.h"
 //#define CONFIG_FILE_H "configs/config_dual-switch-noinit-TA-HD.h"
 //#define CONFIG_FILE_H "configs/config_dual-switch-dumbclick-TA-HD.h"
 //#define CONFIG_FILE_H "configs/config_dual-switch-turboclick-TA-HD.h"
 //#define CONFIG_FILE_H "configs/config_4channel-dual-switch-HD.h"
+#define CONFIG_FILE_H "configs/config_eswitch-Q8-fetplusone-HD.h"
 
 //Make it a battcheck build? 
 //#define VOLTAGE_CAL
@@ -146,9 +128,52 @@
 
 #include CONFIG_FILE_H // this is primary configuration file.
 
-void blink_value(uint8_t value); // declare early so we can use it anywhere
 
-//*************** Defaults, including ones needed before modegroups.h ***********/
+// This is used to simplify the toggle function
+// eliminating mode_override, using this threshold instead:
+#define MINIMUM_OVERRIDE_MODE 245  // DO NOT EDIT.  DO NOT DEFINE ANY STROBES HIGER OR EQUAL TO THIS.
+
+#define GROUP_SELECT_MODE 254
+#define TEMP_CAL_MODE 253
+
+/******* Define strobe magic numbers**** *********************/
+//Now separate from actually selecting which ones are used.
+
+#define BATTCHECK        244      // Convenience code for battery check mode
+//mode codes for strobes, must be less than MINIMUM_OVERRIDE_MODE
+#define BIKING_STROBE    243     // Single flash biking strobe mode
+#define FULL_BIKING_STROBE     // Stutter bike strobe, uncomment to enable
+#define POLICE_STROBE    242     // Dual mode alternating strobe
+#define RANDOM_STROBE    241
+#define SOS              240
+#define STROBE_8HZ       239
+#define STROBE_10HZ      238
+#define STROBE_16HZ      237
+#define STROBE_OLD_MOVIE  236
+#define STROBE_CREEPY    235     // Creepy strobe mode, or really cool if you have a bunch of friends around
+#define RAMP             234     //Ramping "strobe"
+
+
+//*************** Defaults needed before modegroups.h, but NOT yet one's overring modegroups.h ***********/
+
+
+// FULL_BIKING_STROBE modifies BIKING_STROBE so BIKING_STROBE must be defined.
+#if defined(FULL_BIKING_STROBE) && !defined(BIKING_STROBE)
+ #define BIKING_STROBE
+#endif
+
+// If medium clicks are disabled, don't define hidden modes:
+// must come before modegroups.h
+#if !defined(OFFTIM3)
+  #define HIDDENMODES       // No hiddenmodes, defined as empty.
+#endif
+
+#include "fr-tk-attiny.h" // should be compatible with old ones, but it might not be, so renamed it.
+
+// Read the modegroups configuration file:
+#include MODEGROUPS_H
+
+//*********Now can define defaults including ones to override things in MODEGROUPS_H ***********
 
 // There's really no reason not to use LOOP_TOGGLES NOW, probably will remove the old way in the future:
 #ifdef NO_LOOP_TOGGLES
@@ -168,37 +193,36 @@ void blink_value(uint8_t value); // declare early so we can use it anywhere
  #define USE_LOCKSWITCH
 #endif
 
-// set a default value for the mode to step down to
-// after timeout or overheat, if it's not already configured.
-#ifndef TURBO_STEPDOWN
- #define TURBO_STEPDOWN RAMP_SIZE/2
-#endif
 
 // Apply defaults for what temp regulation modes to use
 // Some historical baggage here probably:
 #if defined(TEMPERATURE_MON)
     #ifdef TURBO_TIMEOUT
        #error "You cannot define TURBO_TIMEOUT and TEMPERATURE_MON together"
-	   #error "Consider usining TEMP_STEP_DOWN instead"
-	#endif
+       #error "Consider usining TEMP_STEP_DOWN instead"
+    #endif
   #ifdef TEMP_STEP_DOWN // TEMP method already set, do nothing.
     #ifndef MINIMUM_TURBO_TIME
-	  #define MINIMUM_TURBO_TIME 10 // default minimum turbo time for TEMP_STEP_DOWN.
-	#endif
+      #define MINIMUM_TURBO_TIME 10 // default minimum turbo time for TEMP_STEP_DOWN.
+    #endif
   #else	                         // else set the default
     #define CLASSIC_TEMPERATURE_MON
   #endif 
 #endif
 
-#define GROUP_SELECT_MODE 254
-
-#ifdef USE_TEMP_CAL
-#define TEMP_CAL_MODE 253
-#endif
-
-// FULL_BIKING_STROBE modifies BIKING_STROBE so BIKING_STROBE must be defined.
-#if defined(FULL_BIKING_STROBE) && !defined(BIKING_STROBE)
-#define BIKING_STROBE
+// click parsing is more reliable with faster sleep cycles.
+// if a pin is changing during read, it will be read again on next sleep cycle
+// before the click time threshold changes.
+//
+//But what about dual OTSM/ESWITCH? Well for now that also disables debounce 
+// It must unless they are on distinguishable pins at least since debounce will break OTSM.
+// And without debounce delays there won't be missed clicks.
+// If OTSM+e-switch still needs debounce, it just won't work on same pin
+// and will need to apply both debounce and sleep time based on pin detection in that case.
+// will know after testing.
+#if defined(USE_ESWITCH) && (!defined USE_OTSM)
+  #undef SLEEP_TIME_EXPONENT 
+  #define SLEEP_TIME_EXPONENT 1 // 32 ms
 #endif
 
 #define OWN_DELAY           // Don't use stock delay functions.
@@ -207,15 +231,12 @@ void blink_value(uint8_t value); // declare early so we can use it anywhere
 
 #define USE_DELAY_S         // Also use _delay_s(), not just _delay_ms()
 
-// If medium clicks are disabled, don't define hidden modes:
-#if !defined(OFFTIM3)
-  #define HIDDENMODES       // No hiddenmodes.
+// set a default value for the mode to step down to
+// after timeout or overheat, if it's not already configured.
+#ifndef TURBO_STEPDOWN
+ #define TURBO_STEPDOWN RAMP_SIZE/2
 #endif
 
-#include "fr-tk-attiny.h" // should be compatible with old ones, but it might not be, so renamed it.
-
-// Read the modegroups configuration file:
-#include MODEGROUPS_H
 
 // how many ms to sleep between voltage/temp/stepdown checks.
 #define LOOP_SLEEP 500 
@@ -268,7 +289,7 @@ uint8_t modes[MAX_MODES + sizeof(hiddenmodes)];  // make sure this is long enoug
 #include "fr-calibration.h"
 
 //USE timed sleeps to save power?  Improves moon mode battery life and OTSM performance:
-#ifdef OTSM_powersave
+#ifdef POWERSAVE
 #include "fr-delay.h" // must include them in this order.
 #define _delay_ms _delay_sleep_ms
 #define _delay_s _delay_sleep_s
@@ -277,23 +298,29 @@ uint8_t modes[MAX_MODES + sizeof(hiddenmodes)];  // make sure this is long enoug
 #endif
 
 
-#ifdef RANDOM_STROBE
+#ifdef USE_RANDOM_STROBE
 #include "tk-random.h"
 #endif
 
 // The voltage and teperature ADC functions:
 #include "tk-voltage.h"
 
+void blink_value(uint8_t value); // declare early so we can use it anywhere
 
 ///////////////////////REGISTER VARIABLES///////////////////////////////////
 // make it a register variable.  Saves many i/o instructions.
 // but could change as code evolves.  Worth testing what works best again later.
 
 // ************NOTE global_counter is now reserved as r2 in tk-delay.h. (commented out now actually)**********
+// safe registers for avr-gcc are r2 through r7 (always restored by callee and never passed).
+//  r8 through r15 MIGHT be safe (not clear) but are certainly not safe for use in interrupts.
 
 register uint8_t  mode_idx asm("r6");           // current or last-used mode number
+// stragely, redeclaring this saves 10 bytes, should be illegal no?  And why? -FR
+// Doing only the second declaration however loses about 20~30 bytes, so is not identical to re-declaring.
+//uint8_t mode_idx;
 register uint8_t eepos asm("r7");  // eeprom read/write position for wear-leveling of mode_idx save.
-//uint8_t eepos
+//uint8_t eepos;
 
 // a counter to see how long the light was off during a click
 // actually counts the number of watchdog wakes while off.
@@ -301,7 +328,7 @@ register uint8_t eepos asm("r7");  // eeprom read/write position for wear-leveli
 #if defined(USE_OTSM) || defined(USE_ESWITCH) || defined(USE_OTC)
 //Reserving a register for this allows checking it in re-entrant interrupt without needing register maintenance
 // as a side effect it saves several in/out operations that save more space.
-register uint8_t wake_count asm  ("r8");
+register uint8_t wake_count asm  ("r5");
 #endif
 /////////////////////END REGISTER VARIABLE/////////////////////////////////
 
@@ -330,11 +357,10 @@ register uint8_t wake_count asm  ("r8");
 #endif
 
 
-
 // total length of current mode group's array
-uint8_t mode_cnt;
+uint8_t mode_cnt __attribute__ ((section (".noinit")));
 // number of regular non-hidden modes in current mode group
-uint8_t solid_modes;
+uint8_t solid_modes __attribute__ ((section (".noinit")));
 // number of hidden modes in the current mode
 // (hardcoded because both groups have the same hidden modes)
 //uint8_t hidden_modes = NUM_HIDDEN;  // this is never used
@@ -377,7 +403,7 @@ uint8_t solid_modes;
 #define offtim3       OPT_array[offtim3_IDX]
 //#define TEMPERATURE_MON_IDX OPT_array[7] // TEMPERATURE_MON, doesn't need to be defined,
                                            // re-uses mode_override toggle in old method
-										   // and has no toggle at all in new method.
+                                           // and has no toggle at all in new method.
 #define firstboot     OPT_array[firstboot_IDX]  
 #define lockswitch    OPT_array[lockswitch_IDX]  // don't forget to update n_saves above.
 
@@ -405,7 +431,7 @@ uint8_t solid_modes;
 
 
 #define n_saves (n_toggles + n_extra_saves)
-  uint8_t OPT_array[n_saves+1] ;
+  uint8_t OPT_array[n_saves+1] __attribute__ ((section (".noinit")));
 #ifndef LOOP_TOGGLES
   #define final_toggles  (-1) //disable loop toggles.
                        // redefining n_toggles breaks modegroup macro and fixing that situation seems ugly.
@@ -423,12 +449,12 @@ uint8_t overrides[n_toggles+1]; // will hold values override mode_idx if any for
 //#endif
 #if defined(OFFTIM3)&&defined(USE_ESWITCH)
   #if defined(DUMB_CLICK)||defined(TURBO_CLICK)
-	   #define NEXT_LOCKOUT 1 // compile in support to lockout next mode
+       #define NEXT_LOCKOUT 1 // compile in support to lockout next mode
   #endif
 #endif
 #if ( defined(TEMPERATURE_MON)&&defined(TEMP_STEP_DOWN) )\
-            || defined(USE_TURBO_TIMEOUT) 
-	   #define NEXT_LOCKOUT 1 // compile in support to lockout next mode
+                  || defined(USE_TURBO_TIMEOUT) 
+       #define NEXT_LOCKOUT 1 // compile in support to lockout next mode
 #endif
 #ifndef NEXT_LOCKOUT
    #define NEXT_LOCKOUT 0
@@ -447,46 +473,57 @@ uint8_t overrides[n_toggles+1]; // will hold values override mode_idx if any for
 // this define does NOT disable next mode.  It just defines a signaling value
 // for certain functions to use when those functions need to disable it for one click.
 
+//#define POWER_LOCKOUT_CHECK 254 // Magic value for fast_presses that locks out power on next boot.
+
 // Magic number stored in eeprom on first boot. 
 // If it's NOT set, it's a first boot, so we don't read configs.
 #define FIRSTBOOT 0b01010101
+
+//define PORTB IO address for asm use:
+#define PORTB_IO  _SFR_IO_ADDR(PORTB)
 
 // define a bit field in an I/O register with sbi/cbi support, for efficient boolean manipulation:
 
 typedef struct
 {
-	unsigned char bit0:1;
-	unsigned char bit1:1;
-	unsigned char bit2:1;
-	unsigned char bit3:1;
-	unsigned char bit4:1;
-	unsigned char bit5:1;
-	unsigned char bit6:1;
-	unsigned char bit7:1;
+    unsigned char bit0:1;
+    unsigned char bit1:1;
+    unsigned char bit2:1;
+    unsigned char bit3:1;
+    unsigned char bit4:1;
+    unsigned char bit5:1;
+    unsigned char bit6:1;
+    unsigned char bit7:1;
 }io_reg;
+
 /***************LETS RESERVE GPIOR0 FOR LOCAL VARIABLE USE ********************/
 // This seemed more useful at one point than it maybe actually is, but it works.
+// Still useful though because checking a gpio bit can be done in an interrupt without clobbering working registers.
+//   .. saving bytes and speeding up the interrupt.
 //define a global bitfield in lower 32 IO space with in/out sbi/cbi access
-// unfortunately, attiny13 has no GPIORs,.
+// unfortunately, attiny13 has no GPIORs, but can't handle OTSM or pwm4 anyway.
 
-		#define gbit            *((volatile uint8_t*)_SFR_MEM_ADDR(GPIOR2)) // pointer to whole status byte.
-		#define gbit_pwm4zero			((volatile io_reg*)_SFR_MEM_ADDR(GPIOR2))->bit0 // pwm4 disable toggle.
-		#define gbit_epress	     	((volatile io_reg*)_SFR_MEM_ADDR(GPIOR2))->bit1  // eswitch was pressed.
-//      ...
-        #define gbit_addr  "0x13"  // hack, but whatever, 0x13 is GPIOR2 but GPIOR2 macro is just too clever to work.
-		                            //There's surely a better way, but not worth finding out.
-		#define gbit_pwm4zero_bit "0"  // This gets used for inline asm in PWM ISR.
+        #define gbit             *((volatile uint8_t*)_SFR_MEM_ADDR(GPIOR2)) // pointer to whole status byte.
+        #define gbit_pwm4zero			((volatile io_reg*)_SFR_MEM_ADDR(GPIOR2))->bit0 // pwm4 disable toggle.
+        #define gbit_pinchange	     	((volatile io_reg*)_SFR_MEM_ADDR(GPIOR2))->bit1  // flags interrupt type without 
+                                                                                         // need to clobber a register
+
+//The bitfield variables work in C, but raw addresses and bit shifts can help for asm:
+        #define gbit_pwm4zero_bit 0 // This gets used for inline asm in PWM ISR.
 
 
 // Convert wake_time configurations to number of wake_counts
 // This depends on the wake frequency defined by SLEEP_TIME_EXPONENT
 #if defined(USE_OTSM) || defined(USE_ESWITCH) || defined(USE_OTC)
 // math done by compiler, not runtime:
-// plus 1 because there's always an extra un-timed pin-change wake:
+// plus 1 because there's always an extra un-timed pin-change wake
+//   ex:With 1/4 second wakes anything over 0.5s is 3 or more wakes, not two.
+//   The comparison is done as >=.  If wake_count_short was two, an 0.26 s press
+//   would register as medium, not short.
 
 #if defined(USE_OTC) && !defined(USE_ESWITCH)
-#define wake_count_med (255-CAP_MED)
-#define wake_count_short (255-CAP_SHORT)
+  #define wake_count_med (255-CAP_MED)
+  #define wake_count_short (255-CAP_SHORT)
 #else
 // updated with two components, first 4 wakecounts are double speed.
 //#define wake_interval ( (uint16_t)1<<(6-SLEEP_TIME_EXPONENT) )
@@ -525,6 +562,9 @@ typedef struct
    #ifndef CAP_PIN
     #error You must define a CAP_PIN in fr-tk-attiny.h or undefine USE_OTC
    #endif
+   #if defined(READ_VOLTAGE_FROM_DIVIDER)&& (CAP_PIN==VOLTAGE_PIN)
+    #error You cannot read voltage from the OTC pin, disable one or change the layout.
+   #endif
 #endif
 
 #ifdef USE_OTSM
@@ -537,13 +577,20 @@ typedef struct
   #error You cannot use READ_VOLTAGE_FROM_VCC with the attiny 13.
 #endif
 
-#if ATTINY==13 && (defined(PWM3_LVL)||defined (PWM4_LVL))
-#error attiny13 does not support PWM3 or PWM4, modify layout or select a new one.
+#if ATTINY==13 && (defined(PWM3_LVL)||defined(PWM4_LVL))
+  #error attiny13 does not support PWM3 or PWM4, modify layout or select a new one.
 #endif
 
+#if defined(USE_INDICATOR)&&!defined(INDICATOR_PIN)
+  #error You have defined USE_INDICATOR without defining  INDICATOR_PIN
+#endif
+
+#if (defined(READ_VOLTAGE_FROM_DIVIDER)||defined(USE_OTSM))&&!defined(VOLTAGE_PIN)
+  #error You have defined READ_VOLTAGE_FROM_DIVIDER or USE_OTSM without defining VOLTAGE_PIN
+#endif
 
 #if defined(VOLTAGE_MON)&&!(defined(READ_VOLTAGE_FROM_VCC)||defined(READ_VOLTAGE_FROM_DIVIDER))
-  #error You must define READ_VOLTAGE_FROM_VCC or READ_VOLTAGE_FROM_DIVEDER when VOLTAGE_MON is defined
+  #error You must define READ_VOLTAGE_FROM_VCC or READ_VOLTAGE_FROM_DIVIDER when VOLTAGE_MON is defined
 #endif
 
 #if defined(VOLTAGE_MON)&&defined(READ_VOLTAGE_FROM_VCC)&&defined(READ_VOLTAGE_FROM_DIVIDER)
@@ -552,8 +599,8 @@ typedef struct
 
 #if defined(READ_VOLTAGE_FROM_DIVIDER)&&!defined(REFERENCE_DIVIDER_READS_TO_VCC)&&defined(USE_OTSM)&&(OTSM_PIN==VOLTAGE_PIN)&&defined(VOLTAGE_MON)
   #error You cannot use 1.1V reference to read voltage on the same pin as the OTSM.  OTSM power-on voltage must be >1.8V.
-  #error Use REFERENCE_DIVIDER_READS_TO_VCC instead and set divider resistors to provide > 1.8V on-voltage to voltage pin.
-  #error For 1S non-LDO or 1-S 5.0V LDO lights you can use READ_VOLTAGE_FROM_VCC instead
+  #error FOR LDO builds use REFERENCE_DIVIDER_READS_TO_VCC instead and set divider resistors to provide > 1.8V on-voltage to voltage pin.
+  #error For 1S non-LDO or 1-S 5.0V LDO (LDO below regulation) lights you can use READ_VOLTAGE_FROM_VCC instead
 #endif
 
 #if defined(READ_VOLTAGE_FROM_DIVIDER)&&!defined(REFERENCE_DIVIDER_READS_TO_VCC)&&defined(USE_ESWITCH)&&(ESWITCH_PIN==VOLTAGE_PIN)&&defined(VOLTAGE_MON)
@@ -572,7 +619,25 @@ So this warning doesn't catch everything */
   #warning It is highly recommend to define USE_SAFE_PRESSES for capacitor-less off-time detection
 #endif
 
+#if defined(USE_INDICATOR) // check for conflicts
+  #if defined(USE_OTSM)&&(OTSM_PIN==INDICATOR_PIN)
+   #error "You cannot use OTSM and an indicator on the same pin.  Disable one, or change the layout."
+  #endif
+  #if defined(USE_ESWITCH)&&(ESWITCH_PIN==INDICATOR_PIN)
+   #error "You cannot use an ESWITCH and an indicator on the same pin.  Disable one, or change the layout."
+  #endif
+  #if defined(READ_VOLTAGE_FROM_DIVIDER)&&(VOLTAGE_PIN==INDICATOR_PIN)
+   #error "You cannot use the indicator and voltage reads on the same pin.  Disable one or change the layout."
+  #endif
+  #if defined(USE_OTC)&&(CAP_PIN==INDICATOR_PIN)
+   #error "You cannot use OTC and an indicator on the same PIN, and the two options don't make sense together."  
+   #error "Disable one or change the layout."
+  #endif
+#endif
 
+
+
+  
 // Not really used
 //#define DETECT_ONE_S  // auto-detect 1s vs multi-s light make prev.
 // requiers 5V LDO for multi-s light and will use VCC for 1S.
@@ -586,28 +651,28 @@ So this warning doesn't catch everything */
 // 0 being low for soldered, 1 for pulled-up for not soldered
 #ifdef USE_STARS
 inline void check_stars() { 
-	#if 0  // not implemented, STAR2_PIN is used for second PWM channel
-	// Moon
-	// enable moon mode?
-	if ((PINB & (1 << STAR2_PIN)) == 0) {
-		modes[mode_cnt++] = MODE_MOON;
-	}
-	#endif
-	#if 0  // Mode order not as important as mem/no-mem
-	// Mode order
-	if ((PINB & (1 << STAR3_PIN)) == 0) {
-		// High to Low
-		mode_dir = -1;
-		} else {
-		mode_dir = 1;
-	}
-	#endif
-	// Memory
-	if ((PINB & (1 << STAR3_PIN)) == 0) {
-		memory = 1;  // solder to enable memory
-		} else {
-		memory = 0;  // unsolder to disable memory
-	}
+    #if 0  // not implemented and broken, STAR2_PIN is used for second PWM channel
+    // Moon
+    // enable moon mode?
+    if ((PINB & (1 << STAR2_PIN)) == 0) {
+        modes[mode_cnt++] = MODE_MOON;
+    }
+    #endif
+    #if 0  // broken. Mode order not as important as mem/no-mem
+    // Mode order
+    if ((PINB & (1 << STAR3_PIN)) == 0) {
+        // High to Low
+        mode_dir = -1;
+        } else {
+        mode_dir = 1;
+    }
+    #endif
+    // Memory
+    if ((PINB & (1 << STAR3_PIN)) == 0) {
+        memory = 1;  // solder to enable memory
+        } else {
+        memory = 0;  // unsolder to disable memory
+    }
 }
 #endif
 
@@ -616,46 +681,46 @@ inline void check_stars() {
 // Expand fast_presses to mulitple copies.  Set and increment all.
 // Check that all are equal to see if RAM has is still intact (short click) and value still valid.
 void clear_presses() {
-	for (uint8_t i=0;i<N_SAFE_BYTES;++i){
-		// if NEXT_LOCKOUT is 0 this just gets optimized to =0
-		// else we only clear last 7 bits, preserving lockout bit
- 		   fast_presses_array[i]=clear_presses_value;
-	}
+    for (uint8_t i=0;i<N_SAFE_BYTES;++i){
+        // if NEXT_LOCKOUT is 0 this just gets optimized to =0
+        // else we only clear last 7 bits, preserving lockout bit
+           fast_presses_array[i]=clear_presses_value;
+    }
 }
 
 
 inline uint8_t check_presses(){
     uint8_t i=N_SAFE_BYTES-1;
-	while (i&&(fast_presses_array[i]==fast_presses_array[i-1])){
-		--i;
-	}
-	return !i; // if we got to 0, they're all equal
+    while (i&&(fast_presses_array[i]==fast_presses_array[i-1])){
+        --i;
+    }
+    return !i; // if we got to 0, they're all equal
 }
 // increment all fast_presses variables by 1
 inline void inc_presses(){
-	for (uint8_t i=0;i<N_SAFE_BYTES;++i){
-		++fast_presses_array[i];
-	}
+    for (uint8_t i=0;i<N_SAFE_BYTES;++i){
+        ++fast_presses_array[i];
+    }
 }
 
 // probably unused, and too direct now:
 inline void set_presses(uint8_t val){
-	for (uint8_t i=0;i<N_SAFE_BYTES;++i){
- 		fast_presses_array[i]=val;
-	}
+    for (uint8_t i=0;i<N_SAFE_BYTES;++i){
+        fast_presses_array[i]=val;
+    }
 }
 
 #else 
- #if NEXT_LOCKOUT == 0
+  #if NEXT_LOCKOUT == 0
  // determines if a short click was done
  // The theory is for long clicks, ram decays and random chance will produce a higher value.
  // FR finds this theory suspect, but this is all 
  // irrelevant when safe_presses is used or noinit is not used.
-  #define check_presses() (fast_presses < 0x20)
- #else //if next mode lockout is used, we need to pass the short-press test
+    #define check_presses() (fast_presses < 0x20)
+  #else //if next mode lockout is used, we need to pass the short-press test
        // when disable_next is set. Disable_next is achieved through the short press logic.
-  #define check_presses() ( fast_presses < 0x20 || fast_presses == DISABLE_NEXT )
- #endif
+    #define check_presses() ( fast_presses < 0x20 || fast_presses == DISABLE_NEXT )
+  #endif
   inline void clear_presses() {fast_presses=clear_presses_value;}
   #define inc_presses() fast_presses=(fast_presses+1)& 0x1f	
   #define set_presses(val) fast_presses=(val)	
@@ -667,86 +732,93 @@ inline void set_presses(uint8_t val){
 // So just let clear_presses do it, turns the problem into the solution.
 #if NEXT_LOCKOUT == 1
 inline void disable_next() {
-	clear_presses_value=DISABLE_NEXT;
+    clear_presses_value=DISABLE_NEXT;
 }
 #endif
 
+// Sets the reset value of clear_presses to a magic number
+//  that signals e-switch power lockout
+//#if POWER_LOCKOUT == 1
+//inline void disable_next() {
+    //clear_presses_value=DISABLE_NEXT;
+//}
+//#endif
+
+
 //initial_values(): Intialize default configuration values
-uint8_t mode_idx;
 inline void initial_values() {//FR 2017
-	//for (uint8_t i=1;i<n_toggles+1;i++){ // disable all toggles, enable one by one.
-		//OPT_array[i]=255;
-	//}
-	 // configure initial values here, 255 disables the toggle... doesn't save space.
+    //for (uint8_t i=1;i<n_toggles+1;i++){ // disable all toggles, enable one by one.
+        //OPT_array[i]=255;
+    //}
+     // configure initial values here, 255 disables the toggle... doesn't save space.
     #ifdef USE_FIRSTBOOT
-	 firstboot = FIRSTBOOT;               // detect initial boot or factory reset
+     firstboot = FIRSTBOOT;               // detect initial boot or factory reset
 
 // else we're not using it, but if it's in the range of used toggles  we have to disable it:
-	#elif firstboot_IDX <= final_toggles
-	 firstboot=255;                       // disables menu toggle
-	#endif
+    #elif firstboot_IDX <= final_toggles
+     firstboot=255;                       // disables menu toggle
+    #endif
 
     #ifdef USE_MOON
-	 enable_moon = INIT_ENABLE_MOON;      // Should we add moon to the set of modes?
-	#elif enable_moon_IDX <= final_toggles
-	 enable_moon=255;                   //disable menu toggle,	 
-	#endif
+     enable_moon = INIT_ENABLE_MOON;      // Should we add moon to the set of modes?
+    #elif enable_moon_IDX <= final_toggles
+     enable_moon=255;                   //disable menu toggle,	 
+    #endif
 
-	#if defined(USE_REVERSE_MODES) && defined(OFFTIM3)
-	 reverse_modes = INIT_REVERSE_MODES;  // flip the mode order?
-	#elif reverse_modes_IDX <= final_toggles
-	 reverse_modes=255;                   //disable menu toggle,
-	#endif
-	 memory = INIT_MEMORY;                // mode memory, or not
+    #if defined(USE_REVERSE_MODES) && defined(OFFTIM3)
+     reverse_modes = INIT_REVERSE_MODES;  // flip the mode order?
+    #elif reverse_modes_IDX <= final_toggles
+     reverse_modes=255;                   //disable menu toggle,
+    #endif
+     memory = INIT_MEMORY;                // mode memory, or not
 
-	#ifdef OFFTIM3
-	 offtim3 = INIT_OFFTIM3;              // enable medium-press?
-	#elif offtim3_IDX <= final_toggles
-	 offtim3=255;                         //disable menu toggle, 
-	#endif
+    #ifdef OFFTIM3
+     offtim3 = INIT_OFFTIM3;              // enable medium-press?
+    #elif offtim3_IDX <= final_toggles
+     offtim3=255;                         //disable menu toggle, 
+    #endif
 
-	#ifdef USE_MUGGLE_MODE
-	 muggle_mode = INIT_MUGGLE_MODE;      // simple mode designed for muggles
-	#elif muggle_mode_IDX <= final_toggles
-	 muggle_mode=255;                     //disable menu toggle,
-	#endif
+    #ifdef USE_MUGGLE_MODE
+     muggle_mode = INIT_MUGGLE_MODE;      // simple mode designed for muggles
+    #elif muggle_mode_IDX <= final_toggles
+     muggle_mode=255;                     //disable menu toggle,
+    #endif
 
-	#ifdef USE_LOCKSWITCH
-	 lockswitch=INIT_LOCKSWITCH;          // E-swtich enabled.
-	#elif lockswitch_IDX <= final_toggles
-	 lockswitch=255;
-	#endif
+    #ifdef USE_LOCKSWITCH
+     lockswitch=INIT_LOCKSWITCH;          // E-swtich enabled.
+    #elif lockswitch_IDX <= final_toggles
+     lockswitch=255;
+    #endif
 
 
 // Handle non-toggle saves.
-	modegroup = INIT_MODEGROUP;          // which mode group will be default, mode groups below start at zero, select the mode group you want and subtract one from the number to get it by defualt here
-	#ifdef TEMPERATURE_MON
-	maxtemp = INIT_MAXTEMP;              // temperature step-down threshold, each number is roughly equal to 4c degrees
-	#endif
-	mode_idx=0;                          // initial mode
+    modegroup = INIT_MODEGROUP;          // which mode group will be default, mode groups below start at zero, select the mode group you want and subtract one from the number to get it by defualt here
+    #ifdef TEMPERATURE_MON
+    maxtemp = INIT_MAXTEMP;              // temperature step-down threshold, each number is roughly equal to 4c degrees
+    #endif
 
 // Some really uncharacteristically un-agressive (poor even) compiler optimizing 
 //  means it saves bytes to do all the overrides initializations after 
 //  the OPT_ARRAY initializations, to free up the best registers.
 // required turning this upside down, and making it confusing.
     #ifdef LOOP_TOGGLES
-	  // If we're not using the temp cal mode:
-       #if !( defined(TEMPERATURE_MON)&&defined(TEMP_CAL_MODE) )
+      // If we're not using the temp cal mode:
+       #if !( defined(TEMPERATURE_MON)&&defined(USE_TEMP_CAL) )
          // and if the temp cal mode is within the range of used toggles
-   	     #if TEMP_CAL_IDX <= final_toggles
-			// then disable the toggle:
-  	       OPT_array[7]=255; 
-		 #endif
-	   #else // we're using temp cal mode, set the override mode for menu to toggle into: 
-	    overrides[7]=TEMP_CAL_MODE; // enable temp cal mode menu
-	   #endif
-	   // We always need the group select mode toggle:
-	   overrides[5]=GROUP_SELECT_MODE; 
-	#endif
+         #if TEMP_CAL_IDX <= final_toggles
+            // then disable the toggle:
+           OPT_array[7]=255; 
+         #endif
+       #else // we're using temp cal mode, set the override mode for menu to toggle into: 
+        overrides[7]=TEMP_CAL_MODE; // enable temp cal mode menu
+       #endif
+       // We always need the group select mode toggle:
+       overrides[5]=GROUP_SELECT_MODE; 
+    #endif
 
-	#ifdef USE_STARS
-  	  check_stars();
-	#endif
+    #ifdef USE_STARS
+      check_stars();
+    #endif
 }
 
 // save the mode_idx variable:
@@ -766,55 +838,52 @@ void save_mode() {  // save the current mode index (with wear leveling)
 // save and restore all other configuration variables:
 void getsetstate(uint8_t rw){// double up the function to save space.
    uint8_t i; 
-   i=n_saves;
+   i=1;
    do{
        if (rw==gssREAD){// conditional inside loop for space.
-	       OPT_array[i]=eeprom_read_byte((uint8_t *)(EEPSIZE-i-1));
-	   } else {
-	       eeprom_write_byte((uint8_t *)(EEPSIZE-i-1),OPT_array[i]);
+         // -1 isn't needed but could help avoid bugs later
+         //  and must match with firstboot address define above.
+           OPT_array[i]=eeprom_read_byte((uint8_t *)(EEPSIZE-i-1));
+       } else {
+           eeprom_write_byte((uint8_t *)(EEPSIZE-i-1),OPT_array[i]);
        }
-	   i--;
-    } while(i); // don't include 0
+       i++;
+    } while(i<=n_saves); 
 }
 
 // pretty obvious, just saves the mode and all other variables:
 void save_state() {  // central method for writing complete state
-	save_mode();
-	getsetstate(gssWRITE);
+    save_mode();
+    getsetstate(gssWRITE);
 }
 
 
-//#ifndef USE_FIRSTBOOT // obsolete
-//inline void reset_state() {
-////    mode_idx = 0;
-////    modegroup = 0;
-    //save_state();
-//}
-//#endif
 
 //Recalls all saved variables, generally on startup, 
-//unless this is the firt boot, then save the defaults.  
+//unless this is the firt boot after flash or reset, then save the defaults.  
 inline void restore_state() {
 #ifdef USE_FIRSTBOOT
     uint8_t eep;
      //check if this is the first time we have powered on
     eep = eeprom_read_byte((uint8_t *)OPT_firstboot);
     if (eep != FIRSTBOOT) {// confusing: if eep = FIRSTBOOT actually means the first boot already happened
-		                   // so eep != FIRSTBOOT means this IS the first boot.
+                           // so eep != FIRSTBOOT means this IS the first boot.
         // not much to do; the defaults should already be set
         // while defining the variables above
+        mode_idx=0;
         save_state(); // this will save FIRSTBOOT to the OPT_firstboot byte.
         return;
     }
 #endif
     eepos=0; 
     do { // Read until we get a result. Tightened this up slightly -FR
-	    mode_idx = eeprom_read_byte((const uint8_t *)((uint16_t)eepos));
+        mode_idx = eeprom_read_byte((const uint8_t *)((uint16_t)eepos));
     } while((mode_idx == 0xff) && eepos++<(EEPSIZE/2) ) ; // the && left to right eval prevents the last ++.
 #ifndef USE_FIRSTBOOT
 
     // if no mode_idx was found, assume this is the first boot
     if (mode_idx==0xff) {
+          mode_idx=0;
           save_state(); //redundant with check below -FR
         return; 
     }
@@ -846,7 +915,7 @@ inline void next_mode() {
 // change to the previous mode:
 inline void prev_mode() {
     // simple mode has no reverse
-	#ifdef USE_MUGGLE_MODE
+    #ifdef USE_MUGGLE_MODE
       if (muggle_mode) { return next_mode(); }
     #endif
     if (mode_idx == solid_modes) { 
@@ -868,12 +937,12 @@ inline void prev_mode() {
 // useful to break it out for preprocessor choices.  -FR
 // Copy starting from end, so takes mode_cnt as input.
 inline void copy_hidden_modes(uint8_t mode_cnt){
-	for(uint8_t j=mode_cnt, i=sizeof(hiddenmodes);i>0; )
-	{
-		// predecrement to get the minus 1 for free and avoid the temp,
-		// probably optimizer knows all this anyway.
-		modes[--j] = pgm_read_byte((uint8_t *)(hiddenmodes+(--i)));
-	}
+    for(uint8_t j=mode_cnt, i=sizeof(hiddenmodes);i>0; )
+    {
+        // predecrement to get the minus 1 for free and avoid the temp,
+        // probably optimizer knows all this anyway.
+        modes[--j] = pgm_read_byte((uint8_t *)(hiddenmodes+(--i)));
+    }
 }
 
 
@@ -884,75 +953,75 @@ inline void count_modes() {
      * (this matters because we have more than one set of modes to choose
      *  from, so we need to count at runtime)
      */
-	/*  
-	 * FR: What this routine really does is combine the moon mode, the defined group modes, 
-	 * and the hidden modes into one array according to configuration options
-	 * such as mode reversal, enable mood mode etc.
-	 * The list should like this:
-	 * modes ={ moon, solid1, solid2,...,last_solid,hidden1,hidden2,...,last_hidden}
-	 * unless reverse_modes is enabled then it looks like this:
-	 * modes={last_solid,last_solid-1,..solid1,moon,hidden1,hidden2,...last_hidden}
-	 * or if moon is disabled it is just left out of either ordering.
-	 * If reverse clicks are disabled the hidden modes are left out.
-	 * mode_cnt will hold the final count of modes  -FR.
-	 *
-	 * Now updated to construct the modes in one pass, even for reverse modes.
-	 * Reverse modes are constructed backward and pointer gets moved to begining when done.
-	 */	 
-	
+    /*  
+     * FR: What this routine really does is combine the moon mode, the defined group modes, 
+     * and the hidden modes into one array according to configuration options
+     * such as mode reversal, enable mood mode etc.
+     * The list should like this:
+     * modes ={ moon, solid1, solid2,...,last_solid,hidden1,hidden2,...,last_hidden}
+     * unless reverse_modes is enabled then it looks like this:
+     * modes={last_solid,last_solid-1,..solid1,moon,hidden1,hidden2,...last_hidden}
+     * or if moon is disabled it is just left out of either ordering.
+     * If reverse clicks are disabled the hidden modes are left out.
+     * mode_cnt will hold the final count of modes  -FR.
+     *
+     * Now updated to construct the modes in one pass, even for reverse modes.
+     * Reverse modes are constructed backward and pointer gets moved to begining when done.
+     */	 
+    
     // copy config to local vars to avoid accidentally overwriting them in muggle mode
     // (also, it seems to reduce overall program size)
     uint8_t my_modegroup = modegroup;
-	#ifdef USE_MOON
+    #ifdef USE_MOON
       uint8_t my_enable_moon = enable_moon;
-	#else
-	  #define my_enable_moon 0
-	#endif
-	#if defined(USE_REVERSE_MODES) && defined(OFFTIM3)
+    #else
+      #define my_enable_moon 0
+    #endif
+    #if defined(USE_REVERSE_MODES) && defined(OFFTIM3)
      uint8_t my_reverse_modes = reverse_modes;
-	#else
-	  #define my_reverse_modes 0
-	#endif
+    #else
+      #define my_reverse_modes 0
+    #endif
 
     // override config if we're in simple mode
-	#ifdef USE_MUGGLE_MODE
+    #ifdef USE_MUGGLE_MODE
     if (muggle_mode) {
         my_modegroup = NUM_MODEGROUPS;
- 	  #ifdef USE_MOON
+      #ifdef USE_MOON
         my_enable_moon = 0;
-	  #endif
- 	  #if defined(USE_REVERSE_MODES)&&defined(OFFTIM3)
+      #endif
+      #if defined(USE_REVERSE_MODES)&&defined(OFFTIM3)
         my_reverse_modes = 0;
-	  #endif
+      #endif
     }
-	#endif
+    #endif
     //my_modegroup=11;
     //my_reverse_modes=0; // FOR TESTING
-	//my_enable_moon=1;
-	uint8_t i=0;
+    //my_enable_moon=1;
+    uint8_t i=0;
 //    const uint8_t *src = modegroups + (my_modegroup<<3);
 
     uint8_t *src=(void *)modegroups;
     // FR adds 0-terminated variable length mode groups, saves a bunch in big builds.
-	// some inspiration from gchart here too in tightening this up even more.
+    // some inspiration from gchart here too in tightening this up even more.
     // scan for enough 0's, leave the pointer on the first mode of the group.
     i=my_modegroup+1;
-	uint8_t *start=0;
-	solid_modes=0;
+    uint8_t *start=0;
+    solid_modes=0;
 
     // now find start and end in one pass
-	// for 
+    // for 
     while(i) {
-		start=src; // set start to beginning of mode group
-	    #if defined(USE_REVERSE_MODES)&&defined(OFFTIM3) //Must find end before we can reverse the copy
-		                                // so copy will happen in second pass below.
-  	      while(pgm_read_byte(src++)){
-	    #else // if no reverse, can do the copy here too.
+        start=src; // set start to beginning of mode group
+        #if defined(USE_REVERSE_MODES)&&defined(OFFTIM3) //Must find end before we can reverse the copy
+                                        // so copy will happen in second pass below.
+          while(pgm_read_byte(src++)){
+        #else // if no reverse, can do the copy here too.
           while((modes[solid_modes+my_enable_moon]=pgm_read_byte(src++))){
-		#endif
-				         solid_modes=(uint8_t)(src-start);
-				} // every 0 starts a new modegroup, decrement i
-	    i--;
+        #endif
+                         solid_modes=(uint8_t)(src-start);
+                } // every 0 starts a new modegroup, decrement i
+        i--;
     }
 
 
@@ -960,20 +1029,20 @@ inline void count_modes() {
     #if defined(USE_REVERSE_MODES)&&defined(OFFTIM3)
     uint8_t j;
     j=solid_modes; // this seems a little redundant now.
- 	  do{
+      do{
      //note my_enable_moon and my_reverse_modes are either 1 or 0, unlike solid_modes.
       modes[(my_reverse_modes?solid_modes-j:j-1+my_enable_moon)] = pgm_read_byte(start+(j-1));
        j--;
       } while (j);
-	#endif
+    #endif
 
     #ifdef USE_MOON
-	solid_modes+=my_enable_moon;
+    solid_modes+=my_enable_moon;
     if (my_enable_moon) {// moon placement already handled, but have to fill in the value.
-	    modes[(my_reverse_modes?solid_modes-1:0)] = 1;
+        modes[(my_reverse_modes?solid_modes-1:0)] = 1;
     }
-	#endif
-	
+    #endif
+    
 
 // add hidden modes
 #ifdef OFFTIM3
@@ -1020,7 +1089,7 @@ void set_level(uint8_t level) {
     if (level == 0) {
 #ifdef USE_PWM4
         gbit_pwm4zero=1; // we can't disable the interrupt because we use it for other timing
-		                 // so have to signal the interrupt instead.
+                         // so have to signal the interrupt instead.
         PWM4_LVL=0;
 #endif
 #if defined(USE_PWM3)
@@ -1089,16 +1158,16 @@ void blink(uint8_t val, uint16_t speed)
 // The compiler will omit it if it's not used.  Good for debugging.  -FR.
 // uses much memory though.
 inline void blink_value(uint8_t value){
-	blink (10,20);
-	_delay_ms(500);
-	blink((value/100)%10,200); // blink hundreds
-	_delay_s();
-	blink((value/10)%10,200); // blink tens
-	_delay_s();
-	blink(value % 10,200); // blink ones
-	_delay_s();
-	blink(10,20);
-	_delay_ms(500);
+    blink (10,20);
+    _delay_ms(500);
+    blink((value/100)%10,200); // blink hundreds
+    _delay_s();
+    blink((value/10)%10,200); // blink tens
+    _delay_s();
+    blink(value % 10,200); // blink ones
+    _delay_s();
+    blink(10,20);
+    _delay_ms(500);
 }
 
 
@@ -1110,10 +1179,10 @@ INLINE_STROBE void strobe(uint8_t ontime, uint8_t offtime) {
 // that would solve this more generally, but for now this is slightly smaller and does the job.
     uint8_t i;
     for(i=0;i<8;i++) {
-	    set_level(RAMP_SIZE);
-	    _delay_ms(ontime);
-	    set_level(0);
-	    _delay_ms(offtime);
+        set_level(RAMP_SIZE);
+        _delay_ms(ontime);
+        set_level(0);
+        _delay_ms(offtime);
     }
 }
 
@@ -1133,40 +1202,40 @@ inline void SOS_mode() {
 // Looped version of main menu to toggle config variables:
 #ifdef LOOP_TOGGLES
 inline void toggles() {
-	// New FR version loops over all toggles, avoids variable passing, saves ~50 bytes.
-	// mode_overrides ( toggles that cause startup in a special mode or menu) 
-	// are handled by an array entry for each toggle that provides the  mod_idx to set.
-	// For normal config toggles, the array value is 0, so the light starts in 
-	// the first normal mode.
-	// For override toggles the array value is an identifier for the special mode
-	// All special modes have idx values above MINUMUM_OVERRIDE_MODE.
-	// On startup mode_idx is checked to be in the override range or not. 
-	//
-	// Used for config mode
-	// Changes the value of a config option, waits for the user to "save"
-	// by turning the light off, then changes the value back in case they
-	// didn't save.  Can be used repeatedly on different options, allowing
-	// the user to change and save only one at a time.
-	uint8_t i=0;
-	do {
-		i++;
-		if(OPT_array[i]!=255){
-			blink(i, BLINK_SPEED/8);  // indicate which option number this is
-			mode_idx=overrides[i];
-			OPT_array[i] ^= 1;
-			save_state();
-			// "buzz" for a while to indicate the active toggle window
-			blink(32, 500/32);
-			OPT_array[i] ^= 1;
-			save_state();
-			mode_idx=0;
-			_delay_s();
-			#ifdef USE_MUGGLE_MODE
-			if (muggle_mode) {break;} // go through once on muggle mode
-			// this check adds 10 bytes. Is it really needed?
-			#endif
-		}
-	}while((i<n_toggles));
+    // New FR version loops over all toggles, avoids variable passing, saves ~50 bytes.
+    // mode_overrides ( toggles that cause startup in a special mode or menu) 
+    // are handled by an array entry for each toggle that provides the  mod_idx to set.
+    // For normal config toggles, the array value is 0, so the light starts in 
+    // the first normal mode.
+    // For override toggles the array value is an identifier for the special mode
+    // All special modes have idx values above MINUMUM_OVERRIDE_MODE.
+    // On startup mode_idx is checked to be in the override range or not. 
+    //
+    // Used for config mode
+    // Changes the value of a config option, waits for the user to "save"
+    // by turning the light off, then changes the value back in case they
+    // didn't save.  Can be used repeatedly on different options, allowing
+    // the user to change and save only one at a time.
+    uint8_t i=0;
+    do {
+        i++;
+        if(OPT_array[i]!=255){
+            blink(i, BLINK_SPEED/8);  // indicate which option number this is
+            mode_idx=overrides[i];
+            OPT_array[i] ^= 1;
+            save_state();
+            // "buzz" for a while to indicate the active toggle window
+            blink(32, 500/32);
+            OPT_array[i] ^= 1;
+            mode_idx=0;
+            save_state();
+            _delay_s();
+            #ifdef USE_MUGGLE_MODE
+            if (muggle_mode) {break;} // go through once on muggle mode
+            // this check adds 10 bytes. Is it really needed?
+            #endif
+        }
+    }while((i<n_toggles));
 }
 
 #else // use the old way, can come close in space for simple menus:
@@ -1281,19 +1350,19 @@ inline uint8_t read_otc() {
 }
 #endif
 
-// init_mcu: Setup all our initial mcu configuration, mostly including interrupts.
+// init_mcu: Setup all our initial mcu configuration, pin states and interrupt configuration.
 //
 // Complete revamp by FR to allow use of any combination of 4 outputs, OTSM, and more
 // 2017 by Flintrock (C)
 //
 inline void init_mcu(){ 
     //DDRB, 1 bit per pin, 1=output default =0.
-	//PORTB 1 is ouput-high or input-pullup.  0 is output-low or input floating/tri-stated.  Default=0.
-	//DIDR0 Digital input disable, 1 disable, 0 enable. disable for analog pins to save power. Default 0 (enabled) 
+    //PORTB 1 is ouput-high or input-pullup.  0 is output-low or input floating/tri-stated.  Default=0.
+    //DIDR0 Digital input disable, 1 disable, 0 enable. disable for analog pins to save power. Default 0 (enabled) 
 
 // Decide which clocks to enable, note OTSM sleep uses clock0 unless PWM4 interrupts are 
 //  running anyway, then it uses those.
-#if defined(USE_PWM1) || defined (USE_PWM2) || (defined OTSM_powersave&&!defined(USE_PWM4))
+#if defined(USE_PWM1) || defined (USE_PWM2) || (defined POWERSAVE&&!defined(USE_PWM4))
    #define USE_CLCK0
 #endif   
 #if defined(USE_PWM3) || defined (USE_PWM4)
@@ -1301,117 +1370,133 @@ inline void init_mcu(){
 #endif
 
     // setup some temp variables.  This allows to build up values while only assigning to the real
-	// volatile I/O once at the end.
-	// The constant temp variable calculations get optimized out. Saves ~30 bytes on big builds.
-	uint8_t t_DIDR0=0;
+    // volatile I/O once at the end.
+    // The constant temp variable calculations get optimized out. Saves ~30 bytes on big builds.
+    uint8_t t_DIDR0=0;
     uint8_t t_DDRB=0;
-	uint8_t t_PORTB=0;
+    uint8_t t_PORTB=0;
 #ifdef USE_CLCK0
-	uint8_t t_TCCR0B=0;
-	uint8_t t_TCCR0A=0;
+    uint8_t t_TCCR0B=0;
+    uint8_t t_TCCR0A=0;
 #endif
 #ifdef USE_CLCK1
-	uint8_t t_TCCR1=0;
+    uint8_t t_TCCR1=0;
 #endif
 
     // start by disabling all digital input.
     // PWM pins will get set as output anyway.
-	
+    
     t_DIDR0=0b00111111 ; // tests say makes no difference during sleep,
-	                   // but datasheet claims it helps drain in middle voltages, so during power-off detection maybe.
-	
-	// Charge up the capacitor by setting CAP_PIN to output
+                       // but datasheet claims it helps drain in middle voltages, so during power-off detection maybe.
+    
+    // Charge up the capacitor by setting CAP_PIN to output
 #ifdef CAP_PIN
     // if using OTSM but no OTC cap, probably better to stay input high on the unused pin.
-	// If USE_ESWITCH and eswitch pin is defined same as cap pin, the eswitch define overrides, 
-	//  so again, leave it as input (but not high).
-    #if ( (defined(USE_OTSM) && !defined(OTSM_USES_OTC) ) || (defined(USE_ESWITCH) && ESWITCH_PIN == CAP_PIN ) )
+    // ESWITCH will override cap pin setting later, if USE_ESWITCH is defined
+    // If USE_ESWITCH and eswitch pin is defined same as cap pin, the eswitch define overrides, 
+    //  so again, leave it as input.
+    #if (defined(USE_OTSM) && !defined(OTSM_USES_OTC) )
        // just leave cap_pin as an input pin (raised high by default lower down)
     #else
-	// Charge up the capacitor by setting CAP_PIN to output
-	  t_DDRB  |= (1 << CAP_PIN);    // Output
-	  t_PORTB |= (1 << CAP_PIN);    // High
+    // Charge up the capacitor by setting CAP_PIN to output
+      t_DDRB  |= (1 << CAP_PIN);    // Output
+      t_PORTB |= (1 << CAP_PIN);    // High
     #endif
 #endif
-	
-	// Set PWM pins to output 
-	// Regardless if in use or not, we can't set them input high (might have a chip even if unused in config)
-	// so better set them as output low.
+    
+            
+    // Set PWM pins to output 
+    // Regardless if in use or not, we can't set them input high (might have a chip even if unused in config)
+    // so better set them as output low.
     #ifdef PWM_PIN
-  	   t_DDRB |= (1 << PWM_PIN) ;    
-	#endif
-	#ifdef PWM2_PIN
-	   t_DDRB |= (1 << PWM2_PIN);
-	#endif 
+       t_DDRB |= (1 << PWM_PIN) ;    
+    #endif
+    #ifdef PWM2_PIN
+       t_DDRB |= (1 << PWM2_PIN);
+    #endif 
     #ifdef PWM3_PIN
-  	   t_DDRB |= (1 << PWM3_PIN); 
+       t_DDRB |= (1 << PWM3_PIN); 
     #endif
     #ifdef PWM4_PIN
        t_DDRB |= (1 << PWM4_PIN); 
     #endif
-	  
-	
-	// Set Timer 0 to do PWM1 and PWM2 or for OTSM powersave timing
+      
+    
+    // Set Timer 0 to do PWM1 and PWM2 or for OTSM powersave timing
     #ifdef USE_CLCK0
      
- 	   t_TCCR0A = PHASE; // phase means counter counts up and down and 
-	               // compare register triggers on and off symmetrically at same value.
-				   // This doubles the time so half the max frequency.
-	// Set prescaler timing
-	// This and the phase above now directly impact the delay function in tk-delay.h..
-	//  make changes there to compensate if this is changed
-  	     t_TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)  1 => 16khz in phase mode or 32 in fast mode.
+       t_TCCR0A = PHASE; // phase means counter counts up and down and 
+                   // compare register triggers on and off symmetrically at same value.
+                   // This doubles the time so half the max frequency.
+    // Set prescaler timing
+    // This and the phase above now directly impact the delay function in tk-delay.h..
+    //  make changes there to compensate if this is changed
+         t_TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)  1 => 16khz in phase mode or 32 in fast mode.
 
        #ifdef  USE_PWM1
-	     t_TCCR0A |= (1<<COM0B1);  // enable PWM on PB1
-	   #endif
-	   #ifdef USE_PWM2
-	     t_TCCR0A |= (1<<COM0A1);  // enable PWM on PB0
-	   #endif
-	#endif       
+         t_TCCR0A |= (1<<COM0B1);  // enable PWM on PB1
+       #endif
+       #ifdef USE_PWM2
+         t_TCCR0A |= (1<<COM0A1);  // enable PWM on PB0
+       #endif
+    #endif       
 
    //Set Timer1 to do PWM3 and PWM4
-	#ifdef USE_CLCK1
-	  OCR1C = 255;  
-	// FR: this timer does not appear to have any phase mode.
-	// The frequency appears to be just system clock/255
-	#endif
-	#ifdef USE_PWM3
-	  t_TCCR1 = _BV (CS10);  // prescale of 1 (32 khz PWM)
-	  GTCCR = (1<<COM1B1) | (1<<PWM1B) ; // enable pwm on OCR1B but not OCR1B compliment (PB4 only). 
-	                                    // FR: this timer does not appear to have any phase mode.
-										// The frequency appears to be just system clock/255
+    #ifdef USE_CLCK1
+      OCR1C = 255;  
+    // FR: this timer does not appear to have any phase mode.
+    // The frequency appears to be just system clock/255
+    #endif
+    #ifdef USE_PWM3
+      t_TCCR1 = _BV (CS10);  // prescale of 1 (32 khz PWM)
+      GTCCR = (1<<COM1B1) | (1<<PWM1B) ; // enable pwm on OCR1B but not OCR1B compliment (PB4 only). 
+                                        // FR: this timer does not appear to have any phase mode.
+                                        // The frequency appears to be just system clock/255
     #endif										
-	#ifdef USE_PWM4
-	  t_TCCR1 = _BV (CS11);  // override, use prescale of 2 (16khz PWM) for PWM4 because it will have high demand from interrupts.
-	                       // This will still be just as fast as timer 0 in phase mode.
-  	  t_TCCR1 |=  _BV (PWM1A) ;           // for PB3 enable pwm for OCR1A but leave it disconnected.  
-		                                // Its pin is already in use.
-							            // Must handle it with an interrupt.
+    #ifdef USE_PWM4
+      t_TCCR1 = _BV (CS11);  // override, use prescale of 2 (16khz PWM) for PWM4 because it will have high demand from interrupts.
+                           // This will still be just as fast as timer 0 in phase mode.
+      t_TCCR1 |=  _BV (PWM1A) ;           // for PB3 enable pwm for OCR1A but leave it disconnected.  
+                                        // Its pin is already in use.
+                                        // Must handle it with an interrupt.
       _TIMSK_ |= (1<<OCIE1A) | (1<<TOIE1);        // enable interrupt for compare match and overflow on channel 4 to control PB3 output
-	  // Note: this will then override timer0 as the delay clock interrupt for tk-delay.h.
-	#endif
-	
-		
-	
-	  t_PORTB|=~t_DDRB&~(1<<VOLTAGE_PIN); // Anything that is not an output 
-	                               // or the voltage sense pin, gets a pullup resistor
-	// again, no change measured during sleep, but maybe helps with shutdown?
-	// exceptions handled below.
-#ifdef USE_ESWITCH
-	 // leave pullup set on E-switch pin
-	  PCMSK |= 1<< ESWITCH_PIN;  // catch pin change on eswitch pin
+      // Note: this will then override timer0 as the delay clock interrupt for tk-delay.h.
+    #endif
+    
+        
+    
+      t_PORTB|=(~t_DDRB); // Anything that is not an output gets a pullup resistor
+      // except...
+#if defined(USE_OTSM)||defined(READ_VOLTAGE_FROM_DIVIDER)
+      t_PORTB&=~(1<<VOLTAGE_PIN); // The voltage sense pin does not get a pullup resistor
 #endif
+
+    // again, no change measured during sleep, but maybe helps with shutdown?
+    // exceptions handled below.
+#ifdef USE_ESWITCH
+   #if  (!defined(READ_VOLTAGE_FROM_DIVIDER)&&!defined(USE_OTSM)) || (ESWITCH_PIN != VOLTAGE_PIN)
+     //if eswitch is on voltage divider, input power pulls pin to correct level
+     // else we need pull it up.
+     // pullup set on E-switch pin
+      t_DDRB  |= t_DDRB&~(1 << ESWITCH_PIN);    // Input
+      t_PORTB |= (1 << ESWITCH_PIN);     // High
+   #endif
+   PCMSK |= 1<< ESWITCH_PIN;  // catch pin change on eswitch pin
+#endif
+
 #if defined(USE_OTSM) 
 //  no pull-up on OTSM-PIN. 
       t_PORTB=t_PORTB&~(1<<OTSM_PIN); 
-	  PCMSK |= 1<< OTSM_PIN;  // catch pin change on OTSM PIn
+      PCMSK |= 1<< OTSM_PIN;  // catch pin change on OTSM PIn
 #endif
-#if defined(USE_ESWITCH) || defined(USE_OTSM)
-	 GIMSK |= 1<<PCIE;	// enable PIN change interrupt
 
-	 GIFR |= PCIF;  //    Clear pin change interrupt flag
-#endif
+#ifdef USE_INDICATOR
+    #ifdef INDICATOR_PIN
+    // Turn on the INDICATOR 
+    t_DDRB  |= (1 << INDICATOR_PIN);    // Output
+    t_PORTB |= (1 << INDICATOR_PIN);    // High
+    #endif
+#endif 
 
 // save the compiled results out to the I/O registers:
      DIDR0=t_DIDR0;
@@ -1425,12 +1510,20 @@ inline void init_mcu(){
      TCCR1=t_TCCR1;
 #endif
 
-#if defined(USE_ESWITCH) || defined(USE_OTSM) || defined(OTSM_powersave)
-	 sleep_enable();     // just leave it enabled.  It's fine and will help elsewhere.
-	 sei();				//Enable Global Interrupt
+
+#if defined(USE_ESWITCH) || defined(USE_OTSM)
+     GIMSK |= (1<<PCIE);	// enable PIN change interrupt
+
+     GIFR |= PCIF;  //    Clear pin change interrupt flag
 #endif
 
-//timer overflow interrupt is presently setup in tk-delay.h for OTS_powersave
+#if defined(USE_ESWITCH) || defined(USE_OTSM) || defined(POWERSAVE)
+     sleep_enable();     // just leave it enabled.  It's fine and will help elsewhere.
+     sei();		//Enable global interrupts.
+
+#endif
+
+//timer overflow interrupt is presently setup in fr-delay.h for OTS_powersave
 
 }
 
@@ -1444,66 +1537,66 @@ inline void change_mode() {  // just use global  wake_count variable
 
 // if a special override mode is set, do nothing here:
   if (mode_idx<MINIMUM_OVERRIDE_MODE) {
-	  
+      
 //******** DETECT SHORT PRESS: two methods:
    #if defined(USE_OTSM) || defined(USE_ESWITCH) || defined(USE_OTC) // the wake count method
-	    if (wake_count < wake_count_short   )  { 
+       if (wake_count < wake_count_short   )  { 
    #else                                         // the noinit method
 //		if (fast_presses < 0x20) { // fallback, but this trick needs improvements.
-		if ( check_presses() ) {// Indicates they did a short press, go to the next mode
+        if ( check_presses() ) {// Indicates they did a short press, go to the next mode
    #endif
-				// after turbo timeout, forward click "stays" in turbo (never truly left).
-				// conditional gets optimized out if NEXT_LOCKOUT is 0
-				if ( NEXT_LOCKOUT && fast_presses == DISABLE_NEXT ){
-					clear_presses(); // one time only.
-				} else {
-  				   next_mode(); // Will handle wrap arounds
-				}
-				//// We don't care what the fast_presses value is as long as it's over 15
-				//				fast_presses = (fast_presses+1) & 0x1f;
+                // after turbo timeout, forward click "stays" in turbo (never truly left).
+                // conditional gets optimized out if NEXT_LOCKOUT is 0
+                if ( NEXT_LOCKOUT && fast_presses == DISABLE_NEXT ){
+                    clear_presses(); // one time only.
+                } else {
+                   next_mode(); // Will handle wrap arounds
+                }
+                //// We don't care what the fast_presses value is as long as it's over 15
+                //				fast_presses = (fast_presses+1) & 0x1f;
                 inc_presses();
 
 //********** DETECT MEDIUM PRESS.
    #ifdef OFFTIM3
-		 } else if (wake_count < wake_count_med   )  {
+         } else if (wake_count < wake_count_med   )  {
 
-			// User did a medium press, go back one mode
+            // User did a medium press, go back one mode
 //			fast_presses = 0;
-			clear_presses();
-			if (offtim3) {
-				prev_mode();  // Will handle "negative" modes and wrap-arounds
-			} else {
-				next_mode();  // disabled-med-press acts like short-press
-					// (except that fast_presses isn't reliable then)
-		    }
-	  #endif
-	  
+            clear_presses();
+            if (offtim3) {
+                prev_mode();  // Will handle "negative" modes and wrap-arounds
+            } else {
+                next_mode();  // disabled-med-press acts like short-press
+                    // (except that fast_presses isn't reliable then)
+            }
+      #endif
+      
 //********** ELSE LONG PRESS
-		} else {
-				// Long press, keep the same mode
-				// ... or reset to the first mode
+        } else {
+                // Long press, keep the same mode
+                // ... or reset to the first mode
 //				fast_presses = 0;
             clear_presses();
-		    #ifdef USE_MUGGLE_MODE
-			if (muggle_mode  || (! memory)) {
-			#else 
-			if (!memory) {
-			#endif
-					// Reset to the first mode
-					mode_idx = 0;
-		    }
-	   } // short/med/long
+            #ifdef USE_MUGGLE_MODE
+            if (muggle_mode  || (! memory)) {
+            #else 
+            if (!memory) {
+            #endif
+                    // Reset to the first mode
+                    mode_idx = 0;
+            }
+       } // short/med/long
   }// mode override
 }
 
 // Blinks ADC value for battcheck builds
 #ifdef VOLTAGE_CAL
 inline void voltage_cal(){
-	ADC_on();
-	while(1){
-  	  _delay_ms(300);
-	  blink_value(get_voltage());
-	}
+    ADC_on();
+    while(1){
+      _delay_ms(300);
+      blink_value(get_voltage());
+    }
 }
 #endif
 
@@ -1515,189 +1608,310 @@ inline void voltage_cal(){
 // 2017 by Flintrock.
 // turn on PWM4_PIN at bottom of clock ramp
 // this will also replace the delay-clock interrupt used in fr-delay.h
-// Since SBI,CBI, and SBIC touch no registers, so no register protection is needed:
+// Added a control flag for 0 level to disable the light. We need the interrupts running for the delay clock.
+// Since SBI,CBI, and SBIC touch no registers, not even SREG, so no register protection is needed.
 // PWM this way without a phase-mode counter would not shut off the light completely
 // Added a control flag for 0 level to disable the light. We need the interrupts running for the delay clock.
 
 ISR(TIMER1_OVF_vect,ISR_NAKED){ // hits when counter 1 reaches max
-	  __asm__ __volatile__ (    //0x18 is PORTB
-	  "cbi 0x18 , " Quote(PWM4_PIN) " \n\t"
-	  "reti" "\n\t"
-	  :::);
+    __asm__ __volatile__ (    
+    "sbic   %[aGbit_addr]  , %[aPwm4zero_bit] \n\t" // if pwm4zero isn't set...
+    "rjmp .+2 " "\n\t"
+    "sbi   %[aPortb]  ,  %[aPwm4_pin] \n\t"  //set bit in PORTB (0x18) to make PW4_PIN high.
+    "reti" "\n\t"
+    :: [aGbit_addr] "I" (_SFR_IO_ADDR(gbit)), 
+       [aPwm4zero_bit] "I" (gbit_pwm4zero_bit), 
+       [aPortb] "I" (_SFR_IO_ADDR(PORTB)), 
+       [aPwm4_pin] "I" (PWM4_PIN)
+       :);
 }
 
-// turn off PWM4_PIN at COMPA register match
-// this one is only defined here though:
+// Turn off PWM4_PIN at COMPA register match
 ISR(TIMER1_COMPA_vect, ISR_NAKED){ //hits when counter 1 reaches compare value
-	__asm__ __volatile__ (    //0x18 is PORTB
-	  "sbic  " gbit_addr " , " gbit_pwm4zero_bit " \n\t" // if pwm4zero isn't set...
-      "rjmp .+2 " "\n\t"
-  	  "sbi 0x18 , " Quote(PWM4_PIN) " \n\t"  //set bit in PORTB (0x18) to make PW4_PIN high.
-	  "reti" "\n\t"
-	  :::);
+      __asm__ __volatile__ (    //
+      "cbi   %[aPortb]  ,  %[aPwm4_pin]  \n\t"
+      "reti" "\n\t"
+      ::[aPortb] "I" (_SFR_IO_ADDR(PORTB)), 
+        [aPwm4_pin] "I" (PWM4_PIN)
+        :);
 }
 #endif
 
 #if defined(USE_OTSM) || defined(USE_ESWITCH)
+
+inline void wdt_sleep (uint8_t ste) { //Flintrock 2017
+    //Setup a watchdog sleep for 16ms * 2^ste.
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    // reset watchdog counter so it doesn't trip during clear window.
+    // and so the clock starts at 0 for next sleep loop.
+    __asm__ __volatile__ ("wdr");
+    // 		WDTCR = (1<<WDCE) |(1<<WDE); // Enable WDE 4-cycle clear window
+    // set the watchdog timer: 2^n *16 ms datasheet pg 46 for table.
+    WDTCR = (1<<WDIE) |(!!(ste&8)<<WDP3)|(ste&7<<WDP0); // also clears WDE 4-cycle window is activated.
+    sleep_bod_disable();
+    // clear the watchdog interrupt, not needed, if it went of 4 us ago fine,
+    //  could as well go of 4us later.  Process it either way.
+    //    MCUSR&=~(1<<WDRF);
+    sei();
+    sleep_cpu();
+    // return from wake ISR's here, both watchdog and pin change.
+    cli();
+    WDTCR &= ~(1<<WDIE); // disable watchdog interrupt (prevents glitching the strobe sleeps later).
+}
+
 // Off-time sleep mode by -FR, thanks to flashy Mike and Mike C for early feasibility test with similar methods.
 
 //need to declare main here to jump to it from ISR.
 int main();
+void Button_press();
+
 
 // OS_task is a bit safer than naked,still allocates locals on stack if needed, although presently avoided.
-void __attribute__((OS_task, used, externally_visible)) PCINT0_vect (void) { 
-//ISR(PCINT0_vect, ISR_NAKED){// Dual watchdog pin change power-on wake by FR
 
-	// 2017 by Flintrock (C)
+void __attribute__((naked, used, externally_visible)) PCINT0_vect (void) { 
+//ISR(PCINT0_vect) {
+// Dual watchdog pin change power-on wake by FR
+
+    // 2017 by Flintrock (C)
     //
 //PIN change interrupt.  This serves as the power down and power up interrupt, and starts the watchdog.
+//  Now split into a short ISR and a separate e-switch OTSM subtroutine: Button_press().
 //
-	/* IS_NAKED (or OS_task) IS ***DANGEROUS** remove it if you edit this function significantly
-	 *  and aren't sure. You can remove it, and change the asm reti call below to a return.
-	 * and remove the CLR R1. However, it saves about 40 bytes, which matters.
-	 * The idea here, the compiler normally stores all registers used by the interrupt and
-	 * restores them at the end of the interrupt.  This costs instructions (space).
-     * We won't return to the caller anyway, we're going to reset (so this is similar to a 
-	 * tail call optimization).
-	 * One tricky bit then is that we  get a re-entrant call here because 
-	 * sleep and wake use the same interrupt, so we'll interrupt the sleep command below with a re-entry
-	 * into this function on wake. The re-entry will pass the "if wake_count" conditional and immediately 
-	 * return to the original instance. 
-	 * We avoid touching much there by using a global register variable for wake_count.
-	 * SREG is probably changed but since it only breaks out of the sleep there are
-	 * no pending checks of result flags occurring. 
-	 *
-	 * Another issue is allocation of locals. Naked has no stack frame,
-	 * but seems to properly force variables to register (better anyway) until it can't, 
-	 * and then fails to compile (gcc 4.9.2) OS_task however will create a stack frame if needed and is 
-	 * more documented/gauranteed/future-proof probably.
-	 */
+    /* IS_NAKED (or OS_main) IS ***DANGEROUS** remove it if you edit this functions significantly
+     *  and aren't sure. You can remove it, and change the asm reti call below to a return.
+     * and remove the CLR R1. However, it saves about 40 bytes, which matters.
+     * The idea here, the compiler normally stores all registers used by the interrupt and
+     * restores them at the end of the interrupt.  This costs instructions (space).
+     * This ISR handles initial button presses, which all Button_press.
+     * And button release interrupts, activated while in button press.
+     * The button release interrupt carefullly does nothing, so register protection isn't needed.
+     * SREG is probably changed but since it only breaks out of the sleep in Button_press, there are
+     * no pending checks of result flags occurring.
+     * The button press call will never come back.  It will do a soft reset, clearing the
+     * stack pointer and jumping back to main.  Again, no protection required.
+     * This is a little similar to a tail call optimization.
+     *
+     */
 
-	__asm__ __volatile__ ("CLR R1"); // We do need a clean zero-register (yes, that's R1).
-	#ifdef USE_ESWITCH // for eswtich we'll modify the sleep loop after a few seconds.
-	    register uint8_t sleep_time_exponent=SLEEP_TIME_EXPONENT; 
-	#else
-	    #define sleep_time_exponent SLEEP_TIME_EXPONENT
-	#endif
-	if( wake_count ){// if we'=rve already slept, so we're waking up. 
-		             // This is a register variable; no need to clean space for it.
-//		return; // we are waking up, do nothing and continue from where we slept (below).
-		__asm__ __volatile__ ("reti");
-	} // otherwise, we're  going to sleep
+#if defined(USE_ESWITCH)&&!(defined(USE_OTSM))
+// used for de-bouncing eswitch lights.
+// distinguishes pin-change wakes from watchdog wakes to decide when to debounce.
+//  writes to a gpio-register to avoid clobbering working registers.
+//  can't debounce in here without clobbering registers. 
+    gbit_pinchange=1;
+#endif
+
+    if( wake_count ){// if we've already slept, so we're waking up.
+        // This is a register variable; no need to clean space for it.
+        // we are waking up, do nothing and continue from where we slept (below).
+        // with ISR_naked, can use the asm reti,
+
+        __asm__ __volatile__ ("reti");
+//        return;
+    } else {
+        Button_press();
+    }
+}
+
+
+void __attribute__((OS_main, used, externally_visible)) Button_press (void) {
+//void Button_press() {  
+    /* Naked has no stack frame,
+     * but seems to properly force variables to register (better anyway) until it can't,
+     * and then fails to compile (gcc 4.9.2) OS_main however will create a 
+     * stack frame if needed for local variables and is
+     * more documented/gauranteed/future-proof probably.
+     */
+    __asm__ __volatile__ ("CLR R1"); // We do need a clean zero-register (yes, that's R1).
+    
+    #ifdef USE_ESWITCH // for eswtich we'll modify the sleep loop after a few seconds.
+        register uint8_t sleep_time_exponent=SLEEP_TIME_EXPONENT; 
+    #else
+        #define sleep_time_exponent SLEEP_TIME_EXPONENT
+    #endif
+    
 // we only pass this section once, can do initialization here:	
-//    e_status=0b00000001;   	 //startoff in standby with pin low (button pressed)
-	cli();
+
     ADCSRA = 0; //disable the ADC.  We're not coming back, no need to save it.
-	set_level(0); // Set all the outputs low.	
-	// Just the output-low of above, by itself, doesn't play well with 7135s.  Input high doesn't either
-	//  Even though in high is high impedance, I guess it's still too much current.
-	// What does work.. is input low:
+    set_level(0); // Set all the outputs low.	
+    // Just the output-low of above, by itself, doesn't play well with 7135s.  Input high doesn't either
+    //  Even though in high is high impedance, I guess it's still too much current.
+    // What does work.. is input low:
 
     uint8_t inputs=0; // temp variable designed to get optimized out.
-	#ifdef PWM_PIN
-	    inputs |= (1 << PWM_PIN) ;
-	#endif
-	#ifdef PWM2_PIN
-	    inputs |= (1 << PWM2_PIN) ;
-	#endif
-	#ifdef PWM3_PIN
-	    inputs |= (1 << PWM3_PIN) ;
-	#endif
-	#ifdef PWM4_PIN
-	    inputs |= (1 << PWM4_PIN) ;
-	#endif
-	DDRB&= ~inputs;
+    #ifdef PWM_PIN
+        inputs |= (1 << PWM_PIN) ;
+    #endif
+    #ifdef PWM2_PIN
+        inputs |= (1 << PWM2_PIN) ;
+    #endif
+    #ifdef PWM3_PIN
+        inputs |= (1 << PWM3_PIN) ;
+    #endif
+    #ifdef PWM4_PIN
+        inputs |= (1 << PWM4_PIN) ;
+    #endif
+    DDRB&= ~inputs;
+
+#ifdef USE_INDICATOR
+// turn off the indicator to acknowledge button is pressed:
+    PORTB &= ~(1<<INDICATOR_PIN);
+#endif 
+    
 
 #ifdef USE_ESWITCH
      register uint8_t e_standdown=1; // pressing off, where we start
      register uint8_t e_standby=0;  // pressing on
- 	 register uint8_t pins_state=0; // state of all switch pins.
-//     register uint8_t old_pins_state=0; // detect a change (a sane one at least).
+     register uint8_t switch_is_pressed; // 1 means any switch is pressed.
 #endif
 
-	while(1) { // keep going to sleep until power is on
+    while(1) { // keep going to sleep until power is on
 
-	 #ifdef USE_ESWITCH
-	 /*  Three phases, 
-	   * 1:standown: Still armed for short click restart on button release, counting time.
-	   * 2:full off (neither standby nor standown). Long press time-out ocurerd, 
-	   *           -button release does nothing on eswitch.
-	   *           -button press arms standby mode.
-	   * 3:standby:  Button is pressed for turn on, restart on release. No timing presently.
-	   */
-	  
-// enable digital input (want it off during shutdown to save power according to manual)
-//  not sure how we ever read these pins with this not done.
-       #if defined(USE_OTSM) && (OTSM_PIN != ESWITCH_PIN) 
-	      register uint8_t e_pin_state = ((PINB&(1<<ESWITCH_PIN))); 
-	      pins_state = e_pin_state&&(PINB&(1<<OTSM_PIN)); // if either switch is "pressed" (0) this is 0.
-	   #else
-	      pins_state=(PINB&(1<<ESWITCH_PIN));
-		  #if !defined(USE_OTSM)  // just an alias in this case to merge code paths:
-  		    register uint8_t e_pin_state=pins_state; 
-		  #endif
-	   #endif
-	    if ( e_standdown){			
-		   if ( pins_state ) {// if button released and still in standown, restart 
-		       break; // goto reset 
-          #if defined(USE_OTSM) && (OTSM_PIN == ESWITCH_PIN)
-			} else if ( (wake_count>wake_count_med)) { // it's a long press
- 		 	    e_standdown=0; // go to full off, this will stop the wake counter.
-			   _delay_loop_2(F_CPU/400); // if this was a clicky switch.. this will bring it down, 
-			                             // don't want to come on in off mode.
-			  sleep_time_exponent=9; // 16ms*2^9=8s, maximum watchod timeout.
-			}
-          #else 
-			} else if (wake_count>wake_count_med && (!e_pin_state)) { // it's a long e-switch press
- 		 	  e_standdown=0; // only go full off on e-switch press, count on cap to prevent counter overflow
-				            // for clickly.
-			  sleep_time_exponent=9; // 16ms*2^9=8s, maximum watchod timeout.
-			}
-		  #endif
-		continue; // still in standby, go back to sleep.
-	    }
-        if (e_standby && pins_state  ) { // if button release while in standby, restart
-	        break; // goto reset         //could merge this with e_standdown & pins_state above, might be smaller, might not.
-        }
-        if (!e_standdown && !e_standby && !pins_state   ) { // if button pressed while off, restart
-			   e_standby=1; // going to standby, will light when button is released		
-		} 
-	    wake_count+= e_standdown; // increment click time if still in standdown mode.
-		// continue.. sleep more.
-	 #else  // for simple OTSM, if power comes back, we're on:
-		if(PINB&(1<<OTSM_PIN)) {
-			 break; // goto reset
-	    }  
-		wake_count++;
-	 #endif
+     #if defined(USE_ESWITCH)
+
+//***************DO DEBOUNCING ******************
+
+      asm volatile ("" ::: "memory"); // just in case, no i/o reordering around these. It's a no-op.
+      #if !defined(USE_OTSM)
+       asm volatile ("" ::: "memory"); // just in case, no i/o reordering around these. It's a no-op.
+       //debounce, OTSM probably has enough capacitance not to need it
+       // and the extra on-time is bad for OTSM, may just change to WDT sleep though.
+       if (gbit_pinchange){ //don't debounce after watchdog
+                          // only after pin-change.
+        //cannot use delay_ms() with powersave without micro-managing interrupts.					  
+         _delay_loop_2(0); // let pin settle for 32ms. 0=> 0xffff
+//         _delay_loop_2(0x6000);  // delay about 10ms
+         GIFR |= PCIF;  //    Clear pin change interrupt flag
+         asm volatile ("" ::: "memory"); // just in case, no i/o reordering around these. It's a no-op.
+       }
+     #else    // if ewitch AND OTSM     
+//        // Does OTSM+ eswitch even need debounce?
+//        // Is it C2 alone that fixes debounce or something about clicky switches?
+//        // if so it will need to use watchdog wakes to save power.
+
+//        asm volatile ("" ::: "memory"); // just in case, no i/o reordering around these. It's a no-op.
+//        if (gbit_pinchange){ //don't debounce after watchdog
+//            // only after pin-change.
+//          GIMSK &= ~(1<<PCIE);  // disable PIN change interrupt
+////          debounce time exponent for watchdog prescale
+////          2^n *16 ms datasheet pg 46 for table.
+//          uint8_t dbe=1; // 32ms.
+//          wdt_sleep(dbe);
+//          GIMSK |= (1<<PCIE);  // re-enable PIN change interrupt
+//          GIFR |= PCIF;  //    Clear pin change interrupt flag
+//          gbit_pinchange=0; // clear wake was pin change flag
+//       }
+//       asm volatile ("" ::: "memory"); // just in case, no i/o reordering around these. It's a no-op.
+       #endif
+     
+//**** DETERMINE PRESENT STATE AND RESTART DECISION, EVOLVED THROUGH CLICK HISTORY
+
+     /*  Three phases, 
+       * 1:standown: button was pressed while on, not released yet.
+       *    If released in short or med click will restart
+       * 2:full off. (neither standby nor standown). Long press time-out ocurerd, and button was released.
+       *           -Pressing the button now arms standby mode.
+       * 3:standby:  Button is pressed for turn on from off-sleep, restart on release. No timing presently.
+       */
+
+//**** First figure out if buttons are pressed, and to some extent which ones: *******
+       #if defined(USE_OTSM) && (OTSM_PIN != ESWITCH_PIN) //more than one switch pin 
+          // define only  on first entry to identify press type.
+          // This is not a proper bool, it's 0 or ESWITCH_PIN.
+          // Could store this is the GPIOR if we need to know on wake up.
+          register uint8_t e_was_pressed = ((PINB^(1<<ESWITCH_PIN)));
+
+          // define on every entry to see if still pressed:
+          // if either switch is "pressed" (0) this is 0.
+          // is right shifting cheaper than &&? Is the compiler smart?
+          switch_is_pressed = ( (PINB^(1<<ESWITCH_PIN)) || (PINB^(1<<OTSM_PIN)) ); 
+       #else // only one switch pin:
+          switch_is_pressed =  (PINB^(1<<ESWITCH_PIN)); 
+             //this gets optomized out of conditional checks:
+          register uint8_t e_was_pressed=1; 
+       #endif
+       
+//****** If a switch is released, what do we do? *******
+// **  Restart or go to off-sleep?
+       
+//      if ( !switch_is_pressed ) { 
+ //  If wake count==0, first entry, check pin state
+ //  If it's already open,process the release.  If not so initially closed,
+ //    then assume any later pin change must have produced a release at some point
+ //    even if we missed it, so don't check pin again, just check for pinchange event.
+      if ( (gbit_pinchange && (wake_count !=0)) || !switch_is_pressed ) {
+        if ( wake_count<wake_count_med || !e_was_pressed || e_standby ){
+           // If clicky switch is released ever, or if eswitch is released
+           // before long click, or if switch is released in standby we restart.
+               break; // goto reset 
+         // otherwise if e-switch is released after wake_count_med..
+        } else { // switch released in long press
+            //exit standown, go to off-sleep.
+            e_standdown=0; // allows next press to enter standby
+            sleep_time_exponent=9; // 16ms*2^9=8s, maximum watchod timeout.
+        }		  
+      }
+      
+
+      // increment click time if still in short or med click
+      // go one past, why? on == we burn out the OTSM cap below,
+      // Then we go one past, so we don't repeat the burnout.
+      wake_count+= (wake_count <= wake_count_med); 
+                     // then continue.. sleep more.
+                     
+//***Things to do at start of long-press timeout:
+      if ( wake_count == wake_count_med){// long press is now inevitable
+
+      // if e-switch and OTSM-clicky switch are the same.  Prevent releasing clicky into off-sleep 
+      // by draining the clicky OTSM before user has a chance to release, while interrupts are disabled.
+      // This will do a full restart (clicky long press).
+        #if ( defined(USE_OTSM) && (OTSM_PIN == ESWITCH_PIN) ) 
+          // _delay_loop_2 waits for 4 clocks. so F_CPU/400 is 10ms.
+          _delay_loop_2(F_CPU/400); // if this was a clicky switch.. this will bring it down,
+        #endif
+
+        #ifdef USE_INDICATOR
+          // re-light the indicator to acknowledge turn-off
+          PORTB |= (1<<INDICATOR_PIN);
+        #endif
+      }
+
+//*** Handle pressing the switch again from off ***//
+
+      if (!e_standdown && !e_standby && switch_is_pressed   ) { // if button pressed while off, standby for restart
+            e_standby=1; // going to standby, will light when button is released
+         #ifdef USE_INDICATOR
+           // cut the indicator to acknowledge button press
+           PORTB &= ~(1<<INDICATOR_PIN);
+         #endif
+      }
+
+//**** Finally what do for OTSM-only, no e-switch.  ***********************					 
+     #else // if not defined USE_ESWITCH: for simple OTSM, 
+     //  if power comes back, we're on.  Wake_count will tell main about the click length:
+        if(PINB&(1<<OTSM_PIN)) {
+             break; // goto reset
+        }  
+        wake_count++;
+     #endif
 
 /***************** Wake on either a power-up (pin change) or a watchdog timeout************/
-		// At every watchdog wake, increment the wake counter and go back to sleep.
-	    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-// 		WDTCR = (1<<WDCE) |(1<<WDE);
-//		WDTCR = (0<<WDE);  // might already be in use, so we have to clear it.
-        uint8_t ste;
-		ste=sleep_time_exponent>>(wake_count<5);// for first 4 sleeps, cut wake time in half (right shift 1 if wake_count is <5)
-//		WDTCR = (1<<WDIE) |(!!(sleep_time_exponent&8)<<WDP3)|(sleep_time_exponent&7<<WDP0); // set the watchdog timer: 2^n *16 ms datasheet pg 46 for table.
-		WDTCR = (1<<WDIE) |(!!(ste&8)<<WDP3)|(ste&7<<WDP0); // set the watchdog timer: 2^n *16 ms datasheet pg 46 for table.
-		sleep_bod_disable();
-		sei(); // yep, we're going to nest interrupts, even re-entrenty into this one!
-		sleep_cpu();
-	         	// return from wake ISR's here, both watchdog and pin change.
-		cli();
-		// Now just figure out what pins are pressed and if we're coming or going, not as simple as it sounds.
- 
+// At every watchdog wake, increment the wake counter and go back to sleep.
+         gbit_pinchange=0; // clear wake was pin change flag
+        wdt_sleep(sleep_time_exponent);		
+//        wdt_(sleep_time_exponent>>(wake_count<5));// for first 4 sleeps, cut wake time in half (right shift 1 if wake_count is <5)
      }	 
-	 /*** Do a soft "reset" of sorts. **/
+
+/******************* Do a soft "reset" of sorts. ********************/
      //
- 	 asm volatile ("" ::: "memory"); // just in case, no i/o reordering around these. It's a noop.
+     asm volatile ("" ::: "memory"); // just in case, no i/o reordering around these. It's a noop.
      SPL = (RAMEND&0xff); // reset stack pointer, so if we keep going around we don't get a stack overflow. 
+             // Scary looking perhaps, but a true reset does exactly this (same assembly code).
 #if (ATTINY == 45 ) || ( ATTINY == 85 )
-	 SPH = RAMEND>>8; 
+     SPH = RAMEND>>8; 
 #endif
-	 SREG=0;  // clear status register
+     SREG=0;  // clear status register.
      main(); // start over, bypassing initialization.
-		
 } 
 
 ISR(WDT_vect, ISR_NAKED) // watchdog interrupt handler -FR
@@ -1706,7 +1920,7 @@ ISR(WDT_vect, ISR_NAKED) // watchdog interrupt handler -FR
         __asm__ volatile("reti");
 }
 
-#endif // OTSM
+#endif // OTSM/E-SWITCH
 
 
 
@@ -1718,9 +1932,9 @@ ISR(WDT_vect, ISR_NAKED) // watchdog interrupt handler -FR
 // be careful in here, local variables are not technically allowed (no stack exists), but subroutine calls are.
 void __attribute__ ((naked)) __attribute__ ((section (".init8"))) \
 main_init () { 
-	 initial_values(); // load defaults for eeprom config variables.
+     initial_values(); // load defaults for eeprom config variables.
    // initialize register variables, since gcc stubornly won't do it for us.
- 	 eepos=0;
+     eepos=0;
 #if defined(USE_OTSM) || defined(USE_ESWITCH)
      wake_count=255; // initial value on cold reboot, represents large click time.
 #endif
@@ -1731,6 +1945,10 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
 #ifndef clear_presses_value // if it's not a compile time constant
 // requires initialization on re-entry to main from OTSM sleep.
   clear_presses_value=0; 
+#endif
+#ifdef OTSM_debug // for testing your OTSM hardware
+  //store the wake_count value to blink it out after mcu initialization.
+  uint8_t tempval=wake_count;
 #endif
 
 // Handle some click timing scenarios.  We can't processes click timings until we restore the last mode save.
@@ -1743,67 +1961,102 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
 //   short power switch act like a long press with reversed modes.
 // Otherwise we have to just keep adding boutique conditionals here:
 #if defined(OFFTIM3)
-	#if defined(USE_ESWITCH)
-	   // handle dual switch cases:
-	    #if defined(DUMB_CLICK) // LEXEL mode, power click just turns the light on the way it came off.
-		   if(wake_count==255) {// we had a full reset, aka power switch.
-			  wake_count++; // set to 0, short click.
-			  disable_next(); //forces short click and disables mode advance.
-		   }
-		#elif defined(TURBO_CLICK)// power switch always starts in first hidden mode
-		   if(wake_count==255) {// we had a full reset, aka power switch.
-			      mode_idx=0; // set to first (0) mode,
+    #if defined(USE_ESWITCH)
+       // handle dual switch cases:
+        #if defined(DUMB_CLICK) // LEXEL mode, power click just turns the light on the way it came off.
+           if(wake_count==255) {// we had a full reset, aka power switch.
+              wake_count++; // set to 0, short click.
+              disable_next(); //forces short click and disables mode advance.
+           }
+        #elif defined(TURBO_CLICK)// power switch always starts in first hidden mode
+           if(wake_count==255) {// we had a full reset, aka power switch.
+                  mode_idx=0; // set to first (0) mode,
+                  save_mode();
                   wake_count=wake_count_short; // med press, will move back into hidden mode.
            }		
-		#elif defined(REVERSE_CLICK)// power switch reverses modes.
+        #elif defined(REVERSE_CLICK)// power switch reverses modes.
               //not implemented, 
-			  // a little tricky.
-		#elif defined(USE_OTC)
-		// We have an eswitch and OTC on the clicking switch.
-		// If Eswitch was pressed, nothing to do,
-		//   but if click switch was pressed:
-		   if(wake_count==255) { //255 is re-initialized value, power-outage implies clicky press, must use OTC
-			// We can't translate the CAP thresholds, because they are compile-time constants,
-			// and this is a run-time conditional.
-			// Instead translate the cap values to wake_count values.
-			// A matching preprocessor conditional above stores 255-CAP_MED and 255-CAP_SHORT in the wake_count macros.
-			//     in the case that OTC is used.  
-			  uint8_t cap_val = read_otc();
-		      if (cap_val>CAP_MED) {
-				 wake_count=wake_count_med; // long press (>= is long)
-			  }else if (cap_val>CAP_SHORT){
-				 wake_count=wake_count_short; // med press
-			  }else{
-				 wake_count=0;               // short press
-			  }
-		   }
-	    #elif  defined(USE_OTSM) // eswitch and OTSM clicking switch
-	       // anything to do here?
-		   // These switches use the same timing format already.
-	    #elif  defined(USE_ESWITCH)  // eswitch and noinit or no second switch configured.
-		  #if  defined(DUAL_SWITCH_NOINIT)
-		      wake_count=255+check_presses(); // 0 if check_presses is 1 (short click),  255 if 0 (long click).
-		  #endif
-	    #endif 
-	#elif defined(USE_OTC) 
-	   #if !defined(USE_OTSM)
-		// OTC only.
-		// check the OTC immediately before it has a chance to charge or discharge
-		// We re-use the wake_count variable that measures off time for OTSM:
-		// But high cap is short time, so have to invert.
-		  wake_count = 255-read_otc(); // 255 - OTC adc value.
-		  // define wake_count thresholds from cap thresholds:
-	   #else 
-		 #error You cannot define USE_OTSM and USE_OTC at the same time.
-	   #endif //handle eswitch and OTC below
-	// end of OTC possibilities
-	#endif // end OTC without e-switch.
+              // a little tricky.
+        #elif defined(USE_OTC)
+        // We have an eswitch and OTC on the clicking switch.
+        // If Eswitch was pressed, nothing to do,
+        //   but if click switch was pressed:
+           if(wake_count==255) { //255 is re-initialized value, power-outage implies clicky press, must use OTC
+            // We can't translate the CAP thresholds, because they are compile-time constants,
+            // and this is a run-time conditional.
+            // Instead translate the cap values to wake_count values.
+            // A matching preprocessor conditional above stores 255-CAP_MED and 255-CAP_SHORT in the wake_count macros.
+            //     in the case that OTC is used.  
+              uint8_t cap_val = read_otc();
+              if (cap_val>CAP_MED) {
+                 wake_count=wake_count_med; // long press (>= is long)
+              }else if (cap_val>CAP_SHORT){
+                 wake_count=wake_count_short; // med press
+              }else{
+                 wake_count=0;               // short press
+              }
+           }
+        #elif  defined(USE_OTSM) // eswitch and OTSM clicking switch
+           // anything to do here?
+           // These switches use the same timing format already.
+        #elif  defined(USE_ESWITCH)  // eswitch and noinit or no second switch configured.
+          #if  defined(DUAL_SWITCH_NOINIT)
+              wake_count=255+check_presses(); // 0 if check_presses is 1 (short click),  255 if 0 (long click).
+          #endif
+        #endif 
+    #elif defined(USE_OTC) 
+       #if !defined(USE_OTSM)
+        // OTC only.
+        // check the OTC immediately before it has a chance to charge or discharge
+        // We re-use the wake_count variable that measures off time for OTSM:
+        // But high cap is short time, so have to invert.
+          wake_count = 255-read_otc(); // 255 - OTC adc value.
+          // define wake_count thresholds from cap thresholds:
+       #else 
+         #error You cannot define USE_OTSM and USE_OTC at the same time.
+       #endif //handle eswitch and OTC below
+    // end of OTC possibilities
+    #endif // end OTC without e-switch.
 #endif
-	
-    init_mcu(); // setup pins, prescalers etc, configure/enable interrupts, etc.
+    
+    restore_state(); // loads user configurations
 
-#ifdef VOLTAGE_CAL
-	voltage_cal();
+// Disable e-switch interrupt if it's locked out:
+#if defined(USE_ESWITCH_LOCKOUT_TOGGLE) && (ESWITCH_PIN != OTSM_PIN)
+    if (lockswitch) {
+      PCMSK&=~(1<<ESWITCH_PIN);
+    }
+#endif
+
+    count_modes(); // build the working mode group using configured choices.
+ 
+    change_mode(); // advance, reverse, stay put?
+
+// reset the wake counter, must happen after we proccess 
+//  the click timing in change_mode and before releasing interrupts in init_mcu().
+#if defined(USE_OTSM) || defined(USE_ESWITCH)
+    wake_count=0; // reset the wake counter.
+#endif
+
+
+// initialize the pin states and interrupts, and enable interrupts.
+// First entry into pin change interrupt must have wake_count of 0
+// or the interrupt will kick back out with interrupts disabled 
+// causing sleeps to freeze, so enable interrupts after resetting wake_count.
+
+// debounce at power-on?
+// Not needed because there was already a pin change parse before restart
+// with a debounce time then. Next pin read after interrupts are re-enabled.
+// So far OTSM clicky lights don't seem to need debounce.
+//   _delay_loop_2(0); // let pin settle for 32ms. 0=> 0xff
+
+
+    init_mcu();
+
+#ifdef OTSM_debug // for testing your OTSM hardware 
+    if (tempval!=255) {
+      blink_value(tempval);
+    } 
 #endif
 
 #ifdef OTC_debug
@@ -1811,42 +2064,11 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
     return 0;
 #endif
 
-    restore_state(); // loads user configurations
-
-// Disable e-switch interrupt if it's locked out:
-#if defined(USE_ESWITCH_LOCKOUT_TOGGLE) && (ESWITCH_PIN != OTSM_PIN)
-	if (lockswitch) {
-      PCMSK&=~(1<<ESWITCH_PIN);
-	}
-#endif
-
-#ifdef OTSM_debug // for testing your OTSM hardware 
-                 // blink out the wake count, then continue into mode as normal.                 
-    if (wake_count!=255) {
-      uint8_t tempval=wake_count;
-	  wake_count=0; // this just resets wake_count while blinking so we can click off early and it still works.
-	              // use 0 for debugging but will start at 255 in real use.
-      blink_value(tempval);
-	} 
-	//else {
-	//cli(); 
-	//_delay_s(); _delay_s(); // this will increase current for two seconds if otsm_powersave is used.
-	                      //// provides a debug signal through the ammeter. 
-	//sei();
-	//}
-//    wake_time=0;  // use this to make every click act like a fast one for debugging.
-#endif
-    count_modes(); // build the working mode group using configured choices.
- 
-	change_mode(); // advance, reverse, stay put?
-
-#if defined(USE_OTSM) || defined(USE_ESWITCH)
-	wake_count=0; // reset the wake counter.
+#ifdef VOLTAGE_CAL
+    voltage_cal();
 #endif
 
 
-	save_mode();
-	
 #if defined(VOLTAGE_MON) || defined(USE_BATTCHECK)
     ADC_on(); 
 #endif
@@ -1864,26 +2086,57 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
 #ifdef VOLTAGE_MON
     uint8_t lowbatt_cnt = 0;
 #endif
-    // handle mode overrides, like mode group selection and temperature calibration
+    //  
+    // modegroups, mode_idx, output, and actual_level explained:
+    //
+    // Modegroups are an array of "output" values.  For normal modes these values are normally the same as actual_level values 
+    //  which are just ramp index values.  (The ramp arrays convert an actual_level into PWM values for all the channels in use).
+    //
+    // In normal modes actual_level can become different from nominal "output" value if temperature or voltage regulation has kicked in
+    //  and this is why there are two separate values.  output remembers the nominal value and actual_level holds the present corrected value.
+    //  
+    // mode_idx normally tells which mode we're in within the modegroup array and thus which output value to use from the modegroup.
+    // Some output values (with high values) in the modegroups correspond to special modes like strobes, not nominal actual_level.  
+    // Those magic values will get filtered and processed before/instead-of selecting a ramp value.
+    //
+    // Still other times mode_idx itself refers to a special "output" value, not a modegroup index. 
+    // These are values not listed within the modegroup and only selectable from menu functions. 
+    // They are identified when mode_idx has been set greater than MINIMUM_OVERRIDE_MODE, thus overriding the modegroup lookup.
+    // In these cases we must first copy the mode_idx value to the output value.  It then gets treated like any other special output value
+    //    and again filtered before/instead-of selecting a ramp value.
+    //
+    //
 //    if (mode_override) {
     if (mode_idx>=MINIMUM_OVERRIDE_MODE) {
+    // handle mode overrides, like mode group selection and temperature calibration
         // do nothing; mode is already set
 //        fast_presses = 0;
 //		clear_presses(); // redundant, already clear on menu entry
                          // and had to go through menu to get to an override mode.
-						 // at most fast_presses now is 1, saves 6 bytes.
+                         // at most fast_presses now is 1, saves 6 bytes.
         output = mode_idx; // not a typo. override modes don't get converted to an actual output level.
+
+        // exit these mode after one use by default:
+        //   (Also prevents getting stuck in a bogus override mode from data corruption, etc.)
+        mode_idx = 0;  // requires save_mode call below to take effect.
     } else {
       if (fast_presses > 0x0f) {  // Config mode
-	         _delay_s();       // wait for user to stop fast-pressing button
-	         //            fast_presses = 0; // exit this mode after one use
-	         clear_presses();
-	         //            mode_idx = 0;
-	         toggles(); // this is the main menu
+             _delay_s();       // wait for user to stop fast-pressing button
+             clear_presses(); // exit this mode after one use
+             //            mode_idx = 0;
+             toggles(); // this is the main menu
       }
       output = modes[mode_idx];
       actual_level = output;
-	}
+    }
+    
+    save_mode();
+  //************Finished startup**********************	
+    
+        
+  //****************************************************
+  //*********** The main on-time loop *****************
+    
     while(1) {
 //#if defined(VOLTAGE_MON) || defined(USE_BATTCHECK)
 //         ADC_on();  // switch (back) to voltage mode before the strobe or regular mode delay.
@@ -1893,39 +2146,39 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
 // Tried saving some space on these strobes, but it's not easy. gcc does ok though.
 // Using a switch does create different code (more jump-table-ish, kind of), but it's not shorter.
         if (0) {} // dummy to get the conditionals started,
-			      // will optimize out.
-#ifdef STROBE_10HZ
-		else if (output == STROBE_10HZ) {
+                  // will optimize out.
+#ifdef USE_STROBE_10HZ
+        else if (output == STROBE_10HZ) {
             // 10Hz tactical strobe
             strobe(33,67);
         }
 #endif // ifdef STROBE_10HZ
-#ifdef STROBE_16HZ
+#ifdef USE_STROBE_16HZ
         else if (output == STROBE_16HZ) {
             // 16.6Hz tactical strobe
             strobe(20,40);
         }
 #endif // ifdef STROBE_16HZ
-#ifdef STROBE_8HZ
+#ifdef USE_STROBE_8HZ
         else if (output == STROBE_8HZ) {
             // 8.3Hz Tactical strobe
             strobe(40,80);
         }
 #endif // ifdef STROBE_8HZ
-#ifdef STROBE_OLD_MOVIE
+#ifdef USE_STROBE_OLD_MOVIE
         else if (output == STROBE_OLD_MOVIE) {
             // Old movie effect strobe, like you some stop motion?
             strobe(1,41);
         }
 #endif // ifdef STROBE_OLD_MOVIE
-#ifdef STROBE_CREEPY
+#ifdef USE_STROBE_CREEPY
         else if (output == STROBE_CREEPY) {
             // Creepy effect strobe stop motion effect that is quite cool or quite creepy, dpends how many friends you have with you I suppose.
             strobe(1,82);
         }
 #endif // ifdef STROBE_CREEPY
 
-#ifdef POLICE_STROBE
+#ifdef USE_POLICE_STROBE
         else if (output == POLICE_STROBE) {
 
             // police-like strobe
@@ -1937,7 +2190,7 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
             //}
         }
 #endif // ifdef POLICE_STROBE
-#ifdef RANDOM_STROBE
+#ifdef USE_RANDOM_STROBE
         else if (output == RANDOM_STROBE) {
             // pseudo-random strobe
             uint8_t ms = 34 + (pgm_rand() & 0x3f);
@@ -1945,10 +2198,10 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
             //strobe(ms, ms);
         }
 #endif // ifdef RANDOM_STROBE
-#ifdef BIKING_STROBE
+#ifdef USE_BIKING_STROBE
         else if (output == BIKING_STROBE) {
             // 2-level stutter beacon for biking and such
-#ifdef FULL_BIKING_STROBE
+#ifdef USE_FULL_BIKING_STROBE
             // normal version
             for(i=0;i<4;i++) {
                 set_level(TURBO);
@@ -1970,10 +2223,10 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
 #endif
         }
 #endif  // ifdef BIKING_STROBE
-#ifdef SOS
+#ifdef USE_SOS
         else if (output == SOS) { SOS_mode(); }
 #endif // ifdef SOS
-#ifdef RAMP
+#ifdef USE_RAMP
         else if (output == RAMP) {
             int8_t r;
             // simple ramping test
@@ -1991,7 +2244,7 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
 #ifdef USE_BATTCHECK
         else if (output == BATTCHECK) {
 #ifdef BATTCHECK_VpT
-			//blink_value(get_voltage()); // for debugging
+            //blink_value(get_voltage()); // for debugging
             // blink out volts and tenths
             _delay_ms(100);
             uint8_t result = battcheck();
@@ -2009,10 +2262,14 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
             _delay_s(); _delay_s();
         }
 #endif // ifdef USE_BATTCHECK
+
+// **********output values here correspond to override modes. ************
+
         else if (output == GROUP_SELECT_MODE) {
             // exit this mode after one use
-            mode_idx = 0;
-//            mode_override = 0;
+            //  Now done as default at top for all override modes.
+            //		mode_idx = 0;
+//            mode_override = 0; // old way
 
             for(i=0; i<NUM_MODEGROUPS; i++) {
                 modegroup = i;
@@ -2022,12 +2279,13 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
             }
             _delay_s(); _delay_s();
         }
-#ifdef TEMP_CAL_MODE
+#ifdef USE_TEMP_CAL
 #ifdef TEMPERATURE_MON
         else if (output == TEMP_CAL_MODE) {
             // make sure we don't stay in this mode after button press
-            mode_idx = 0;
-//            mode_override = 0;
+            //  Now done as default at top for all override modes.
+            // mode_idx = 0;
+//            mode_override = 0; // old way
 
             // Allow the user to turn off thermal regulation if they want
             maxtemp = 255;
@@ -2047,39 +2305,42 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
         }
 #endif
 #endif  // TEMP_CAL_MODE
-        else {  // Regular non-hidden solid mode
+
+     //********* Otherwise, regular non-hidden solid modes: ****************
+
+        else {  
 //  moved this before temp check.  Temp check result will still apply on next loop.
 // reason is with Vcc reads, we switch back and forth between ADC channels.
 //  The get temperature includes a delay to stabilize ADC (maybe not needed)
 //   That delay results in hesitation at turn on.
 //  So turn on first.
-	        set_mode(actual_level);		   
+            set_mode(actual_level);		   
 #ifdef TEMPERATURE_MON
             temp=get_temperature();
   #if defined(VOLTAGE_MON) || defined(USE_BATTCHECK)
             ADC_on(); // switch back to voltage mode.
   #endif
 #endif		 
-		// If get_temp were done at the end of loop, could move temp conditionals outside 
-		// mode check to affect all modes including strobes,
-		// but get temp is too slow for strobes, would need to implement it in interrupts.
-		// Requires interrupt timing of temp, voltage, and delays between them though. :(	 
+        // If get_temp were done at the end of loop, could move temp conditionals outside 
+        // mode check to affect all modes including strobes,
+        // but get temp is too slow for strobes, would need to implement it in interrupts.
+        // Requires interrupt timing of temp, voltage, and delays between them though. :(	 
 
 // Temp control methods:
 // Notice we don't actually have a temp reading yet on first loop, will be zero, that's ok.
 #ifdef CLASSIC_TEMPERATURE_MON //this gets set by default.
             // Tries to regulate temparature in all modes.
-			// This has issues.  First, it's very hard to get right and very hardware dependent
+            // This has issues.  First, it's very hard to get right and very hardware dependent
             // If you get it right you likely don't get a turbo boost at all
-			// but just stabilize at a sustainable temp.  Even if you do get a 
-			//  turbo boost, then you get either
-			// eventual stabilization at max temp, no more turbo boosts possible after that really,
-			// Or you get up and down and up and down at random times.
-			// If we want sustainable regulation we should do that.  
-			// If we want controlled tubro boosts we should do that, 
-			//  and come back down to cool off and be ready for another turbo on demand.
-			// So FR dividing these needs going forward with new options below.
-			//
+            // but just stabilize at a sustainable temp.  Even if you do get a 
+            //  turbo boost, then you get either
+            // eventual stabilization at max temp, no more turbo boosts possible after that really,
+            // Or you get up and down and up and down at random times.
+            // If we want sustainable regulation we should do that.  
+            // If we want controlled tubro boosts we should do that, 
+            //  and come back down to cool off and be ready for another turbo on demand.
+            // So FR dividing these needs going forward with new options below.
+            //
             // step down? (or step back up?)
              if (temp > maxtemp) {
                 overheat_count ++;
@@ -2097,39 +2358,40 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
                 }
              }
  #elif defined(TEMP_STEP_DOWN)|| defined (USE_TURBO_TIMEOUT) // BLFA6 inspired stepdown modes, by FR
-			 // now using this to count minimum up time before step down is activated.
-			 // We do NOT need to be overheated that long though.
-	         overheat_count ++;			 
-		 // choose the step_down condition:
+             // now using this to count minimum up time before step down is activated.
+             // We do NOT need to be overheated that long though.
+             overheat_count ++;			 
+         // choose the step_down condition:
          #ifdef TEMP_STEP_DOWN
-		    // For stepdown to occur,
-		    // need to be overheated AND past the MINIMUM_TURBO_TIME and in a level higher than the step down level:
+            // For stepdown to occur,
+            // need to be overheated AND past the MINIMUM_TURBO_TIME and in a level higher than the step down level:
              if (temp >= maxtemp && actual_level > TURBO_STEPDOWN 
-			       && overheat_count > (uint8_t)((double)(MINIMUM_TURBO_TIME)*(double)1000/(double)LOOP_SLEEP)) {
-		 #elif defined(USE_TURBO_TIMEOUT)
-		   // for non-temp based method, need to be in TURBO mode and past TURBO_TIMEOUT for step down:
+                   && overheat_count > (uint8_t)((double)(MINIMUM_TURBO_TIME)*(double)1000/(double)LOOP_SLEEP)) {
+         #elif defined(USE_TURBO_TIMEOUT)
+           // for non-temp based method, need to be in TURBO mode and past TURBO_TIMEOUT for step down:
              if ((output == TURBO) && overheat_count > (uint8_t)((double)(TURBO_TIMEOUT)*(double)1000/(double)LOOP_SLEEP) ) {
-		 #endif
-	               // can't use BLFA6 mode change since we don't have predictable modes.
-	               // Must change actual_level, and lockout mode advance on next click.
+         #endif
+                   // can't use BLFA6 mode change since we don't have predictable modes.
+                   // Must change actual_level, and lockout mode advance on next click.
 //	               output=TURBO_STEPDOWN;
-	               actual_level=TURBO_STEPDOWN;
-	               disable_next(); // next forward press will keep turbo mode.
-				                              // this value is immune to clear_presses.
+                   actual_level=TURBO_STEPDOWN;
+                   disable_next(); // next forward press will keep turbo mode.
+                                              // this value is immune to clear_presses.
              } 
              
 // end of temperature control methods.
 #endif
+        //the loop delay for regular modes:
          _delay_ms(LOOP_SLEEP);
-         // We've taken our time, either with regular mode delay or one strobe cycle.
-         // So the user isn't fast pressing anymore.
-         // Temp control methods do this above since they use this variable for other purposes too.
+        } 
 
-          clear_presses();
-        } // end of mode conditional
+        // We've taken our time, either with regular mode delay or one strobe cycle.
+        // So the user isn't fast pressing anymore.
 
+        clear_presses();
+        // ********end of mode conditional************
 
-//****** Now things to do in loop after every mode **************/
+        //****** Now things to do in loop after every mode **************/
 
 
 #ifdef VOLTAGE_MON
@@ -2140,8 +2402,8 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
                 lowbatt_cnt = 0;
             }
             // See if it's been low for a while, and maybe step down
-			// Why do we need 8 checks?  Battcheck works fine with one.
-			// Is there some corner condition when this goes wrong?
+            // Why do we need 8 checks?  Battcheck works fine with one.
+            // Is there some corner condition when this goes wrong?
             if (lowbatt_cnt >= 8) {
                 if (actual_level > RAMP_SIZE) {  // hidden / blinky modes
                     // step down from blinky modes to medium
@@ -2155,11 +2417,11 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
                     set_level(0);
                     // Power down as many components as possible
                     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-					cli(); // make sure not to wake back up.
-				#if (ATTINY>13) // could macro define it in headers, but this is more clear:
-					sleep_bod_disable();// power goes from 25uA to 4uA.
-				#endif
-                    sleep_mode();
+                    cli(); // make sure not to wake back up.
+                #if (ATTINY>13) // could macro define it in headers, but this is more clear:
+                    sleep_bod_disable();// power goes from 25uA to 4uA.
+                #endif
+                    sleep_mode(); 
                 }
 //                set_mode(actual_level); // redundant
                 output = actual_level; //This mostly just pulls out of strobes.
@@ -2174,3 +2436,10 @@ int __attribute__((OS_task)) main()  { // Jump here from a wake interrupt, skipp
     }// end of main while loop
 }// end of main.
 
+//TODO -FR
+// Change OTSM debounce to watchdog sleep... maybe (implemented in comments)
+// fix mode_save commit.
+//Ideas for farther ahead:
+//Try shortening medium click for OTSM, may require adding finer timing resulotion for all times, or possibly just early times. (has?a cap performance?cost, but it's performing better than needed now).
+//Maybe rework dual switch stuff so every click type can be given assigned an action type in the configs. ?Hard to keep the programming tight, and clean, but avoids endless options.
+//In particular consider reverse click order for power switch, maybe separately from above plan.

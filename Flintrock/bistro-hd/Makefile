@@ -13,24 +13,37 @@ FIRMWARES13 += biscotti-HD
 # unforutnately BLFA6_EMU doesn't actually fit on an attiny13 yet: 
 #FIRMWARES13 += BLFA6_EMU-HD 
 FIRMWARES25 += BLFA6_EMU-HD 
-FIRMWARES25 += default-HD custom-HD TAv1-OTC-HD TAv1-OTSM-HD TAv1-OTSM-LDO-HD classic-HD trippledown-HD 
+FIRMWARES25 += default-HD TAv1-OTC-HD TAv1-OTSM-HD TAv1-OTSM-LDO-HD classic-HD tripledown-HD eswitch-TA-HD
 FIRMWARES25 += dual-switch-dumbclick-TA-HD dual-switch-noinit-TA-HD dual-switch-turboclick-TA-HD 4channel-dual-switch-HD
-FIRMWARES45 +=
+FIRMWARES25 += dual-switch-OTSM-TA-HD eswitch-Q8-fetplusone-HD TAv1-OTC-NODIVIDER-1SONLY-HD eswitch-TA-VCCREAD-INDICATOR-HD
+FIRMWARES25 += TAv1-OTSM-LDO-fetonly-HD TAv1-OTSM-fetonly-HD eswitch-TA-FETONLY-VCCREAD-INDICATOR-HD
+FIRMWARES45 += 
 FIRMWARES85 +=
 FIRMWARES := $(FIRMWARES13) $(FIRMWARES25) $(FIRMWARES45) $(FIRMWARES85)
 
 # Uncomment next to override multiple builds and build one specific file. 
 #  Must be named like bistr-<config-name>-attinyXX.hex, where XX is a valid attiny model number.
+#  (Actually can include multiple individual builds per line too or using += )
 #ONE_BUILD := bistro-biscotti-HD-attiny13.hex
-#ONE_BUILD := bistro-TAv1-OTSM-HD-attiny25.hex
-#ONE_BUILD := bistro-testing-HD-attiny25.hex
+#ONE_BUILD := bistro-dual-switch-OTS-attiny25.hex 
+#ONE_BUILD := bistro-TAv1-OTSM-HD-attiny25.hex  bistro-4channel-dual-switch-HD-attiny25.hex
+#ONE_BUILD := bistro-eswitch-TA-HD-attiny25.hex
 #ONE_BUILD := bistro-BLFA6_EMU-HD-attiny13.hex
+#ONE_BUILD := bistro-eswitch-Q8-fetplusone-HD-attiny85.hex
+#ONE_BUILD := bistro-TAv1-OTC-NODIVIDER-1SONLY-HD-attiny25.hex
 
 #Uncomment next to skip battcheck builds, speeds things up a bit:
 #NO_BATTCHECK
 
 ########### Define where your compiling programs live #####################
 
+ifneq ($(OS),Windows_NT)
+###For linux using files installed directly into / from Atmel
+AVR_DIR:=/arduino-1.8.5
+GCC_DIR:=$(AVR_DIR)/hardware/tools/avr/bin
+INCLUDES:=$(AVR_DIR)/hardware/tools/avr/avr/
+
+else
 ###For Atmel studio 7.0:
 GCC_DIR := C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin
 INCLUDES := C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.1.102\include
@@ -43,17 +56,24 @@ INCLUDES := C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.1.1
 # The next one should work, with atmel's gnu toolchain, available here:http://www.atmel.com/tools/atmelavrtoolchainforwindows.aspx
 #GCC_DIR := C:\avr8-gnu-toolchain\bin
 #Not sure of the include path..
+endif
 
 #Files to pack up to copy it all
-PACKAGE_FILES := bistro-HD.c *.h THE_MANUAL.txt license.txt buildall-AS.bat buildall-WinAVR.bat Makefile configs modegroups hex
+PACKAGE_FILES := bistro-HD.c *.h THE_MANUAL.htm license.txt buildall-AS.bat buildall-WinAVR.bat Makefile configs modegroups hex
+PACKAGE_FILES += flashany_attiny13.bat flashany_attiny25.bat flashany_attiny45.bat flashany_attiny85.bat clearhexassoc.reg CHANGES.txt
+
 PACKAGE_DIR := C:\firmware\HD
 7ZIP := C:\Program Files\7-Zip\7z.exe
 
 
 #############################You probably don't need to edit below here##############################
 
-SHELL := cmd.exe
-
+ifneq ($(OS),Windows_NT)
+  EXE:=
+else
+  SHELL := cmd.exe
+  EXE:=.exe
+endif
 
 ############Define the output directories###################
 HEX_DIR := .\hex
@@ -62,19 +82,22 @@ PREPROCESS_DIR := .\Preprocessor-output
 BIN_DIR := .\bin
 
 #############Define where all the bits and pieces are #####################
-GCC := $(GCC_DIR)\avr-gcc.exe
-OBJ_COPY := $(GCC_DIR)\avr-objcopy.exe
-OBJ_DUMP := $(GCC_DIR)\avr-objdump.exe
-AVR_SIZE := $(GCC_DIR)\avr-size.exe
+GCC := $(GCC_DIR)/avr-gcc$(EXE)
+OBJ_COPY := $(GCC_DIR)/avr-objcopy$(EXE)
+OBJ_DUMP := $(GCC_DIR)/avr-objdump$(EXE)
+AVR_SIZE := $(GCC_DIR)/avr-size$(EXE)
+
 
 # The following seems uneccessary
 #SPECDIR := C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.1.102\gcc\
 
 ##########Compiler Options##################
 
-C_FLAGS := -x c -funsigned-char -funsigned-bitfields -Os -finline-functions-called-once -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -Wall -std=gnu99 
-LDD_FLAGS := -Wl,--start-group -Wl,-lm  -Wl,--end-group -Wl,--gc-sections
-
+C_FLAGS := -x c -funsigned-char -funsigned-bitfields -Os -finline-functions-called-once 
+C_FLAGS += -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -Wall -std=gnu99 
+C_FLAGS += -fverbose-asm
+LDD_FLAGS := -Wl,--start-group  -Wl,--end-group -Wl,--gc-sections
+#LDD_FLAGS += -Wl,-lm
 
 #### define groups of attinys based on minimum capability ###
 
@@ -142,7 +165,7 @@ $(BUILDS:%.hex=%.i): ./bistro-HD.c
 	$(eval MCU=$(lastword $(subst -, ,$(basename $@))))
 	$(eval HOWTINY=$(subst attiny,,$(MCU)))
 	"$(GCC)" -E -P  $(C_FLAGS) -I"$(INCLUDES)"  -mmcu=$(MCU)   -o "$@" -DCONFIG_FILE_H=\"$(CONFIG_DIR)/config_$(@:bistro-%-$(MCU).i=%.h)\" -DATTINY=$(HOWTINY)  "$<" 
-	type license.txt $@ > temp.txt
+	cat license.txt $@ > temp.txt
 	mv temp.txt $@
 	@echo Finished building: $@
 
@@ -191,19 +214,19 @@ tidy:
 packit:
 # always good to hard code part of an rm -rf, prevents accidental deletion of whole hard-drive:
 	rm -rf $(PACKAGE_DIR)\bistro-HD || exit 0 
-	mkdir -p $(PACKAGE_DIR)\bistro-HD || exit 0
+	mkdir $(PACKAGE_DIR)\bistro-HD || exit 0
 	cp -rf $(PACKAGE_FILES) $(PACKAGE_DIR)\bistro-HD
 	$(7ZIP) a -tzip $(PACKAGE_DIR)\bistro-HD.zip $(PACKAGE_DIR)\bistro-HD
 
 #clean does tidy and removes the hex
 clean:  tidy
 	rm -f *.hex *.elf *.i *.o || exit 0
-	rm -f  $(HEX_DIR)\\*.hex || exit 0
-	rm -f $(BIN_DIR)\\*.elf || exit 0
-	rm -f $(PREPROCESS_DIR)\\*.i || exit 0
+	rm -f  $(HEX_DIR)/*.hex || exit 0
+	rm -f $(BIN_DIR)/*.elf || exit 0
+	rm -f $(PREPROCESS_DIR)/*.i || exit 0
 
 sizes: 
-	"$(AVR_SIZE)" $(BIN_DIR)\\*.elf 
+	"$(AVR_SIZE)" $(BIN_DIR)/*.elf 
 
 #Atmel studio insists on a clean steap, but you can change the target name of it.
 #Make clean isn't always desirable, if for example you're trying to make packit.
