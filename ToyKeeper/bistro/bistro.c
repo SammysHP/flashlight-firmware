@@ -236,10 +236,6 @@ void save_mode() {  // save the current mode index (with wear leveling)
 #define OPT_revmodes (EEPSIZE-8)
 #define OPT_muggle (EEPSIZE-9)
 void save_state() {  // central method for writing complete state
-    save_mode();
-#ifdef USE_FIRSTBOOT
-    eeprom_write_byte((uint8_t *)OPT_firstboot, firstboot);
-#endif
     eeprom_write_byte((uint8_t *)OPT_modegroup, modegroup);
     eeprom_write_byte((uint8_t *)OPT_memory, memory);
 #ifdef OFFTIM3
@@ -252,6 +248,11 @@ void save_state() {  // central method for writing complete state
     eeprom_write_byte((uint8_t *)OPT_moon, enable_moon);
     eeprom_write_byte((uint8_t *)OPT_revmodes, reverse_modes);
     eeprom_write_byte((uint8_t *)OPT_muggle, muggle_mode);
+#ifdef USE_FIRSTBOOT
+    eeprom_write_byte((uint8_t *)OPT_firstboot, firstboot);
+#endif
+
+    save_mode();
 }
 
 #ifndef USE_FIRSTBOOT
