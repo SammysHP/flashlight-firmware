@@ -38,6 +38,7 @@ From off:
   - Click, tap: Go directly to moon mode.
   - Click, tap, tap: Go directly to maximum output.
   - Click, tap, tap, tap: Battery check mode.
+  - Click, tap 15+ times until light stops lighting up: Config mode.
 
 In ramp mode:
 
@@ -67,6 +68,29 @@ From any other mode (all blinkies and specials):
 In any mode except "off":
 
   - Click: Turn off.  Will reset to mem or ramp next time it's used.
+
+
+Config mode
+-----------
+
+To enter config mode, quickly tap a bunch of times until the light stops 
+lighting up.  It should be 16+ times.  Then it'll scroll through the 
+options:
+
+  1. Memory toggle.  Tap during the "buzz" to turn memory on or off.
+  2. Thermal calibration.  Tap during the "buzz" to enter thermal 
+     calibration mode.
+     - Light turns on at a low level: Tap now to set default temperature 
+       limit.  Otherwise, wait.
+     - Light goes to full brightness: Tap at any time to set temperature 
+       limit to the current temperature.  Basically, wait until it feels 
+       hot, then tap.
+
+So, to set a temperature limit:
+  - Tap 16+ times.
+  - Wait for the light to blink twice.
+  - Tap during the "buzz".
+  - Wait until the light feels hot, then click to turn it off.
 
 
 Mode list
