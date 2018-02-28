@@ -12,4 +12,4 @@ MCU: attiny13
 Button-Type: momentary, clicky
 Memory: offtime, OTC, none
 Modes:
-Extras:
+Extras: turbo timer

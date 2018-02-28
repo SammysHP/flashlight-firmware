@@ -12,4 +12,4 @@ Memory: configurable
 Modes: ramp, config, tactical strobe, police strobe, bike flasher, beacon,
   alpine beacon, battcheck, voltage readout, soft lock, momentary
 Extras: mode groups, ramping UI, soft lock, config mode, thermal step-down,
-  LVP, indicator LED, triple PWM
+  LVP, indicator LED, triple PWM, turbo timer

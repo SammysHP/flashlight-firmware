@@ -7,5 +7,5 @@ Memory: offtime, mem decay, configurable
 MCU: attiny13
 Authors: gChart, ToyKeeper
 Modes: ramp, battcheck, config
-Extras: LVP, ramping UI
+Extras: LVP, ramping UI, turbo timer
 License: GPLv3
