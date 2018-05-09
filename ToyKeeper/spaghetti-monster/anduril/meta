@@ -7,6 +7,6 @@ Button-Type: momentary
 Memory: yes
 Modes: ramp, discrete ramp,
     battcheck, tempcheck, goodnight, beacon,
-    bike flasher, party strobe, tactical strobe, lightning storm,
-    soft lock, momentary, config
+    candle, bike flasher, party strobe, tactical strobe, lightning storm,
+    soft lock, momentary, config, muggle
 Extras: ramping UI, thermal regulation, LVP, dual PWM, triple PWM
