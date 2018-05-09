@@ -4,5 +4,5 @@ Memory: offtime, OTC, configurable
 MCU: attiny13, attiny25
 Authors: ToyKeeper
 Modes: battcheck, tactical strobe, bike flasher, config
-Extras: dual PWM, offtime-3, hidden modes, mode groups
+Extras: dual PWM, offtime-3, hidden modes, mode groups, turbo timer
 License: GPLv3

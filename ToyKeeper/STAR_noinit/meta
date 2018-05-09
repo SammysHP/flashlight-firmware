@@ -4,4 +4,5 @@ Memory: offtime, mem decay, star-configurable
 MCU: attiny13
 Authors: JonnyC, ToyKeeper
 Modes:
-Extras: dual PWM, star-configurable moon, star-configurable mode order
+Extras: dual PWM, star-configurable moon, star-configurable mode order, turbo
+  timer

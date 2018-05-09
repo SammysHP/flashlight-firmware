@@ -4,4 +4,4 @@ MCU: attiny13
 Button-Type: momentary
 Memory: none
 Modes:
-Extras: Baton UI
+Extras: Baton UI, turbo timer

@@ -4,4 +4,4 @@ Memory: offtime, OTC, star-configurable
 MCU: attiny13
 Authors: JonnyC, ToyKeeper
 Modes: tactical strobe, battcheck
-Extras: dual PWM, offtime-3
+Extras: dual PWM, offtime-3, turbo timer

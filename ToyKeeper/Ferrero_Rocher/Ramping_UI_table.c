@@ -300,7 +300,7 @@ ISR(WDT_vect) {
     static uint8_t  ontime_ticks = 0;
     static uint8_t  doubleclick_ticks = 0;
     static int8_t   saved_mode_idx = 1; // start at first mode, not "off"
-    uint8_t         i = 0;
+    //uint8_t         i = 0;
 #ifdef VOLTAGE_MON
     static uint8_t  lowbatt_cnt = 0;
 #ifdef LOWPASS_VOLTAGE

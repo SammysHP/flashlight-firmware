@@ -4,4 +4,4 @@ MCU: attiny13
 Button-Type: clicky
 Memory: none
 Modes: 100% only
-Extras: dual PWM
+Extras: dual PWM, turbo timer

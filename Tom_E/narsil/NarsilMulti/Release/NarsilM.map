@@ -275,7 +275,7 @@ END GROUP
 .rela.plt
  *(.rela.plt)
 
-.text           0x00000000     0x1bd0
+.text           0x00000000     0x1cfa
  *(.vectors)
  .vectors       0x00000000       0x1e c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/../../../../avr/lib/avr25/crtattiny85.o
                 0x00000000                __vector_default
@@ -498,29 +498,29 @@ END GROUP
                 0x000006e8       0xec NarsilM.o
                 0x000006e8                __vector_8
  .text.__vector_12
-                0x000007d4      0x8fa NarsilM.o
+                0x000007d4      0xa1a NarsilM.o
                 0x000007d4                __vector_12
  .text.startup.main
-                0x000010ce      0xa88 NarsilM.o
-                0x000010ce                main
+                0x000011ee      0xa92 NarsilM.o
+                0x000011ee                main
  .text.libgcc.div
-                0x00001b56       0x18 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr25\libgcc.a(_udivmodqi4.o)
-                0x00001b56                __udivmodqi4
+                0x00001c80       0x18 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr25\libgcc.a(_udivmodqi4.o)
+                0x00001c80                __udivmodqi4
  .text.libgcc.div
-                0x00001b6e       0x28 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr25\libgcc.a(_udivmodhi4.o)
-                0x00001b6e                __udivmodhi4
+                0x00001c98       0x28 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr25\libgcc.a(_udivmodhi4.o)
+                0x00001c98                __udivmodhi4
  .text.libgcc.div
-                0x00001b96       0x26 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr25\libgcc.a(_divmodhi4.o)
-                0x00001b96                _div
-                0x00001b96                __divmodhi4
+                0x00001cc0       0x26 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr25\libgcc.a(_divmodhi4.o)
+                0x00001cc0                _div
+                0x00001cc0                __divmodhi4
  .text.avr-libc
-                0x00001bbc       0x10 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/../../../../avr/lib/avr25\libattiny85.a(eerd_byte.o)
-                0x00001bbc                eeprom_read_byte
-                0x00001bcc                . = ALIGN (0x2)
+                0x00001ce6       0x10 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/../../../../avr/lib/avr25\libattiny85.a(eerd_byte.o)
+                0x00001ce6                eeprom_read_byte
+                0x00001cf6                . = ALIGN (0x2)
  *(.fini9)
- .fini9         0x00001bcc        0x0 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr25\libgcc.a(_exit.o)
-                0x00001bcc                _exit
-                0x00001bcc                exit
+ .fini9         0x00001cf6        0x0 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr25\libgcc.a(_exit.o)
+                0x00001cf6                _exit
+                0x00001cf6                exit
  *(.fini9)
  *(.fini8)
  *(.fini8)
@@ -539,15 +539,15 @@ END GROUP
  *(.fini1)
  *(.fini1)
  *(.fini0)
- .fini0         0x00001bcc        0x4 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr25\libgcc.a(_exit.o)
+ .fini0         0x00001cf6        0x4 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr25\libgcc.a(_exit.o)
  *(.fini0)
-                0x00001bd0                _etext = .
+                0x00001cfa                _etext = .
 
-.data           0x00800060       0x3a load address 0x00001bd0
+.data           0x00800060       0x3a load address 0x00001cfa
                 0x00800060                PROVIDE (__data_start, .)
  *(.data)
  *(.data*)
- .data.adc_ticks.1970
+ .data.adc_ticks.1973
                 0x00800060        0x2 NarsilM.o
  .data.byStepdownTemp
                 0x00800062        0x1 NarsilM.o
@@ -572,149 +572,156 @@ END GROUP
                 0x0080009a                _edata = .
                 0x0080009a                PROVIDE (__data_end, .)
 
-.bss            0x0080009a       0x57
+.bss            0x0080009a       0x5a
                 0x0080009a                PROVIDE (__bss_start, .)
  *(.bss)
  *(.bss*)
- .bss.byInitADCTimer.1969
+ .bss.byInitADCTimer.1972
                 0x0080009a        0x1 NarsilM.o
- .bss.wLowBattBlinkTicks.1968
+ .bss.wLowBattBlinkTicks.1971
                 0x0080009b        0x2 NarsilM.o
- .bss.lowbatt_cnt.1971
+ .bss.lowbatt_cnt.1974
                 0x0080009d        0x1 NarsilM.o
- .bss.byModeForClicks.1967
+ .bss.initialLevelForClicks.1969
                 0x0080009e        0x1 NarsilM.o
- .bss.wStepdownTicks.1966
-                0x0080009f        0x2 NarsilM.o
- .bss.pressed.1898
-                0x008000a1        0x1 NarsilM.o
- .bss.buffer.1899
+ .bss.byModeForClicks.1968
+                0x0080009f        0x1 NarsilM.o
+ .bss.wStepdownTicks.1967
+                0x008000a0        0x2 NarsilM.o
+ .bss.turboRestoreLevel.1970
                 0x008000a2        0x1 NarsilM.o
- .bss.eepos     0x008000a3        0x2 NarsilM.o
-                0x008000a3                eepos
+ .bss.pressed.1899
+                0x008000a3        0x1 NarsilM.o
+ .bss.buffer.1900
+                0x008000a4        0x1 NarsilM.o
+ .bss.eepos     0x008000a5        0x2 NarsilM.o
+                0x008000a5                eepos
  .bss.byBlinkActiveChan
-                0x008000a5        0x1 NarsilM.o
-                0x008000a5                byBlinkActiveChan
+                0x008000a7        0x1 NarsilM.o
+                0x008000a7                byBlinkActiveChan
  .bss.wThermalTicks
-                0x008000a6        0x2 NarsilM.o
-                0x008000a6                wThermalTicks
- .bss.adc_step  0x008000a8        0x1 NarsilM.o
-                0x008000a8                adc_step
+                0x008000a8        0x2 NarsilM.o
+                0x008000a8                wThermalTicks
+ .bss.adc_step  0x008000aa        0x1 NarsilM.o
+                0x008000aa                adc_step
  .bss.byTempReading
-                0x008000a9        0x1 NarsilM.o
-                0x008000a9                byTempReading
- .bss.byVoltage
-                0x008000aa        0x1 NarsilM.o
-                0x008000aa                byVoltage
- .bss.LowBattBlinkSignal
                 0x008000ab        0x1 NarsilM.o
-                0x008000ab                LowBattBlinkSignal
- .bss.LowBattState
+                0x008000ab                byTempReading
+ .bss.byVoltage
                 0x008000ac        0x1 NarsilM.o
-                0x008000ac                LowBattState
- .bss.LowBattSignal
+                0x008000ac                byVoltage
+ .bss.LowBattBlinkSignal
                 0x008000ad        0x1 NarsilM.o
-                0x008000ad                LowBattSignal
- .bss.holdHandled
+                0x008000ad                LowBattBlinkSignal
+ .bss.LowBattState
                 0x008000ae        0x1 NarsilM.o
-                0x008000ae                holdHandled
+                0x008000ae                LowBattState
+ .bss.LowBattSignal
+                0x008000af        0x1 NarsilM.o
+                0x008000af                LowBattSignal
+ .bss.holdHandled
+                0x008000b0        0x1 NarsilM.o
+                0x008000b0                holdHandled
  .bss.wTimedStepdownTickLimit
-                0x008000af        0x2 NarsilM.o
-                0x008000af                wTimedStepdownTickLimit
- .bss.wIdleTicks
                 0x008000b1        0x2 NarsilM.o
-                0x008000b1                wIdleTicks
+                0x008000b1                wTimedStepdownTickLimit
+ .bss.wIdleTicks
+                0x008000b3        0x2 NarsilM.o
+                0x008000b3                wIdleTicks
  .bss.modeMemoryLastModeIdx
-                0x008000b3        0x1 NarsilM.o
-                0x008000b3                modeMemoryLastModeIdx
+                0x008000b5        0x1 NarsilM.o
+                0x008000b5                modeMemoryLastModeIdx
  .bss.fastClicks
-                0x008000b4        0x1 NarsilM.o
-                0x008000b4                fastClicks
+                0x008000b6        0x1 NarsilM.o
+                0x008000b6                fastClicks
  .bss.wPressDuration
-                0x008000b5        0x2 NarsilM.o
-                0x008000b5                wPressDuration
+                0x008000b7        0x2 NarsilM.o
+                0x008000b7                wPressDuration
  .bss.prevRamping
-                0x008000b7        0x1 NarsilM.o
-                0x008000b7                prevRamping
+                0x008000b9        0x1 NarsilM.o
+                0x008000b9                prevRamping
  .bss.prevModeIdx
-                0x008000b8        0x1 NarsilM.o
-                0x008000b8                prevModeIdx
- .bss.modeIdx   0x008000b9        0x1 NarsilM.o
-                0x008000b9                modeIdx
- .bss.configIdleTime
                 0x008000ba        0x1 NarsilM.o
-                0x008000ba                configIdleTime
- .bss.configClicks
-                0x008000bb        0x1 NarsilM.o
-                0x008000bb                configClicks
- .bss.prevConfigMode
+                0x008000ba                prevModeIdx
+ .bss.modeIdx   0x008000bb        0x1 NarsilM.o
+                0x008000bb                modeIdx
+ .bss.configIdleTime
                 0x008000bc        0x1 NarsilM.o
-                0x008000bc                prevConfigMode
- .bss.ConfigMode
+                0x008000bc                configIdleTime
+ .bss.configClicks
                 0x008000bd        0x1 NarsilM.o
-                0x008000bd                ConfigMode
- .bss.byLockOutSet
+                0x008000bd                configClicks
+ .bss.prevConfigMode
                 0x008000be        0x1 NarsilM.o
-                0x008000be                byLockOutSet
- .bss.byDelayRamping
+                0x008000be                prevConfigMode
+ .bss.ConfigMode
                 0x008000bf        0x1 NarsilM.o
-                0x008000bf                byDelayRamping
- .bss.savedLevel
+                0x008000bf                ConfigMode
+ .bss.byLockOutSet
                 0x008000c0        0x1 NarsilM.o
-                0x008000c0                savedLevel
- .bss.dontToggleDir
+                0x008000c0                byLockOutSet
+ .bss.byDelayRamping
                 0x008000c1        0x1 NarsilM.o
-                0x008000c1                dontToggleDir
- .bss.rampLastDirState
+                0x008000c1                byDelayRamping
+ .bss.savedLevel
                 0x008000c2        0x1 NarsilM.o
-                0x008000c2                rampLastDirState
- .bss.rampState
+                0x008000c2                savedLevel
+ .bss.dontToggleDir
                 0x008000c3        0x1 NarsilM.o
-                0x008000c3                rampState
- .bss.rampingLevel
+                0x008000c3                dontToggleDir
+ .bss.rampLastDirState
                 0x008000c4        0x1 NarsilM.o
-                0x008000c4                rampingLevel
- .bss.OffTimeEnable
+                0x008000c4                rampLastDirState
+ .bss.rampState
                 0x008000c5        0x1 NarsilM.o
-                0x008000c5                OffTimeEnable
+                0x008000c5                rampState
+ .bss.rampingLevel
+                0x008000c6        0x1 NarsilM.o
+                0x008000c6                rampingLevel
+ .bss.momentaryState
+                0x008000c7        0x1 NarsilM.o
+                0x008000c7                momentaryState
+ .bss.OffTimeEnable
+                0x008000c8        0x1 NarsilM.o
+                0x008000c8                OffTimeEnable
  *(COMMON)
- COMMON         0x008000c6       0x2b NarsilM.o
-                0x008000c6                config2
-                0x008000c7                currOutLvl2
-                0x008000c8                stepdownMode
-                0x008000c9                highToLow
-                0x008000ca                ramping
-                0x008000cb                byFETModes
-                0x008000d5                by7135Modes
-                0x008000df                modesCnt
-                0x008000e0                bvldLedOnly
-                0x008000e1                currOutLvl1
-                0x008000e2                outLevel
-                0x008000e3                blinkyMode
-                0x008000e4                rampPauseCntDn
-                0x008000e5                locatorLed
-                0x008000e6                last_modeIdx
-                0x008000e7                config3
-                0x008000e8                byStartupDelayTime
-                0x008000e9                onboardLedEnable
-                0x008000ea                modeSetIdx
-                0x008000eb                config1
-                0x008000ec                locatorLedOn
-                0x008000ed                modeMemoryEnabled
-                0x008000ee                moonlightLevel
-                0x008000ef                moonLightEnable
-                0x008000f0                specModeIdx
-                0x008000f1                PROVIDE (__bss_end, .)
-                0x00001bd0                __data_load_start = LOADADDR (.data)
-                0x00001c0a                __data_load_end = (__data_load_start + SIZEOF (.data))
+ COMMON         0x008000c9       0x2b NarsilM.o
+                0x008000c9                config2
+                0x008000ca                currOutLvl2
+                0x008000cb                stepdownMode
+                0x008000cc                highToLow
+                0x008000cd                ramping
+                0x008000ce                byFETModes
+                0x008000d8                by7135Modes
+                0x008000e2                modesCnt
+                0x008000e3                bvldLedOnly
+                0x008000e4                currOutLvl1
+                0x008000e5                outLevel
+                0x008000e6                blinkyMode
+                0x008000e7                rampPauseCntDn
+                0x008000e8                locatorLed
+                0x008000e9                last_modeIdx
+                0x008000ea                config3
+                0x008000eb                byStartupDelayTime
+                0x008000ec                onboardLedEnable
+                0x008000ed                modeSetIdx
+                0x008000ee                config1
+                0x008000ef                locatorLedOn
+                0x008000f0                modeMemoryEnabled
+                0x008000f1                moonlightLevel
+                0x008000f2                moonLightEnable
+                0x008000f3                specModeIdx
+                0x008000f4                PROVIDE (__bss_end, .)
+                0x00001cfa                __data_load_start = LOADADDR (.data)
+                0x00001d34                __data_load_end = (__data_load_start + SIZEOF (.data))
 
-.noinit         0x008000f1        0x1
+.noinit         0x008000f4        0x1
                 [!provide]                PROVIDE (__noinit_start, .)
  *(.noinit*)
- .noinit        0x008000f1        0x1 NarsilM.o
-                0x008000f1                noinit_decay
+ .noinit        0x008000f4        0x1 NarsilM.o
+                0x008000f4                noinit_decay
                 [!provide]                PROVIDE (__noinit_end, .)
-                0x008000f2                _end = .
+                0x008000f5                _end = .
                 [!provide]                PROVIDE (__heap_start, .)
 
 .eeprom         0x00810000        0x0
@@ -787,34 +794,34 @@ END GROUP
 .debug_pubnames
  *(.debug_pubnames)
 
-.debug_info     0x00000000     0x248b
+.debug_info     0x00000000     0x2517
  *(.debug_info .gnu.linkonce.wi.*)
  .debug_info    0x00000000      0x420 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/../../../../avr/lib/avr25/crtattiny85.o
- .debug_info    0x00000420     0x206b NarsilM.o
+ .debug_info    0x00000420     0x20f7 NarsilM.o
 
-.debug_abbrev   0x00000000      0x844
+.debug_abbrev   0x00000000      0x82e
  *(.debug_abbrev)
  .debug_abbrev  0x00000000      0x3e8 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/../../../../avr/lib/avr25/crtattiny85.o
- .debug_abbrev  0x000003e8      0x45c NarsilM.o
+ .debug_abbrev  0x000003e8      0x446 NarsilM.o
 
-.debug_line     0x00000000     0x1a3d
+.debug_line     0x00000000     0x1b83
  *(.debug_line .debug_line.* .debug_line_end)
  .debug_line    0x00000000       0x1a c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/../../../../avr/lib/avr25/crtattiny85.o
- .debug_line    0x0000001a     0x1a23 NarsilM.o
+ .debug_line    0x0000001a     0x1b69 NarsilM.o
 
-.debug_frame    0x00000000      0x2e4
+.debug_frame    0x00000000      0x2d4
  *(.debug_frame)
- .debug_frame   0x00000000      0x2e4 NarsilM.o
+ .debug_frame   0x00000000      0x2d4 NarsilM.o
 
-.debug_str      0x00000000      0xa0f
+.debug_str      0x00000000      0xa5b
  *(.debug_str)
  .debug_str     0x00000000      0x169 c:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/../../../../avr/lib/avr25/crtattiny85.o
- .debug_str     0x00000169      0x8a6 NarsilM.o
-                                0x8fc (size before relaxing)
+ .debug_str     0x00000169      0x8f2 NarsilM.o
+                                0x948 (size before relaxing)
 
-.debug_loc      0x00000000     0x1020
+.debug_loc      0x00000000      0xfec
  *(.debug_loc)
- .debug_loc     0x00000000     0x1020 NarsilM.o
+ .debug_loc     0x00000000      0xfec NarsilM.o
 
 .debug_macinfo
  *(.debug_macinfo)

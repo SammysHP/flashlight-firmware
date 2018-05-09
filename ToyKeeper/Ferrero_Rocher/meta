@@ -8,4 +8,4 @@ Memory: none, yes
 MCU: attiny13
 Authors: ToyKeeper
 Modes: battcheck, soft lock, ramp
-Extras: battery indicator LEDs, Baton UI, ramping UI
+Extras: battery indicator LEDs, Baton UI, ramping UI, turbo timer
