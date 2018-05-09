@@ -192,7 +192,7 @@ static int16_t /* 15:13 */ flicker_filter(int16_t /* 7:5 */ x) {
 //
 // [0] http://inkofpark.wordpress.com/2013/12/23/arduino-flickering-candle/
 // [1] https://github.com/mokus0/junkbox/blob/master/Haskell/Math/BiQuad.hs
-#define UPDATE_RATE     156.25 // Hz
+#define UPDATE_RATE     450 // Hz
 #define FILTER_STDDEV   6.2e3
 static int16_t /* 15:13 */ flicker_filter(int8_t /* 7:5 */ x) {
     const int16_t
