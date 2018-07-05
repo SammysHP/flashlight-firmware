@@ -22,7 +22,7 @@
 
 uint8_t pgm_rand() {
     static uint16_t offset = 255;
-    offset = (offset + 1) & 0x3ff | 0x0100;
+    offset = ((offset + 1) & 0x3ff) | 0x0100;
     return pgm_read_byte(offset);
 }
 

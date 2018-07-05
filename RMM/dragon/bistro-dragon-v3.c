@@ -1,9 +1,16 @@
 /*
  * "Bistro" firmware
+ *  Modified for dual color use, as seen on the CWF Dragon Driver by MTN Electronics / RMM 2018
+ *  Some other changes:
+ *  -Changed configuration options and order of options.
+ *  -Small "ramp" size with discrete levels instead of using full ramp. 
+ *  -Changed some of the blinking speeds and levels "to taste". 
+ *
  * This code runs on a single-channel or dual-channel driver (FET+7135)
  * with an attiny25/45/85 MCU and a capacitor to measure offtime (OTC).
  *
  * Copyright (C) 2015 Selene Scriven
+ * 
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,7 +57,7 @@
  */
 // Choose your MCU here, or in the build script
 //#define ATTINY 13
-//#define ATTINY 25
+#define ATTINY 25
 // FIXME: make 1-channel vs 2-channel power a single #define option
 #define FET_7135_LAYOUT  // specify an I/O pin layout
 // Also, assign I/O pins in this file:
@@ -72,8 +79,8 @@
 #define OFFTIM3             // Use short/med/long off-time presses
                             // instead of just short/long
 
-// ../../bin/level_calc.py 64 1 10 1300 y 3 0.23 140
-#define RAMP_SIZE  64
+// ../../bin/level_calc.py 64 1 10 1400 y 3 0.25 140
+//#define RAMP_SIZE  64
 // log curve
 //#define RAMP_7135  3,3,3,3,3,3,4,4,4,4,4,5,5,5,6,6,7,7,8,9,10,11,12,13,15,16,18,21,23,27,30,34,39,44,50,57,65,74,85,97,111,127,145,166,190,217,248,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 //#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,6,11,17,23,30,39,48,59,72,86,103,121,143,168,197,255
@@ -81,44 +88,52 @@
 //#define RAMP_7135  3,5,8,12,17,24,32,41,51,63,75,90,105,121,139,158,178,200,223,247,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 //#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,6,9,12,16,19,22,26,30,33,37,41,45,50,54,59,63,68,73,78,84,89,94,100,106,111,117,123,130,136,142,149,156,162,169,176,184,191,198,206,214,221,255
 // x**3 curve
-#define RAMP_7135  3,3,4,5,6,8,10,12,15,19,23,28,33,40,47,55,63,73,84,95,108,122,137,153,171,190,210,232,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
-#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,5,8,11,14,18,22,26,30,34,39,44,49,54,59,65,71,77,84,91,98,105,113,121,129,137,146,155,164,174,184,194,205,216,255
+
+//#define RAMP_7135  6,6,7,7,8,9,10,12,16,20,25,30,36,42,50,59,68,78,90,103,116,131,148,165,184,204,226,249,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
+//#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,7,10,13,16,20,24,28,32,36,41,46,51,56,61,67,73,80,86,93,100,107,115,123,131,139,148,157,166,176,186,196,207,218,255
+
 // x**5 curve
 //#define RAMP_7135  3,3,3,4,4,5,5,6,7,8,10,11,13,15,18,21,24,28,33,38,44,50,57,66,75,85,96,108,122,137,154,172,192,213,237,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0
 //#define RAMP_FET   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,6,9,13,17,21,25,30,35,41,47,53,60,67,75,83,91,101,111,121,132,144,156,169,183,198,213,255
 
 // uncomment to ramp up/down to a mode instead of jumping directly
-#define SOFT_START
+//#define SOFT_START
+
+// THESE VALUES ARE USED FOR EASY LEVEL CHANGING INSTEAD OF USING THE RAMP
+#define RAMP_SIZE 8
+#define RAMP_7135 25,255,0,0,0,0,0,0
+#define RAMP_FET  0,0,1,15,40,90,140,255
 
 // Enable battery indicator mode?
 #define USE_BATTCHECK
 // Choose a battery indicator style
 //#define BATTCHECK_4bars  // up to 4 blinks
-//#define BATTCHECK_8bars  // up to 8 blinks
-#define BATTCHECK_VpT  // Volts + tenths
+#define BATTCHECK_8bars  // up to 8 blinks
+//#define BATTCHECK_VpT  // Volts + tenths
 
 // output to use for blinks on battery check (and other modes)
 #define BLINK_BRIGHTNESS    RAMP_SIZE/4
 // ms per normal-speed blink
-#define BLINK_SPEED         500
+//#define BLINK_SPEED         650
+#define BLINK_SPEED         980
 
 // Hidden modes are *before* the lowest (moon) mode, and should be specified
 // in reverse order.  So, to go backward from moon to turbo to strobe to
 // battcheck, use BATTCHECK,STROBE,TURBO .
-#define HIDDENMODES         BIKING_STROBE,BATTCHECK,POLICE_STROBE,TURBO
+#define HIDDENMODES         BIKING_STROBE,BATTCHECK,STROBE,TURBO
 
 #define TURBO     RAMP_SIZE       // Convenience code for turbo mode
 #define BATTCHECK 254       // Convenience code for battery check mode
 #define GROUP_SELECT_MODE 253
 #define TEMP_CAL_MODE 252
 // Uncomment to enable tactical strobe mode
-//#define STROBE    251       // Convenience code for strobe mode
+#define STROBE    251       // Convenience code for strobe mode
 // Uncomment to unable a 2-level stutter beacon instead of a tactical strobe
 #define BIKING_STROBE 250   // Convenience code for biking strobe mode
 // comment out to use minimal version instead (smaller)
 #define FULL_BIKING_STROBE
 //#define RAMP 249       // ramp test mode for tweaking ramp shape
-#define POLICE_STROBE 248
+//#define POLICE_STROBE 248
 //#define RANDOM_STROBE 247
 
 // thermal step-down
@@ -159,15 +174,16 @@
 // Config option variables
 #define FIRSTBOOT 0b01010101
 uint8_t firstboot = FIRSTBOOT;  // detect initial boot or factory reset
-uint8_t modegroup = 5;     // which mode group (set above in #defines)
-uint8_t enable_moon = 1;   // Should we add moon to the set of modes?
+uint8_t modegroup = 0;     // which mode group (set above in #defines)
+uint8_t enable_moon = 0;   // Should we add moon to the set of modes?
 uint8_t reverse_modes = 0; // flip the mode order?
 uint8_t memory = 0;        // mode memory, or not (set via soldered star)
 #ifdef OFFTIM3
 uint8_t offtim3 = 1;       // enable medium-press?
 #endif
 #ifdef TEMPERATURE_MON
-uint8_t maxtemp = 79;      // temperature step-down threshold
+uint8_t maxtemp = 85;      // temperature step-down threshold
+uint8_t maxtempturbo = 77;
 #endif
 uint8_t muggle_mode = 0;   // simple mode designed for muggles
 // Other state variables
@@ -190,18 +206,34 @@ uint8_t solid_modes;
 PROGMEM const uint8_t hiddenmodes[] = { HIDDENMODES };
 // default values calculated by group_calc.py
 // Each group must be 8 values long, but can be cut short with a zero.
-#define NUM_MODEGROUPS 9  // don't count muggle mode
+//#define NUM_MODEGROUPS 8  // don't count muggle mode
+
+/* Current mode levels and groups are as follows:
+*  1= Low Red; 2 = High Red
+*  3 = ML White 4 = 5% White
+*  5 = 15% White 6= 35% White
+*  7 = 50% White 8 = 100% White
+*  Group 1: Low Color, High Color, ML, 5%, 15%, 35%, 50%, 100%
+*  Group 2: Low Color, High Color, ML, 35%, 100%
+*  Group 3: Low Color, ML, 5%, 15%, 35%, 50%, 100%
+*  Group 4: ML, 5%, 15%, 35%, 50%, 100%
+*  Group 5: ML, 5%, 15%, 100%
+*  Group 6: ML, 15%, 100%
+*  Group 7: 5%, 15%, 35%, 50%, 100%
+*  Group 8: 15%, 100%
+*/
+
+#define NUM_MODEGROUPS 8
 PROGMEM const uint8_t modegroups[] = {
-    64,  0,  0,  0,  0,  0,  0,  0,
-    11, 64,  0,  0,  0,  0,  0,  0,
-    11, 35, 64,  0,  0,  0,  0,  0,
-    11, 26, 46, 64,  0,  0,  0,  0,
-    11, 23, 36, 50, 64,  0,  0,  0,
-    11, 20, 31, 41, 53, 64,  0,  0,
-    29, 64,POLICE_STROBE,0,0,0,0,0,  // 7: special group A
-    BIKING_STROBE,BATTCHECK,11,29,64,0,0,0,  // 8: special group B
-     9, 18, 29, 46, 64,  0,  0,  0,  // 9: special group C
-    11, 29, 50,  0,                  // muggle mode, exception to "must be 8 bytes long"
+    1, 2, 3,  4,  5,  6,  7,  8,
+    1, 2, 4,  5,  6,  8,  0,  0,
+    1, 3, 4,  5,  6,  7,  8,  0,
+    1, 4, 5, 6,  8,  0,  0,  0,
+    1, 2, 4, 8, 0, 0,  0,  0,
+    1, 5, 8, 0, 0, 0,  0,  0,
+    3, 4, 5, 6, 7, 8, 0,  0,
+    4, 5, 6, 8, 0, 0, 0, 0,
+  //  10, 30, 50,  0,                  // muggle mode, exception to "must be 8 bytes long"
 };
 uint8_t modes[] = { 1,2,3,4,5,6,7,8,9, HIDDENMODES };  // make sure this is long enough...
 
@@ -409,8 +441,9 @@ void set_mode(uint8_t mode) {
         shift_amount = (diff >> 2) | (diff!=0);
         actual_level += shift_amount;
         set_level(actual_level);
-        //_delay_ms(RAMP_SIZE/20);  // slow ramp
-        _delay_ms(RAMP_SIZE/4);  // fast ramp
+    //    _delay_ms(RAMP_SIZE/20);  // slow ramp
+		_delay_ms(10);
+	    //_delay_ms(RAMP_SIZE/10);  // fast ramp
     } while (target_level != actual_level);
 #else
     set_level(mode);
@@ -593,33 +626,41 @@ int main(void)
             fast_presses = 0; // exit this mode after one use
             mode_idx = 0;
 
+// ***DISABLED OPTIONS & CHANGED ORDER FROM ORIGINAL BISTRO***
             // Enter or leave "muggle mode"?
-            toggle(&muggle_mode, 1);
-            if (muggle_mode) { continue; };  // don't offer other options in muggle mode
+  //          toggle(&muggle_mode, 1);
+   //         if (muggle_mode) { continue; };  // don't offer other options in muggle mode
 
-            toggle(&memory, 2);
+   
 
-            toggle(&enable_moon, 3);
+      //      toggle(&enable_moon, 3);
 
-            toggle(&reverse_modes, 4);
+  
 
             // Enter the mode group selection mode?
             mode_idx = GROUP_SELECT_MODE;
-            toggle(&mode_override, 5);
+  //          toggle(&mode_override, 5);
+			toggle(&mode_override, 1);
             mode_idx = 0;
+	
+	        toggle(&memory, 2);
+	
+	        toggle(&reverse_modes, 3);
 
-#ifdef OFFTIM3
-            toggle(&offtim3, 6);
-#endif
+
 
 #ifdef TEMPERATURE_MON
             // Enter temperature calibration mode?
             mode_idx = TEMP_CAL_MODE;
-            toggle(&mode_override, 7);
+            toggle(&mode_override, 4);
             mode_idx = 0;
 #endif
 
-            toggle(&firstboot, 8);
+#ifdef OFFTIM3
+            toggle(&offtim3, 5);
+#endif
+// *** DISABLED OPTION ***
+   //         toggle(&firstboot, 8);
 
             //output = pgm_read_byte(modes + mode_idx);
             output = modes[mode_idx];
@@ -628,7 +669,7 @@ int main(void)
 #ifdef STROBE
         else if (output == STROBE) {
             // 10Hz tactical strobe
-            strobe(50,50);
+            strobe(20,35);
         }
 #endif // ifdef STROBE
 #ifdef POLICE_STROBE
@@ -655,10 +696,12 @@ int main(void)
             // 2-level stutter beacon for biking and such
 #ifdef FULL_BIKING_STROBE
             // normal version
+			// CHANGED OUTPUT LEVELS
             for(i=0;i<4;i++) {
-                set_output(255,0);
-                _delay_ms(5);
-                set_output(0,255);
+         //       set_output(255,0);
+				set_output(255,0);	
+		        _delay_ms(5);
+                set_output(0,20);
                 _delay_ms(65);
             }
             _delay_ms(720);
@@ -689,7 +732,6 @@ int main(void)
         else if (output == BATTCHECK) {
 #ifdef BATTCHECK_VpT
             // blink out volts and tenths
-            _delay_ms(50);
             uint8_t result = battcheck();
             blink(result >> 5, BLINK_SPEED/8);
             _delay_ms(BLINK_SPEED);
@@ -714,7 +756,8 @@ int main(void)
                 modegroup = i;
                 save_state();
 
-                blink(1, BLINK_SPEED/3);
+ //               blink(1, BLINK_SPEED/3);
+				blink(1, BLINK_SPEED/5);
             }
             _delay_s(); _delay_s();
         }
@@ -750,17 +793,31 @@ int main(void)
             if (temp >= maxtemp) {
                 overheat_count ++;
                 // reduce noise, and limit the lowest step-down level
-                if ((overheat_count > 15) && (actual_level > (RAMP_SIZE/8))) {
-                    actual_level --;
-                    //_delay_ms(5000);  // don't ramp down too fast
-                    overheat_count = 0;  // don't ramp down too fast
+                if ((overheat_count > 20) && (actual_level > 4)) {
+					actual_level --; //bigger steps
+				if (actual_level > 6) {		 
+			_delay_s();
+			_delay_s();
+			_delay_s();
+				//don't ramp down too fast!
+				}
+				else {
+				_delay_ms(5000);
+				_delay_ms(5000);
+				_delay_ms(5000);
+				}					
+					overheat_count = 0;  // don't ramp down too fast
                 }
             } else {
                 // if we're not overheated, ramp up to the user-requested level
                 overheat_count = 0;
-                if ((temp < maxtemp - 2) && (actual_level < output)) {
+                if ((temp < maxtemp - 1) && (actual_level < output)) {
                     actual_level ++;
-                }
+					_delay_s(); _delay_s(); _delay_s(); _delay_s(); _delay_s(); _delay_s(); 
+					_delay_s(); _delay_s(); _delay_s(); _delay_s(); _delay_s(); _delay_s(); 
+					_delay_s(); _delay_s(); _delay_s(); _delay_s(); _delay_s(); _delay_s();  // don't step back up too fast and overshoot.  
+				
+				}
             }
             set_mode(actual_level);
 
@@ -792,13 +849,9 @@ int main(void)
                     actual_level = RAMP_SIZE / 2;
                 } else if (actual_level > 1) {  // regular solid mode
                     // step down from solid modes somewhat gradually
-                    // drop by 25% each time
-                    actual_level = (actual_level >> 2) + (actual_level >> 1);
-                    // drop by 50% each time
+					actual_level--;
                     //actual_level = (actual_level >> 1);
-                } else { // Already at the lowest mode
-                    //mode_idx = 0;  // unnecessary; we never leave this clause
-                    //actual_level = 0;  // unnecessary; we never leave this clause
+                } else { 
                     // Turn off the light
                     set_level(0);
                     // Power down as many components as possible
@@ -821,3 +874,4 @@ int main(void)
 
     //return 0; // Standard Return Code
 }
+	

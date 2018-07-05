@@ -78,13 +78,13 @@ PROGMEM const uint8_t voltage_blinks[] = {
                // 0 blinks for less than 1%
     ADC_30,    // 1 blink  for 1%-12.5%
     ADC_33,    // 2 blinks for 12.5%-25%
-    ADC_35,    // 3 blinks for 25%-37.5%
-    ADC_37,    // 4 blinks for 37.5%-50%
-    ADC_38,    // 5 blinks for 50%-62.5%
-    ADC_39,    // 6 blinks for 62.5%-75%
-    ADC_40,    // 7 blinks for 75%-87.5%
-    ADC_41,    // 8 blinks for 87.5%-100%
-    ADC_42,    // 9 blinks for >100%
+    ADC_34,    // 3 blinks for 25%-37.5%
+    ADC_35,    // 4 blinks for 37.5%-50%
+    ADC_36,    // 5 blinks for 50%-62.5%
+    ADC_37,    // 6 blinks for 62.5%-75%
+    ADC_38,    // 7 blinks for 75%-87.5%
+    ADC_39,    // 8 blinks for 87.5%-100%
+    ADC_40,    // 9 blinks for >100%
     255,       // Ceiling, don't remove  (10 blinks means "error")
 };
 #endif  // BATTCHECK_8bars
@@ -93,9 +93,9 @@ PROGMEM const uint8_t voltage_blinks[] = {
 PROGMEM const uint8_t v_whole_blinks[] = {
                // 0 blinks for (shouldn't happen)
     0,         // 1 blink for (shouldn't happen)
-    ADC_20,    // 2 blinks for 2V
-    ADC_30,    // 3 blinks for 3V
-    ADC_40,    // 4 blinks for 4V
+    ADC_18,    // 2 blinks for 2V
+    ADC_28,    // 3 blinks for 3V
+    ADC_38,    // 4 blinks for 4V
     255,       // Ceiling, don't remove
 };
 PROGMEM const uint8_t v_tenth_blinks[] = {
