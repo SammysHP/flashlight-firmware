@@ -30,7 +30,7 @@ The interface is as follows:
       you leave mode memory off you can skip them with a long press.  
       Blinky modes include:
 
-      - Tactical strobe (~10 Hz)
+      - Tactical police strobe (~8/16 Hz)
 
       - Biking flasher (2-level stutter beacon, 1 Hz)
 

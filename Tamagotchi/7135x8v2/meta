@@ -1,6 +1,6 @@
 Description: Very flexible clicky firmware with hidden modes, from fonarevka.ru
 Authors: Tamagotchi, DooMmen, vdavid
-MCU: attiny13a
+MCU: attiny13
 Button-Type: clicky
 Memory: ontime, none
 Modes: hidden moon, battcheck, ramp, strobe, distress beacon, bike flasher, police flasher, SOS

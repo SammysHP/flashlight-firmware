@@ -7,7 +7,7 @@ Description: "Bistro" firmware for clicky-switch lights
   - medium-press to go backward, or not
   - thermal calibration mode sets the maximum allowed temperature
   - "muggle mode" simplified UI for use while lending the light to others
-  Default config fits on an attiny25, which can be used on drivers designed for the attiny13a.
+  Default config fits on an attiny25, which can be used on drivers designed for the attiny13.
   So, there is no need to build a special driver board with extra room for tiny45/85.
   Should work on both FET+1 and single-channel drivers, though the single-channel ones
   will need to be recompiled with a different brightness level table.

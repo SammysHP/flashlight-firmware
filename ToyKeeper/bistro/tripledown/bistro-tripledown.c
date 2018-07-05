@@ -160,6 +160,7 @@
 #include <string.h>
 
 #define OWN_DELAY           // Don't use stock delay functions.
+#define USE_DELAY_MS        // use _delay_ms()
 #define USE_DELAY_S         // Also use _delay_s(), not just _delay_ms()
 #include "tk-delay.h"
 
@@ -479,12 +480,12 @@ void toggle(uint8_t *var, uint8_t num) {
 }
 
 #ifdef TEMPERATURE_MON
-uint8_t get_temperature() {
+uint8_t get_temp() {
     ADC_on_temperature();
     // average a few values; temperature is noisy
     uint16_t temp = 0;
     uint8_t i;
-    get_voltage();
+    get_temperature();
     for(i=0; i<16; i++) {
         temp += get_voltage();
         _delay_ms(5);
@@ -774,7 +775,7 @@ int main(void)
 
             // measure, save, wait...  repeat
             while(1) {
-                maxtemp = get_temperature();
+                maxtemp = get_temp();
                 save_state();
                 _delay_s(); _delay_s();
             }
@@ -783,7 +784,7 @@ int main(void)
         else {  // Regular non-hidden solid mode
             set_mode(actual_level);
 #ifdef TEMPERATURE_MON
-            uint8_t temp = get_temperature();
+            uint8_t temp = get_temp();
 
             // step down? (or step back up?)
             if (temp >= maxtemp) {

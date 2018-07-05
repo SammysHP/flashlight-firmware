@@ -6,7 +6,7 @@ Description: "Biscotti" firmware for Convoy S-series and C8 lights
   Default config fits on an attiny13.
   Single power channel only.
 Button-Type: clicky
-Memory: offtime, configurable
+Memory: offtime, mem decay, configurable
 MCU: attiny13, attiny25, attiny45, attiny85
 Authors: ToyKeeper
 Modes: battcheck, tactical strobe, bike flasher, config, SOS

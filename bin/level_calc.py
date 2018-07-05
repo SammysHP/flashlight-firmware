@@ -1,8 +1,12 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import math
 
 interactive = False
+# supported shapes: ninth, fifth, cube, square, log_e, log_2
+ramp_shape = 'cube'
 
 
 def main(args):
@@ -41,6 +45,9 @@ def main(args):
         chan = Empty()
         chan.pwm_max = 255
         ask(questions_per_channel, chan)
+        chan.type = chan.type.upper()
+        if chan.type not in ('7135', 'FET'):
+            raise ValueError('Invalid channel type: %s' % (chan.type,))
         channels.append(chan)
 
     # calculate total output of all previous channels
@@ -54,8 +61,8 @@ def main(args):
     multi_pwm(answers, channels)
 
     if interactive: # Wait on exit, in case user invoked us by clicking an icon
-        print 'Press Enter to exit:'
-        raw_input()
+        print('Press Enter to exit:')
+        input_text()
 
 
 class Empty:
@@ -72,7 +79,7 @@ def multi_pwm(answers, channels):
             lm_max = channels[-1].lm_max
         else:
             # this would be a stupid driver design
-            raise ValueError, "FET channel isn't the most powerful?"
+            raise ValueError("FET channel isn't the most powerful?")
 
     visual_min = invpower(lm_min)
     visual_max = invpower(lm_max)
@@ -96,7 +103,7 @@ def multi_pwm(answers, channels):
                 # This shouldn't happen, the FET is assumed to be the highest channel
                 if channel.type == 'FET':
                     # this would be a stupid driver design
-                    raise ValueError, "FET channel isn't the most powerful?"
+                    raise ValueError("FET channel isn't the most powerful?")
 
                 # Handle FET turbo specially
                 if (i == (answers.num_levels - 1)) \
@@ -149,26 +156,35 @@ def get_value(text, default, args):
     else:
         global interactive
         interactive = True
-        print text, '(%s)' % (default),
-        result = raw_input()
+        print(text + ' (%s) ' % (default), end='')
+        result = input_text()
     result = result.strip()
     return result
 
 
+shapes = dict(
+        ninth  = (lambda x: x**9,      lambda x: math.pow(x, 1/9.0)),
+        fifth  = (lambda x: x**5,      lambda x: math.pow(x, 1/5.0)),
+        cube   = (lambda x: x**3,      lambda x: math.pow(x, 1/3.0)),
+        square = (lambda x: x**2,      lambda x: math.pow(x, 1/2.0)),
+        log_e  = (lambda x: math.e**x, lambda x: math.log(x, math.e)),
+        log_2  = (lambda x: 2.0**x,    lambda x: math.log(x, 2.0)),
+        )
+
 def power(x):
-    #return x**5
-    return x**3
-    #return x**2
-    #return math.e**x
-    #return 2.0**x
+    return shapes[ramp_shape][0](x)
 
 
 def invpower(x):
-    #return math.pow(x, 1/5.0)
-    return math.pow(x, 1/3.0)
-    #return math.pow(x, 1/2.0)
-    #return math.log(x, math.e)
-    #return math.log(x, 2.0)
+    return shapes[ramp_shape][1](x)
+
+
+def input_text():
+    try:
+        value = raw_input()  # python2
+    except NameError:
+        value = input()  # python3
+    return value
 
 
 if __name__ == "__main__":

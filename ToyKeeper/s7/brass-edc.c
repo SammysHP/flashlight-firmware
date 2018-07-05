@@ -69,6 +69,7 @@
 
 #define VOLTAGE_MON                 // Comment out to disable
 #define OWN_DELAY                   // Should we use the built-in delay or our own?
+#define USE_DELAY_MS
 #define USE_FINE_DELAY
 
 #define FAST_PWM_START      10      // Anything under this will use phase-correct
