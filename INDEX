@@ -115,6 +115,12 @@ Summary of each project
     ToyKeeper/spaghetti-monster/ramping-ui:
         Example ramping UI for FSM.
 
+    ToyKeeper/spaghetti-monster/rampingios:
+        RampingIOS V3, the UI for Emisar lights.
+
+    ToyKeeper/spaghetti-monster/werner:
+        Werner-style UI for FSM.
+
     ToyKeeper/starry-offtime:
         STAR_off_time with better dual PWM config and some extras
 
@@ -239,6 +245,8 @@ Authors
         ToyKeeper/spaghetti-monster/darkhorse
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/ramping-ui
+        ToyKeeper/spaghetti-monster/rampingios
+        ToyKeeper/spaghetti-monster/werner
         ToyKeeper/starry-offtime
         ToyKeeper/tail-light
         ToyKeeper/uv
@@ -333,10 +341,14 @@ Button-Type
         ToyKeeper/spaghetti-monster/darkhorse
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/ramping-ui
+        ToyKeeper/spaghetti-monster/rampingios
         Werner/STAR_improvements
         dthoang
         tterev3/attiny10_starter_code
         tterev3/pic10f322-examples
+
+    momentary + clicky:
+        ToyKeeper/spaghetti-monster/werner
 
 Extras
 
@@ -366,6 +378,8 @@ Extras
         ToyKeeper/spaghetti-monster/darkhorse
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/ramping-ui
+        ToyKeeper/spaghetti-monster/rampingios
+        ToyKeeper/spaghetti-monster/werner
         gchart/babka
         gchart/ramping-ui
 
@@ -395,6 +409,8 @@ Extras
         ToyKeeper/spaghetti-monster/darkhorse
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/ramping-ui
+        ToyKeeper/spaghetti-monster/rampingios
+        ToyKeeper/spaghetti-monster/werner
         ToyKeeper/starry-offtime
         pilotdog68/xintd-x3
 
@@ -459,6 +475,7 @@ Extras
         ToyKeeper/crescendo
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/ramping-ui
+        ToyKeeper/spaghetti-monster/rampingios
         gchart/ramping-ui
 
     self-adjusting moon:
@@ -504,6 +521,8 @@ Extras
         ToyKeeper/spaghetti-monster/baton
         ToyKeeper/spaghetti-monster/darkhorse
         ToyKeeper/spaghetti-monster/ramping-ui
+        ToyKeeper/spaghetti-monster/rampingios
+        ToyKeeper/spaghetti-monster/werner
 
     thermal step-down:
         JonnyC/STAR/MTN_momentary_temp
@@ -519,6 +538,8 @@ Extras
         ToyKeeper/spaghetti-monster/darkhorse
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/ramping-ui
+        ToyKeeper/spaghetti-monster/rampingios
+        ToyKeeper/spaghetti-monster/werner
 
     turbo timer:
         Flintrock/bistro-hd
@@ -642,6 +663,8 @@ MCU
         ToyKeeper/spaghetti-monster/darkhorse
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/ramping-ui
+        ToyKeeper/spaghetti-monster/rampingios
+        ToyKeeper/spaghetti-monster/werner
 
     pic10f322:
         tterev3/pic10f322-examples
@@ -773,6 +796,8 @@ Memory
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/baton
         ToyKeeper/spaghetti-monster/ramping-ui
+        ToyKeeper/spaghetti-monster/rampingios
+        ToyKeeper/spaghetti-monster/werner
 
 Modes
 
@@ -817,6 +842,8 @@ Modes
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/darkhorse
         ToyKeeper/spaghetti-monster/ramping-ui
+        ToyKeeper/spaghetti-monster/rampingios
+        ToyKeeper/spaghetti-monster/werner
         ToyKeeper/starry-offtime
         ToyKeeper/tail-light
         ToyKeeper/uv
@@ -833,6 +860,7 @@ Modes
         ToyKeeper/s7
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/darkhorse
+        ToyKeeper/spaghetti-monster/rampingios
         ToyKeeper/tail-light
         ToyKeeper/uv
         _the_/TheStar
@@ -873,6 +901,8 @@ Modes
         ToyKeeper/blf-a6
         ToyKeeper/crescendo
         ToyKeeper/spaghetti-monster/anduril
+        ToyKeeper/spaghetti-monster/rampingios
+        ToyKeeper/spaghetti-monster/werner
         gchart/babka
         gchart/ramping-ui
         pilotdog68/xintd-x3
@@ -882,6 +912,8 @@ Modes
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/baton
         ToyKeeper/spaghetti-monster/ramping-ui
+        ToyKeeper/spaghetti-monster/rampingios
+        ToyKeeper/spaghetti-monster/werner
 
     distress beacon:
         Tamagotchi/7135x8v2
@@ -911,6 +943,8 @@ Modes
         Tom_E/narsil
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/momentary
+        ToyKeeper/spaghetti-monster/rampingios
+        ToyKeeper/spaghetti-monster/werner
 
     muggle:
         Flintrock/bistro-hd
@@ -948,6 +982,7 @@ Modes
         ToyKeeper/crescendo
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/ramping-ui
+        ToyKeeper/spaghetti-monster/rampingios
         alexvh/basic_off_time_driver
         gchart/ramping-ui
 
@@ -963,6 +998,7 @@ Modes
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/baton
+        ToyKeeper/spaghetti-monster/rampingios
 
     strobe:
         Tamagotchi/7135x8v2
@@ -993,6 +1029,8 @@ Modes
         Tom_E/narsil
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/ramping-ui
+        ToyKeeper/spaghetti-monster/rampingios
+        ToyKeeper/spaghetti-monster/werner
 
     variable heartbeat:
         DrJones/heartbeat
