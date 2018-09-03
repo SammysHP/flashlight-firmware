@@ -26,6 +26,7 @@
 //#define FSM_BLF_Q8_DRIVER
 //#define FSM_FW3A_DRIVER
 //#define FSM_BLF_GT_DRIVER
+//#define FSM_BLF_GT_MINI_DRIVER
 
 #define USE_LVP  // FIXME: won't build when this option is turned off
 
@@ -67,6 +68,9 @@
 /***** specific settings for known driver types *****/
 #if defined(FSM_BLF_GT_DRIVER)
 #include "cfg-blf-gt.h"
+
+#elif defined(FSM_BLF_GT_MINI_DRIVER)
+#include "cfg-blf-gt-mini.h"
 
 #elif defined(FSM_BLF_Q8_DRIVER)
 #include "cfg-blf-q8.h"
@@ -371,7 +375,7 @@ uint8_t off_state(EventPtr event, uint16_t arg) {
         return MISCHIEF_MANAGED;
     }
     #endif
-    // hold (initially): go to lowest level, but allow abort for regular click
+    // hold (initially): go to lowest level (floor), but allow abort for regular click
     else if (event == EV_click1_press) {
         set_level(nearest_level(1));
         return MISCHIEF_MANAGED;
@@ -385,7 +389,7 @@ uint8_t off_state(EventPtr event, uint16_t arg) {
         }
         return MISCHIEF_MANAGED;
     }
-    // hold, release quickly: go to lowest level
+    // hold, release quickly: go to lowest level (floor)
     else if (event == EV_click1_hold_release) {
         set_state(steady_state, 1);
         return MISCHIEF_MANAGED;
@@ -405,14 +409,14 @@ uint8_t off_state(EventPtr event, uint16_t arg) {
         set_level(0);
         return MISCHIEF_MANAGED;
     }
-    // click, hold: go to highest level (for ramping down)
+    // click, hold: go to highest level (ceiling) (for ramping down)
     else if (event == EV_click2_hold) {
         set_state(steady_state, MAX_LEVEL);
         return MISCHIEF_MANAGED;
     }
-    // 2 clicks: highest mode
+    // 2 clicks: highest mode (ceiling)
     else if (event == EV_2clicks) {
-        set_state(steady_state, nearest_level(MAX_LEVEL));
+        set_state(steady_state, MAX_LEVEL);
         return MISCHIEF_MANAGED;
     }
     #ifdef USE_BATTCHECK
@@ -1094,16 +1098,15 @@ uint8_t lockout_state(EventPtr event, uint16_t arg) {
         last = pgm_read_byte(event + i);
     if (arg == 0) {  // Only turn on/off when button state changes
         if ((last == A_PRESS) || (last == A_HOLD)) {
-            // detect moon level and activate it
-            uint8_t lvl = ramp_smooth_floor;
             #ifdef LOCKOUT_MOON_LOWEST
             // Use lowest moon configured
+            uint8_t lvl = ramp_smooth_floor;
             if (ramp_discrete_floor < lvl) lvl = ramp_discrete_floor;
+            set_level(lvl);
             #else
             // Use moon from current ramp
-            if (ramp_style) lvl = ramp_discrete_floor;
+            set_level(nearest_level(1));
             #endif
-            set_level(lvl);
         }
         else if ((last == A_RELEASE) || (last == A_RELEASE_TIMEOUT)) {
             set_level(0);
