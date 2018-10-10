@@ -96,6 +96,12 @@
 #elif defined(FSM_EMISAR_D1S_DRIVER)
 #include "hwdef-Emisar_D1S.h"
 
+#elif defined(FSM_FF_PL47_DRIVER)
+#include "hwdef-FF_PL47.h"
+
+#elif defined(FSM_FF_ROT66_DRIVER)
+#include "hwdef-FF_ROT66.h"
+
 #elif defined(FSM_FW3A_DRIVER)
 #include "hwdef-FW3A.h"
 
