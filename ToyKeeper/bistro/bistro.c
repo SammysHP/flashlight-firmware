@@ -406,7 +406,7 @@ void count_modes() {
     if (my_reverse_modes) {
         // TODO: yuck, isn't there a better way to do this?
         int8_t i;
-        src += solid_modes;
+        src = modegroups + (my_modegroup<<3) + solid_modes;
         dest = modes;
         for(i=0; i<solid_modes; i++) {
             src --;
