@@ -22,6 +22,9 @@ Summary of each project
     DrJones/luxdrv:
         DrJones' first clicky EDC firmware
 
+    Flashy_Mike/otsm-example:
+        OTSM example code (offtime sleep mode)
+
     Flintrock/bistro-hd:
         "Bistro-HD", bistro your way. OTSM, eswitch, Vcc reads, safe_presses, turbo timeout...
 
@@ -186,6 +189,9 @@ Authors
         DrJones/luxdrv
         odd/MGdriver
 
+    Flashy Mike:
+        Flashy_Mike/otsm-example
+
     Flintrock:
         Flintrock/bistro-hd
 
@@ -293,6 +299,7 @@ Button-Type
         DrJones/MiniDrv
         DrJones/NLITE
         DrJones/luxdrv
+        Flashy_Mike/otsm-example
         Flintrock/bistro-hd
         JonnyC/STAR/STAR
         JonnyC/STAR/STAR_dual_switch
@@ -384,12 +391,14 @@ Extras
         gchart/ramping-ui
 
     OTSM:
+        Flashy_Mike/otsm-example
         Flintrock/bistro-hd
 
     battery indicator LEDs:
         ToyKeeper/Ferrero_Rocher
 
     dual PWM:
+        Flashy_Mike/otsm-example
         Flintrock/bistro-hd
         JonnyC/STAR/STAR
         JonnyC/STAR/STAR_momentary
@@ -447,6 +456,7 @@ Extras
         pilotdog68/xintd-x3
 
     offtime-3:
+        Flashy_Mike/otsm-example
         Flintrock/bistro-hd
         RMM/dragon
         ToyKeeper/bistro
@@ -579,6 +589,9 @@ License
         gchart/babka
         gchart/ramping-ui
 
+    unspecified:
+        Flashy_Mike/otsm-example
+
 MCU
 
     attiny10:
@@ -622,6 +635,7 @@ MCU
         pilotdog68/xintd-x3
 
     attiny25:
+        Flashy_Mike/otsm-example
         Flintrock/bistro-hd
         RMM/dragon
         ToyKeeper/battcheck
@@ -688,6 +702,7 @@ Memory
         pilotdog68/xintd-x3
 
     OTSM:
+        Flashy_Mike/otsm-example
         Flintrock/bistro-hd
 
     configurable:
@@ -734,6 +749,7 @@ Memory
         odd/MGdriver
 
     offtime:
+        Flashy_Mike/otsm-example
         Flintrock/bistro-hd
         JonnyC/STAR/STAR_off_time
         Mike_C/X85

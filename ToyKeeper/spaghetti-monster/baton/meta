@@ -4,5 +4,5 @@ MCU: attiny45, attiny85
 Button-Type: momentary
 Memory: yes
 Modes: discrete ramp, soft lock, party strobe
-Extras: thermal regulation, LVP, dual PWM, triple PWM
+Extras: thermal regulation, LVP, dual PWM
 
