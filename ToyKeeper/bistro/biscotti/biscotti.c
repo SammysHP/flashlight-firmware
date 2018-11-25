@@ -224,33 +224,33 @@ void save_mode() {  // save the current mode index (with wear leveling)
     }
     */
 
-    eeprom_write_byte((uint8_t *)(eepos), mode_idx);  // save current state
-    eeprom_write_byte((uint8_t *)(oldpos), 0xff);     // erase old state
+    eeprom_update_byte((uint8_t *)(oldpos), 0xff);     // erase old state
+    eeprom_update_byte((uint8_t *)(eepos), mode_idx);  // save current state
 }
 
-//#define OPT_firstboot (EEPSIZE-1)
-#define OPT_modegroup (EEPSIZE-1)
-#define OPT_memory (EEPSIZE-2)
+#define OPT_firstboot (EEPSIZE-1)
+#define OPT_modegroup (EEPSIZE-2)
+#define OPT_memory (EEPSIZE-3)
 //#define OPT_offtim3 (EEPSIZE-4)
 //#define OPT_maxtemp (EEPSIZE-5)
-#define OPT_mode_override (EEPSIZE-3)
+#define OPT_mode_override (EEPSIZE-4)
 //#define OPT_moon (EEPSIZE-7)
 //#define OPT_revmodes (EEPSIZE-8)
 //#define OPT_muggle (EEPSIZE-9)
 void save_state() {  // central method for writing complete state
     save_mode();
 #ifdef USE_FIRSTBOOT
-    eeprom_write_byte((uint8_t *)OPT_firstboot, firstboot);
+    eeprom_update_byte((uint8_t *)OPT_firstboot, firstboot);
 #endif
-    eeprom_write_byte((uint8_t *)OPT_modegroup, modegroup);
-    eeprom_write_byte((uint8_t *)OPT_memory, memory);
+    eeprom_update_byte((uint8_t *)OPT_modegroup, modegroup);
+    eeprom_update_byte((uint8_t *)OPT_memory, memory);
 #ifdef OFFTIM3
-    eeprom_write_byte((uint8_t *)OPT_offtim3, offtim3);
+    eeprom_update_byte((uint8_t *)OPT_offtim3, offtim3);
 #endif
 #ifdef TEMPERATURE_MON
-    eeprom_write_byte((uint8_t *)OPT_maxtemp, maxtemp);
+    eeprom_update_byte((uint8_t *)OPT_maxtemp, maxtemp);
 #endif
-    eeprom_write_byte((uint8_t *)OPT_mode_override, mode_override);
+    eeprom_update_byte((uint8_t *)OPT_mode_override, mode_override);
     //eeprom_write_byte((uint8_t *)OPT_moon, enable_moon);
     //eeprom_write_byte((uint8_t *)OPT_revmodes, reverse_modes);
     //eeprom_write_byte((uint8_t *)OPT_muggle, muggle_mode);
@@ -284,7 +284,7 @@ void restore_state() {
     // find the mode index data
     for(eepos=0; eepos<WEAR_LVL_LEN; eepos++) {
         eep = eeprom_read_byte((const uint8_t *)eepos);
-        if (eep != 0xff) {
+        if (eep < 8) {
             mode_idx = eep;
 #ifndef USE_FIRSTBOOT
             first = 0;
@@ -661,8 +661,10 @@ int main(void)
             }
         }
     }
+    if (memory) {
+        save_mode();
+    }
     long_press = 0;
-    save_mode();
 
     #ifdef CAP_PIN
     // Charge up the capacitor by setting CAP_PIN to output
