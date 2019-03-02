@@ -1,5 +1,4 @@
 /* STAR_noinit version 1.3:1.0
- * (use flash-noinit.sh to flash, or at least copy its fuse settings)
  *
  * Changelog
  *
@@ -21,11 +20,7 @@
  *           ---
  *
  * FUSES
- *		I use these fuse settings
- *		Low:  0x79	(4.8MHz CPU without 8x divider, 9.4kHz phase-correct PWM or 18.75kHz fast-PWM)
- *		High: 0xed
- *
- *      For more details on these settings, visit http://github.com/JCapSolutions/blf-firmware/wiki/PWM-Frequency
+ *      (check bin/flash*.sh for recommended values)
  *
  * STARS
  *		Star 2 = Moon if connected and alternate PWM output not used
