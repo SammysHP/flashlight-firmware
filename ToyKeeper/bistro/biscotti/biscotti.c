@@ -28,9 +28,7 @@
  *           ----
  *
  * FUSES
- *      I use these fuse settings on attiny13
- *      Low:  0x75
- *      High: 0xff
+ *      (check bin/flash*.sh for recommended values)
  *
  * CALIBRATION
  *
