@@ -1,8 +1,8 @@
 /*
- * Anduril: Narsil-inspired UI for SpaghettiMonster.
- * (Anduril is Aragorn's sword, the blade Narsil reforged)
+ * Fireflies UI: A custom UI for Fireflies-brand flashlights.
+ * (based on Anduril by ToyKeeper)
  *
- * Copyright (C) 2017-2019 Selene Scriven
+ * Copyright (C) 2019 Selene Scriven
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,8 +19,8 @@
  */
 
 /********* User-configurable options *********/
-// Anduril config file name (set it here or define it at the gcc command line)
-//#define CONFIGFILE cfg-blf-q8.h
+// UI config file name (set it here or define it at the gcc command line)
+//#define CONFIGFILE cfg-ff-pl47.h
 
 #define USE_LVP  // FIXME: won't build when this option is turned off
 
@@ -33,7 +33,7 @@
 //  or too short)
 #define MOON_TIMING_HINT
 // short blips while ramping
-#define BLINK_AT_RAMP_MIDDLE
+#define BLINK_AT_CHANNEL_BOUNDARIES
 //#define BLINK_AT_RAMP_FLOOR
 #define BLINK_AT_RAMP_CEILING
 //#define BLINK_AT_STEPS  // whenever a discrete ramp mode is passed in smooth mode
@@ -81,6 +81,50 @@
 #include "tk.h"
 #include incfile(CONFIGFILE)
 
+///// Fireflies-specific configuration
+// disable ramp config
+#ifdef USE_RAMP_CONFIG
+#undef USE_RAMP_CONFIG
+#endif
+
+// no muggle mode
+#ifdef USE_MUGGLE_MODE
+#undef USE_MUGGLE_MODE
+#endif
+
+// turn off strobe mode entirely; we're replacing it
+#ifdef USE_BIKE_FLASHER_MODE
+#undef USE_BIKE_FLASHER_MODE
+#endif
+#ifdef USE_PARTY_STROBE_MODE
+#undef USE_PARTY_STROBE_MODE
+#endif
+#ifdef USE_TACTICAL_STROBE_MODE
+#undef USE_TACTICAL_STROBE_MODE
+#endif
+#ifdef USE_LIGHTNING_MODE
+#undef USE_LIGHTNING_MODE
+#endif
+#ifdef USE_CANDLE_MODE
+#undef USE_CANDLE_MODE
+#endif
+
+// remove other blinkies too
+#ifdef USE_GOODNIGHT_MODE
+#undef USE_GOODNIGHT_MODE
+#endif
+#ifdef USE_BEACON_MODE
+#undef USE_BEACON_MODE
+#endif
+
+// use these strobes instead
+#define USE_POLICE_STROBE_MODE
+#define USE_SOS_MODE
+
+// thermal config mode on 10 clicks from off
+#define USE_TENCLICK_THERMAL_CONFIG
+
+///// end Fireflies-specific configuration
 
 // thermal properties, if not defined per-driver
 #ifndef MIN_THERM_STEPDOWN
@@ -145,9 +189,6 @@ typedef enum {
     ramp_discrete_ceil_e,
     ramp_discrete_steps_e,
     #endif
-    #ifdef USE_TINT_RAMPING
-    tint_e,
-    #endif
     #ifdef USE_STROBE_STATE
     strobe_type_e,
     #endif
@@ -200,10 +241,6 @@ uint8_t config_state_values[MAX_CONFIG_VALUES];
 uint8_t steady_state(Event event, uint16_t arg);
 #ifdef USE_RAMP_CONFIG
 uint8_t ramp_config_state(Event event, uint16_t arg);
-#endif
-#ifdef USE_TINT_RAMPING
-// not actually a mode, more of a fallback under other modes
-uint8_t tint_ramping_state(Event event, uint16_t arg);
 #endif
 // party and tactical strobes
 #ifdef USE_STROBE_STATE
@@ -282,28 +319,8 @@ void save_config_wl();
   #define RAMP_DISCRETE_STEPS 7
 #endif
 
-// mile marker(s) partway up the ramp
-// default: blink only at border between regulated and FET
-#ifdef BLINK_AT_RAMP_MIDDLE
-  #if PWM_CHANNELS >= 3
-    #ifndef BLINK_AT_RAMP_MIDDLE_1
-      #define BLINK_AT_RAMP_MIDDLE_1 MAX_Nx7135
-      #ifndef BLINK_AT_RAMP_MIDDLE_2
-      #define BLINK_AT_RAMP_MIDDLE_2 MAX_1x7135
-      #endif
-    #endif
-  #else
-    #ifndef BLINK_AT_RAMP_MIDDLE_1
-    #define BLINK_AT_RAMP_MIDDLE_1 MAX_1x7135
-    #endif
-  #endif
-#endif
-
 // brightness control
-#ifndef DEFAULT_LEVEL
-#define DEFAULT_LEVEL MAX_1x7135
-#endif
-uint8_t memorized_level = DEFAULT_LEVEL;
+uint8_t memorized_level = MAX_1x7135;
 // smooth vs discrete ramping
 volatile uint8_t ramp_style = 0;  // 0 = smooth, 1 = discrete
 volatile uint8_t ramp_smooth_floor = RAMP_SMOOTH_FLOOR;
@@ -433,7 +450,7 @@ uint8_t off_state(Event event, uint16_t arg) {
             // let the user know they can let go now to stay at moon
             uint8_t temp = actual_level;
             set_level(0);
-            delay_4ms(3);
+            delay_4ms(2);
             set_level(temp);
         } else
         #endif
@@ -514,24 +531,11 @@ uint8_t off_state(Event event, uint16_t arg) {
         return MISCHIEF_MANAGED;
     }
     #endif
-    #ifdef USE_INDICATOR_LED
-    // 7 clicks: change indicator LED mode
+    // 7 clicks: temperature check
     else if (event == EV_7clicks) {
-        uint8_t mode = (indicator_led_mode & 3) + 1;
-        #ifdef TICK_DURING_STANDBY
-        mode = mode & 3;
-        #else
-        mode = mode % 3;
-        #endif
-        #ifdef INDICATOR_LED_SKIP_LOW
-        if (mode == 1) { mode ++; }
-        #endif
-        indicator_led_mode = (indicator_led_mode & 0b11111100) | mode;
-        indicator_led(mode);
-        save_config();
+        set_state(tempcheck_state, 0);
         return MISCHIEF_MANAGED;
     }
-    #endif
     #ifdef USE_TENCLICK_THERMAL_CONFIG
     // 10 clicks: thermal config mode
     else if (event == EV_10clicks) {
@@ -631,13 +635,9 @@ uint8_t steady_state(Event event, uint16_t arg) {
             return MISCHIEF_MANAGED;
         }
         #ifdef USE_REVERSING
-        // fix ramp direction on first frame if necessary
-        if (!arg) {
-            // make it ramp down instead, if already at max
-            if (actual_level >= mode_max) { ramp_direction = -1; }
-            // make it ramp up if already at min
-            // (off->hold->stepped_min->release causes this state)
-            else if (actual_level <= mode_min) { ramp_direction = 1; }
+        // make it ramp down instead, if already at max
+        if ((arg <= 1) && (actual_level >= mode_max)) {
+            ramp_direction = -1;
         }
         memorized_level = nearest_level((int16_t)actual_level \
                           + (ramp_step_size * ramp_direction));
@@ -647,15 +647,15 @@ uint8_t steady_state(Event event, uint16_t arg) {
         #ifdef USE_THERMAL_REGULATION
         target_level = memorized_level;
         #endif
-        #if defined(BLINK_AT_RAMP_CEILING) || defined(BLINK_AT_RAMP_MIDDLE)
+        #if defined(BLINK_AT_RAMP_CEILING) || defined(BLINK_AT_CHANNEL_BOUNDARIES)
         // only blink once for each threshold
         if ((memorized_level != actual_level) && (
                 0  // for easier syntax below
-                #ifdef BLINK_AT_RAMP_MIDDLE_1
-                || (memorized_level == BLINK_AT_RAMP_MIDDLE_1)
+                #ifdef BLINK_AT_CHANNEL_BOUNDARIES
+                || (memorized_level == MAX_1x7135)
+                #if PWM_CHANNELS >= 3
+                || (memorized_level == MAX_Nx7135)
                 #endif
-                #ifdef BLINK_AT_RAMP_MIDDLE_2
-                || (memorized_level == BLINK_AT_RAMP_MIDDLE_2)
                 #endif
                 #ifdef BLINK_AT_RAMP_CEILING
                 || (memorized_level == mode_max)
@@ -712,15 +712,15 @@ uint8_t steady_state(Event event, uint16_t arg) {
         #ifdef USE_THERMAL_REGULATION
         target_level = memorized_level;
         #endif
-        #if defined(BLINK_AT_RAMP_FLOOR) || defined(BLINK_AT_RAMP_MIDDLE)
+        #if defined(BLINK_AT_RAMP_FLOOR) || defined(BLINK_AT_CHANNEL_BOUNDARIES)
         // only blink once for each threshold
         if ((memorized_level != actual_level) && (
                 0  // for easier syntax below
-                #ifdef BLINK_AT_RAMP_MIDDLE_1
-                || (memorized_level == BLINK_AT_RAMP_MIDDLE_1)
+                #ifdef BLINK_AT_CHANNEL_BOUNDARIES
+                || (memorized_level == MAX_1x7135)
+                #if PWM_CHANNELS >= 3
+                || (memorized_level == MAX_Nx7135)
                 #endif
-                #ifdef BLINK_AT_RAMP_MIDDLE_2
-                || (memorized_level == BLINK_AT_RAMP_MIDDLE_2)
                 #endif
                 #ifdef BLINK_AT_RAMP_FLOOR
                 || (memorized_level == mode_min)
@@ -865,39 +865,6 @@ uint8_t steady_state(Event event, uint16_t arg) {
     #endif
     return EVENT_NOT_HANDLED;
 }
-
-
-#ifdef USE_TINT_RAMPING
-uint8_t tint_ramping_state(Event event, uint16_t arg) {
-    static int8_t tint_ramp_direction = 1;
-
-    // click, click, hold: change the tint
-    if (event == EV_click3_hold) {
-        //if ((arg & 1) == 0) {  // ramp slower
-            if ((tint_ramp_direction > 0) && (tint < 255)) {
-                tint += 1;
-            }
-            else if ((tint_ramp_direction < 0) && (tint > 0)) {
-                tint -= 1;
-            }
-            set_level(actual_level);
-        //}
-        return EVENT_HANDLED;
-    }
-
-    // click, click, hold, release: reverse direction for next ramp
-    else if (event == EV_click3_hold_release) {
-        tint_ramp_direction = -tint_ramp_direction;
-        if (tint == 0) tint_ramp_direction = 1;
-        else if (tint == 255) tint_ramp_direction = -1;
-        // remember tint after battery change
-        save_config();
-        return EVENT_HANDLED;
-    }
-
-    return EVENT_NOT_HANDLED;
-}
-#endif  // ifdef USE_TINT_RAMPING
 
 
 #ifdef USE_STROBE_STATE
@@ -1291,11 +1258,17 @@ uint8_t battcheck_state(Event event, uint16_t arg) {
         set_state(off_state, 0);
         return MISCHIEF_MANAGED;
     }
-    // 2 clicks: goodnight mode
+    #if defined(USE_GOODNIGHT_MODE) || defined(USE_BEACON_MODE)
+    // 2 clicks: next mode
     else if (event == EV_2clicks) {
+        #ifdef USE_GOODNIGHT_MODE
         set_state(goodnight_state, 0);
+        #elif defined(USE_BEACON_MODE)
+        set_state(beacon_state, 0);
+        #endif
         return MISCHIEF_MANAGED;
     }
+    #endif
     return EVENT_NOT_HANDLED;
 }
 #endif
@@ -1308,11 +1281,13 @@ uint8_t tempcheck_state(Event event, uint16_t arg) {
         set_state(off_state, 0);
         return MISCHIEF_MANAGED;
     }
+    #if 0  // not part of a loop in this UI
     // 2 clicks: battcheck mode
     else if (event == EV_2clicks) {
         set_state(battcheck_state, 0);
         return MISCHIEF_MANAGED;
     }
+    #endif
     // 4 clicks: thermal config mode
     else if (event == EV_4clicks) {
         push_state(thermal_config_state, 0);
@@ -1369,7 +1344,11 @@ uint8_t goodnight_state(Event event, uint16_t arg) {
     }
     // 2 clicks: beacon mode
     else if (event == EV_2clicks) {
+        #ifdef USE_BEACON_MODE
         set_state(beacon_state, 0);
+        #elif defined(USE_TEMPCHECK_MODE)
+        set_state(tempcheck_state, 0);
+        #endif
         return MISCHIEF_MANAGED;
     }
     // tick: step down (maybe) or off (maybe)
@@ -1976,9 +1955,6 @@ void load_config() {
         ramp_discrete_ceil = eeprom[ramp_discrete_ceil_e];
         ramp_discrete_steps = eeprom[ramp_discrete_steps_e];
         #endif
-        #ifdef USE_TINT_RAMPING
-        tint = eeprom[tint_e];
-        #endif
         #if defined(USE_PARTY_STROBE_MODE) || defined(USE_TACTICAL_STROBE_MODE)
         strobe_type = eeprom[strobe_type_e];  // TODO: move this to eeprom_wl?
         strobe_delays[0] = eeprom[strobe_delays_0_e];
@@ -2016,9 +1992,6 @@ void save_config() {
     eeprom[ramp_discrete_floor_e] = ramp_discrete_floor;
     eeprom[ramp_discrete_ceil_e] = ramp_discrete_ceil;
     eeprom[ramp_discrete_steps_e] = ramp_discrete_steps;
-    #endif
-    #ifdef USE_TINT_RAMPING
-    eeprom[tint_e] = tint;
     #endif
     #if defined(USE_PARTY_STROBE_MODE) || defined(USE_TACTICAL_STROBE_MODE)
     eeprom[strobe_type_e] = strobe_type;  // TODO: move this to eeprom_wl?
@@ -2119,19 +2092,14 @@ void setup() {
 
     load_config();
 
-    #ifdef USE_TINT_RAMPING
-    // add tint ramping underneath every other state
-    push_state(tint_ramping_state, 0);
-    #endif  // ifdef USE_TINT_RAMPING
-
     #ifdef USE_MUGGLE_MODE
     if (muggle_mode_active)
         push_state(muggle_state, (MUGGLE_FLOOR+MUGGLE_CEILING)/2);
     else
     #endif
         push_state(off_state, 0);
+    #endif
 
-    #endif  // ifdef START_AT_MEMORIZED_LEVEL
 }
 
 
