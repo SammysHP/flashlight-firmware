@@ -29,11 +29,7 @@
  *           ---
  *
  * FUSES
- *      I use these fuse settings
- *      Low:  0x75  (4.8MHz CPU without 8x divider, 9.4kHz phase-correct PWM or 18.75kHz fast-PWM)
- *      High: 0xfd
- *
- *      For more details on these settings, visit http://github.com/JCapSolutions/blf-firmware/wiki/PWM-Frequency
+ *      (check bin/flash*.sh for recommended values)
  *
  * STARS
  *      Star 2 = second PWM output channel

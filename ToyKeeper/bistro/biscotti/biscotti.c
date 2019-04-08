@@ -23,14 +23,12 @@
  *           ----
  *         -|1  8|- VCC
  *         -|2  7|- Voltage ADC
- *         -|3  6|-
- *     GND -|4  5|- PWM (Nx7135)
+ *         -|3  6|- PWM (Nx7135)
+ *     GND -|4  5|-
  *           ----
  *
  * FUSES
- *      I use these fuse settings on attiny13
- *      Low:  0x75
- *      High: 0xff
+ *      (check bin/flash*.sh for recommended values)
  *
  * CALIBRATION
  *

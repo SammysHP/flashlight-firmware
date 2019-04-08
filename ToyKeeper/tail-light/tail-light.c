@@ -14,20 +14,8 @@
  *     GND -|   |- Star 2
  *           ---
  *
- * CPU speed is 4.8Mhz without the 8x divider when low fuse is 0x75
- *
- * define F_CPU 4800000  CPU: 4.8MHz  PWM: 9.4kHz       ####### use low fuse: 0x75  #######
- *                             /8     PWM: 1.176kHz     ####### use low fuse: 0x65  #######
- * define F_CPU 9600000  CPU: 9.6MHz  PWM: 19kHz        ####### use low fuse: 0x7a  #######
- *                             /8     PWM: 2.4kHz       ####### use low fuse: 0x6a  #######
- * 
- * Above PWM speeds are for phase-correct PWM.  This program uses Fast-PWM,
- * which when the CPU is 4.8MHz will be 18.75 kHz
- *
  * FUSES
- *		I use these fuse settings
- *		Low:  0x75
- *		High: 0xff
+ *      (check bin/flash*.sh for recommended values)
  *
  * STARS (not used)
  *
