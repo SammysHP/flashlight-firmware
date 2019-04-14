@@ -28,13 +28,7 @@
  *           ----
  *
  * FUSES
- *      I use these fuse settings on attiny25
- *      Low:  0xd2
- *      High: 0xde
- *      Ext:  0xff
- *
- *      For more details on these settings:
- *      http://www.engbedded.com/cgi-bin/fcx.cgi?P_PREV=ATtiny25&P=ATtiny25&M_LOW_0x3F=0x12&M_HIGH_0x07=0x06&M_HIGH_0x20=0x00&B_SPIEN=P&B_SUT0=P&B_CKSEL3=P&B_CKSEL2=P&B_CKSEL0=P&B_BODLEVEL0=P&V_LOW=E2&V_HIGH=DE&V_EXTENDED=FF
+ *      (check bin/flash*.sh for recommended values)
  *
  * STARS
  *      Star 3 = unused
