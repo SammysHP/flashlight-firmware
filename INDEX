@@ -163,6 +163,9 @@ Summary of each project
     hello_world:
         quick example to help test if flashing hardware works
 
+    loneoceans/gxb172:
+        GXB172 driver example firmware
+
     odd/MGdriver:
         Off-time multigroup driver by odd, based on luxdrv030 by DrJones
 
@@ -283,6 +286,9 @@ Authors
     gchart:
         gchart/babka
 
+    loneoceans:
+        loneoceans/gxb172
+
     odd:
         odd/MGdriver
 
@@ -356,6 +362,7 @@ Button-Type
         ToyKeeper/spaghetti-monster/rampingios
         Werner/STAR_improvements
         dthoang
+        loneoceans/gxb172
         tterev3/attiny10_starter_code
         tterev3/pic10f322-examples
 
@@ -542,6 +549,7 @@ Extras
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
         ToyKeeper/spaghetti-monster/werner
+        loneoceans/gxb172
 
     thermal step-down:
         JonnyC/STAR/MTN_momentary_temp
@@ -669,6 +677,9 @@ MCU
         ToyKeeper/spaghetti-monster/darkhorse
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/ramping-ui
+
+    attiny841:
+        loneoceans/gxb172
 
     attiny85:
         Flintrock/bistro-hd
@@ -825,6 +836,7 @@ Memory
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
         ToyKeeper/spaghetti-monster/werner
+        loneoceans/gxb172
 
 Modes
 
