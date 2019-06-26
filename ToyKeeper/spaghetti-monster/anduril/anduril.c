@@ -47,6 +47,7 @@
 //#define BLINK_AT_RAMP_FLOOR
 #define BLINK_AT_RAMP_CEILING
 //#define BLINK_AT_STEPS  // whenever a discrete ramp mode is passed in smooth mode
+#define BLINK_AT_RAMP_MIDDLE_DELAY
 
 // ramp down via regular button hold if a ramp-up ended <1s ago
 // ("hold, release, hold" ramps down instead of up)
@@ -409,6 +410,10 @@ void save_config_wl();
     #define BLINK_AT_RAMP_MIDDLE_1 MAX_1x7135
     #endif
   #endif
+#else
+    #ifdef BLINK_AT_RAMP_MIDDLE_DELAY
+    #undef BLINK_AT_RAMP_MIDDLE_DELAY
+    #endif
 #endif
 
 // brightness control
@@ -750,6 +755,9 @@ uint8_t steady_state(Event event, uint16_t arg) {
     // and this stores the level to return to
     static uint8_t level_before_off = 0;
     #endif
+    #ifdef BLINK_AT_RAMP_MIDDLE_DELAY
+    static uint8_t middle_delay_time = 0;
+    #endif
     if (ramp_style) {
         mode_min = ramp_discrete_floor;
         mode_max = ramp_discrete_ceil;
@@ -830,6 +838,15 @@ uint8_t steady_state(Event event, uint16_t arg) {
         if (ramp_style  &&  (arg % HOLD_TIMEOUT != 0)) {
             return MISCHIEF_MANAGED;
         }
+        #ifdef BLINK_AT_RAMP_MIDDLE_DELAY
+        if (arg && !ramp_style && middle_delay_time) {
+            --middle_delay_time;
+            return MISCHIEF_MANAGED;
+        }
+        else {
+            middle_delay_time = 0;
+        }
+        #endif
         #ifdef USE_REVERSING
         // fix ramp direction on first frame if necessary
         if (!arg) {
@@ -871,6 +888,9 @@ uint8_t steady_state(Event event, uint16_t arg) {
                 #endif
                 )) {
             blip();
+            #ifdef BLINK_AT_RAMP_MIDDLE_DELAY
+            middle_delay_time = HOLD_TIMEOUT;
+            #endif
         }
         #endif
         #if defined(BLINK_AT_STEPS)
@@ -911,6 +931,15 @@ uint8_t steady_state(Event event, uint16_t arg) {
         if (ramp_style  &&  (arg % HOLD_TIMEOUT != 0)) {
             return MISCHIEF_MANAGED;
         }
+        #ifdef BLINK_AT_RAMP_MIDDLE_DELAY
+        if (arg && !ramp_style && middle_delay_time) {
+            --middle_delay_time;
+            return MISCHIEF_MANAGED;
+        }
+        else {
+            middle_delay_time = 0;
+        }
+        #endif
         // TODO? make it ramp up instead, if already at min?
         memorized_level = nearest_level((int16_t)actual_level - ramp_step_size);
         #if defined(BLINK_AT_RAMP_FLOOR) || defined(BLINK_AT_RAMP_MIDDLE)
@@ -928,6 +957,9 @@ uint8_t steady_state(Event event, uint16_t arg) {
                 #endif
                 )) {
             blip();
+            #ifdef BLINK_AT_RAMP_MIDDLE_DELAY
+            middle_delay_time = HOLD_TIMEOUT;
+            #endif
         }
         #endif
         #if defined(BLINK_AT_STEPS)
