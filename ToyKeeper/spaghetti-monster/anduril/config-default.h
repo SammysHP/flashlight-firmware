@@ -65,6 +65,7 @@
 //#define BLINK_AT_RAMP_FLOOR
 #define BLINK_AT_RAMP_CEIL
 //#define BLINK_AT_STEPS  // whenever a discrete ramp mode is passed in smooth mode
+#define BLINK_AT_RAMP_MIDDLE_DELAY
 
 // make the ramps configurable by the user
 #define USE_RAMP_CONFIG
