@@ -20,8 +20,6 @@
 //#define USING_220K	// for using the 220K resistor
 #define USING_360K	// for using a 360K resistor (LDO and 2S cells)
 
-#define D1_DIODE 2				// Drop over rev. polarity protection diode: 0.2V normally, 0.3V for Q8
-
 // For 2 channel (FET+1) boards:
  //#define USING_3807135_BANK	// (default OFF) sets up ramping for 380 mA 7135's instead of a FET
 

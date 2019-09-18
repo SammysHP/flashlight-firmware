@@ -22,7 +22,7 @@
 //#define USING_220K	// for using the 220K resistor
 //#define USING_360K	// for using a 360K resistor (LDO and 2S cells)
 
-#define D1_DIODE 2				// Drop over rev. polarity protection diode: 0.2V normally, 0.3V for Q8
+#define D1_DIODE 28				// Drop over rev. polarity protection diode: using 0.28V
 
 // For 2 channel (FET+1) boards:
  //#define USING_3807135_BANK	// (default OFF) sets up ramping for 380 mA 7135's instead of a FET
@@ -41,6 +41,7 @@
 //----------------------------------------------------------------------------------------
 // Temperature Calibration Offset -
 #define TEMP_CAL_OFFSET (-3)
+//   -3   Decided to use this for Q8 production
 //   -6   BLF Q8 Round 3 - blinks 29C w/3 setting for 20C (68F) room temp
 //   -2   try for the Manker U21 (LJ)
 //   -2   works for the Warsun X60 (robo) using the 17 mm DEL driver

@@ -93,27 +93,8 @@
 //#define ADC_50p    ADC_38  // the ADC value for 50% full (resting)
 //#define ADC_25p    ADC_35  // the ADC value for 25% full (resting)
 //#define ADC_0p     ADC_30  // the ADC value for 0% full (resting)
+
 #define ADC_LOW    ADC_32  // When do we start ramping down
 #define ADC_CRIT   ADC_30  // When do we shut the light off
-
-
-/********************** Offtime capacitor calibration ********************/
-// Values are between 1 and 255, and can be measured with offtime-cap.c
-// See battcheck/otc-readings.txt for reference values.
-// These #defines are the edge boundaries, not the center of the target.
-#ifdef OFFTIM3
-// The OTC value 0.5s after being disconnected from power
-// (anything higher than this is a "short press")
-#define CAP_SHORT           190
-// The OTC value 1.5s after being disconnected from power
-// Between CAP_MED and CAP_SHORT is a "medium press"
-#define CAP_MED             94
-// Below CAP_MED is a long press
-#else
-// The OTC value 1.0s after being disconnected from power
-// Anything higher than this is a short press, lower is a long press
-#define CAP_SHORT           115
-#endif
-
 
 #endif  // TK_CALIBRATION_H

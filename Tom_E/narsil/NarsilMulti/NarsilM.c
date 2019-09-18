@@ -58,7 +58,7 @@
  *  The higher values reduce parasitic drain - important for e-switch lights.
  *      
  */
-#define FIRMWARE_VERS (12)	// v1.2 (in 10ths)
+#define FIRMWARE_VERS (13)	// v1.3 (in 10ths)
 
 #define FET_7135_LAYOUT
 #define ATTINY 85
@@ -66,9 +66,35 @@
 //-----------------------------------------------------------------------------
 // SETUPS Header File defined here:
 //-----------------------------------------------------------------------------
+#include "Setups_X9_2C1S.h"
+//#include "Setups_2HL_1C1S.h"
+//#include "Setups_ZY-T115_2C1S.h"
+//#include "Setups_D1_2C1S.h"
+//#include "Setups_ZY-T114_2C1S.h"
+//#include "Setups_D4Ti.h"
+//#include "Setups_X1R_2C1S.h"
+//#include "Setups_AX3_2C1Son3C.h"
+//#include "Setups_C20C#2_2C1S.h"
+//#include "Setups_X7R_2C1S.h"
+//#include "Setups_C8FXPLHI_2C1S.h"
+//#include "Setups_C8F21700_2C1S.h"
+//#include "Setups_X6R_2C1Son3C.h"
+//#include "Setups_SparkSF3_2C1S.h"
+//#include "Setups_Spark_2C1S.h"
+//#include "setups_NA40_2C1S.h"
+//#include "setups_M8_2C1Son3C.h"
+//#include "setups_PK26_2C1S.h"
+//#include "setups_JM70_2C1S.h"
+//#include "setups_SP03.h"
+//#include "setups_C8F_2C1S.h"
+//#include "setups_SDMini_2C1S.h"
+//#include "setups_2C1S.h"
+//#include "setups_D4_2C1S.h"
+//#include "Setups_OTRM3.h"
+//#include "setups_S42_2C1S.h"
 //#include "setups_2C2S.h"
 //#include "setups_GTBuck.h"
-#include "setups_Q8_2C1S.h"
+//#include "setups_Q8_2C1S.h"
 //#include "setups_3C1S.h"
 //#include "setups_3C2S.h"
 
@@ -107,9 +133,8 @@
 #include "tk-random.h"
 
 // Comment out all tk-calib headers if not using R1/R2 (for example: for the BLF Q8)
-//#include "tk-calibGT.h"				// use this for the GT-buck driver 
-//#include "tk-calibWight.h"			// use this for the wight style drivers using external R1/R2's
-//#include "tk-calibMTN17DDm.h"		// use this for the MtnE MTN17DDm v1.1 driver with external R1/R2
+//#include "tk-calib.h"				// use this for the GT-buck driver or 2S cells using 360K or 220K 
+//#include "tk-calibMTN17DDm.h"	// use this for the MtnE MTN17DDm v1.1 driver with external R1/R2
 
 
 //#include "RampingTables_HiPerf.h"	// for very high performance, high output custom mods
@@ -133,7 +158,7 @@ byte specModeIdx;
 //----------------------------------------------------------------
 // Config Settings via UI, with default values:
 //----------------------------------------------------------------
-volatile byte ramping;					// 1: ramping mode in effect, 0: mode sets
+volatile byte rampingMode;					// 1: ramping mode in effect, 0: mode sets
 #if USING_3807135_BANK
 volatile byte moonlightLevel;			// 0..7, 0: disabled, usually set to 3 (350 mA) or 5 (380 mA) - 2 might work on a 350 mA
 #else
@@ -238,6 +263,9 @@ byte config3;
 // OFF Time Detection
 volatile byte noinit_decay __attribute__ ((section (".noinit")));
 
+// channel specific versions
+#include "Channels.h"
+
 
 #ifdef VOLT_MON_R1R2
 // Map the voltage level to the # of blinks, ex: 3.7V = 3, then 7 blinks
@@ -251,11 +279,28 @@ PROGMEM const uint8_t voltage_blinks[] = {
 		ADC_43,43,		ADC_44,44,
 		255,   11,  // Ceiling, don't remove
 };
+
+/**************************************************************************************
+* BattCheck - Returns number in 10ths of a volt for approximate battery voltage level
+* =========
+*  Uses the table: voltage_blinks above for return values
+**************************************************************************************/
+inline byte BattCheck()
+{
+	byte i;
+
+	// The ADC values are the max value to use for the associated voltage value to report
+	for (i=0; ; i += 2)
+		if (byVoltage <= pgm_read_byte(voltage_blinks + i))
+			break;
+
+	// Drop one full level -- not sure why
+	//if (i > 0)
+	//	i -= 2;
+	
+	return pgm_read_byte(voltage_blinks + i + 1);
+}
 #endif
-
-
-// channel specific versions 
-#include "Channels.h"
 
 
 /**************************************************************************************
@@ -265,7 +310,7 @@ PROGMEM const uint8_t voltage_blinks[] = {
 **************************************************************************************/
 void SetConfigDefaults()
 {
-	ramping = DEF_RAMPING;					// 1: ramping mode in effect, 0: mode sets
+	rampingMode = DEF_RAMPING;					// 1: ramping mode in effect, 0: mode sets
 	moonlightLevel = DEF_MOON_LEVEL;		// 0..7, 0: disabled, usually set to 3 (350 mA) or 5 (380 mA) - 2 might work on a 350 mA
 	stepdownMode = DEF_STEPDOWN_MODE;	// 0=disabled, 1=thermal, 2=60s, 3=90s, 4=120s, 5=3min, 6=5min, 7=7min (3 mins is good for production)
 	blinkyMode = DEF_BLINKY_MODE;			// blinky mode config: 1=strobe only, 2=all blinkies, 0=disable
@@ -300,39 +345,14 @@ void Strobe(byte ontime, byte offtime)
 	_delay_ms(offtime);
 }
 
-#ifdef VOLT_MON_R1R2
-/**************************************************************************************
-* BattCheck
-* =========
-**************************************************************************************/
-inline byte BattCheck()
-{
-   // Return an composite int, number of "blinks", for approximate battery charge
-   // Uses the table above for return values
-   // Return value is 3 bits of whole volts and 5 bits of tenths-of-a-volt
-   byte i;
-
-   // figure out how many times to blink
-   for (i=0; byVoltage > pgm_read_byte(voltage_blinks + i); i += 2)  ;
-
-#ifdef USING_360K   
-	// Adjust it to the more accurate representative value (220K table is already adjusted)
-	if (i > 0)
-		i -= 2;
-#endif
-		
-	return pgm_read_byte(voltage_blinks + i + 1);
-}
-#endif
-
 /**************************************************************************************
 * EnterSpecialModes - enter special/strobe(s) modes
 * =================
 **************************************************************************************/
 void EnterSpecialModes ()
 {
-	prevRamping = ramping;
-	ramping = 0;				// disable ramping while in special/strobe modes
+	prevRamping = rampingMode;
+	rampingMode = 0;				// disable ramping while in special/strobe modes
 	
 	specModeIdx = 0;
 	modeIdx = specialModes[specModeIdx];
@@ -348,10 +368,10 @@ void EnterSpecialModes ()
 **************************************************************************************/
 void ExitSpecialModes ()
 {
-	ramping = prevRamping;	// restore ramping state
+	rampingMode = prevRamping;	// restore ramping state
 	rampingLevel = 0;
 	
-	if (ramping)				// for ramping, force mode back to 0
+	if (rampingMode)				// for ramping, force mode back to 0
 		modeIdx = 0;
 	else
 		modeIdx = prevModeIdx;
@@ -453,7 +473,7 @@ void BlinkLVP(byte BlinkCnt)
 		TurnOnBoardLed(1);
 #endif
 
-		if (ramping)
+		if (rampingMode)
 			SetLevel(outLevel);
 		else
 		{
@@ -769,7 +789,7 @@ inline void LoadConfig()
 
    // find the config data
    for (eepos=0; eepos < 128; eepos+=4)
-	{
+	{    
 	   config1 = eeprom_read_byte((const byte *)eepos);
 		config2 = eeprom_read_byte((const byte *)eepos+1);
 		config3 = eeprom_read_byte((const byte *)eepos+2);
@@ -785,7 +805,7 @@ inline void LoadConfig()
 	{
 	   modeIdx = config1 & 0x7;
 		modeSetIdx = (config1 >> 3) & 0x0f;
-		ramping = (config1 >> 7);
+		rampingMode = (config1 >> 7);
 		
 	   highToLow = config2 & 1;
 	   modeMemoryEnabled = (config2 >> 1) & 1;
@@ -803,16 +823,6 @@ inline void LoadConfig()
 		eepos = 0;
 
 	locatorLed = locatorLedOn;
-}
-
-/**************************************************************************************
-* WrEEPROM - writes a byte at the given EEPROM location (only byte address supported)
-* ========
-**************************************************************************************/
-void WrEEPROM (byte flashAddr, byte value)
-{
-	EEARL=flashAddr;   EEDR=value; EECR=32+4; EECR=32+4+2;  //WRITE  //32:write only (no erase)  4:enable  2:go
-	while(EECR & 2)  ; // wait for completion
 }
 
 /**************************************************************************************
@@ -842,42 +852,32 @@ void WrEEPROM (byte flashAddr, byte value)
 **************************************************************************************/
 void SaveConfig()
 {
-	
 	// Pack all settings into one byte
-	config1 = (byte)(word)(modeIdx | (modeSetIdx << 3) | (ramping << 7));
+	config1 = (byte)(word)((modeIdx & 0x07) | ((modeSetIdx & 0x0f) << 3) | (rampingMode << 7));
 	config2 = (byte)(word)(highToLow | (modeMemoryEnabled << 1) | (moonlightLevel << 2) | (stepdownMode << 5));
 	config3 = (byte)(word)(OffTimeEnable | (onboardLedEnable << 1) | (locatorLedOn << 2) | (bvldLedOnly << 3) | (moonLightEnable << 4) | (blinkyMode << 5));
 	
 	byte oldpos = eepos;
 	
 	eepos = (eepos+4) & 127;  // wear leveling, use next cell
-	
+
+   cli();  // don't interrupt while writing eeprom; that's bad
+
 	// Write the current settings (3 bytes)
-	WrEEPROM (eepos, config1);
-	WrEEPROM (eepos+1, config2);
-	WrEEPROM (eepos+2, config3);
+	eeprom_write_byte((uint8_t *)(eepos), config1);
+	eeprom_write_byte((uint8_t *)(eepos+1), config2);
+	eeprom_write_byte((uint8_t *)(eepos+2), config3);
 	
-//	EEARL=eepos;   EEDR=config1; EECR=32+4; EECR=32+4+2;  //WRITE  //32:write only (no erase)  4:enable  2:go
-//	while(EECR & 2)  ; // wait for completion
-//	EEARL=eepos+1; EEDR=config2; EECR=32+4; EECR=32+4+2;  //WRITE  //32:write only (no erase)  4:enable  2:go
-//	while(EECR & 2)  ; // wait for completion
-//	EEARL=eepos+2; EEDR=config3; EECR=32+4; EECR=32+4+2;  //WRITE  //32:write only (no erase)  4:enable  2:go
-//	while(EECR & 2)  ; // wait for completion
-	
-	// Erase the last settings (4 bytes)
-	EEARL=oldpos;   EECR=16+4; EECR=16+4+2;  //ERASE  //16:erase only (no write)  4:enable  2:go
-	while(EECR & 2)  ; // wait for completion
-	EEARL=oldpos+1; EECR=16+4; EECR=16+4+2;  //ERASE  //16:erase only (no write)  4:enable  2:go
-	while(EECR & 2)  ; // wait for completion
-	EEARL=oldpos+2; EECR=16+4; EECR=16+4+2;  //ERASE  //16:erase only (no write)  4:enable  2:go
-	while(EECR & 2)  ; // wait for completion
-	EEARL=oldpos+3; EECR=16+4; EECR=16+4+2;  //ERASE  //16:erase only (no write)  4:enable  2:go
-	while(EECR & 2)  ; // wait for completion
+	// Erase the last settings
+	eeprom_write_byte((uint8_t *)(oldpos), 0xff);
+	eeprom_write_byte((uint8_t *)(oldpos+1), 0xff);
+	eeprom_write_byte((uint8_t *)(oldpos+2), 0xff);
+	eeprom_write_byte((uint8_t *)(oldpos+3), 0xff);
 	
 	// Write the validation marker byte out
-	WrEEPROM (eepos+3, 0x5d);
-//	EEARL=eepos+3; EEDR=0x5d; EECR=32+4; EECR=32+4+2;  //WRITE  //32:write only (no erase)  4:enable  2:go
-//	while(EECR & 2)  ; // wait for completion
+	eeprom_write_byte((uint8_t *)(eepos+3), 0x5d);
+	
+	sei();  // okay, interrupts are fine now
 }
 
 /**************************************************************************************** 
@@ -889,13 +889,20 @@ ISR(ADC_vect)
 	word wAdcVal = ADC;	// Read in the ADC 10 bit value (0..1023)
 
 	// Voltage Monitoring
-	if (adc_step == 1)									// ignore first ADC value from step 0
+	if (adc_step == 1)							// ignore first ADC value from step 0
 	{
 	  #ifdef VOLT_MON_R1R2
-		byVoltage = (byte)(wAdcVal >> 2);		// convert to 8 bits, throw away 2 LSB's
+		byVoltage = (byte)(wAdcVal >> 2);	// convert to 8 bits, throw away 2 LSB's
+		//byVoltage = (byte)((wAdcVal + 2) >> 2);	// divide by 4, rounded
+		//byVoltage = 218;	// test only!!
 	  #else
 		// Read cell voltage, applying the equation
-		wAdcVal = (11264 + (wAdcVal >> 1))/wAdcVal + D1_DIODE;		// in volts * 10: 10 * 1.1 * 1024 / ADC + D1_DIODE, rounded
+		uint32_t voltage100ths;
+		
+		voltage100ths = (112640 + (wAdcVal >> 1))/wAdcVal + D1_DIODE;		// in 100th's volts: 100 * 1.1 * 1024 / ADC + D1_DIODE, rounded
+		
+		wAdcVal = voltage100ths / 10;	// divide by 10, rounded (converts to voltage in tenths)
+		
 		if (byVoltage > 0)
 		{
 			if (byVoltage < wAdcVal)			// crude low pass filter
@@ -904,12 +911,12 @@ ISR(ADC_vect)
 				--byVoltage;
 		}
 		else
-			byVoltage = (byte)wAdcVal;							// prime on first read
+			byVoltage = (byte)wAdcVal;			// prime on first read
 	  #endif
 	} 
 	
 	// Temperature monitoring
-	if (adc_step == 3)									// ignore first ADC value from step 2
+	if (adc_step == 3)							// ignore first ADC value from step 2
 	{
 		//----------------------------------------------------------------------------------
 		// Read the MCU temperature, applying a calibration offset value
@@ -1030,7 +1037,7 @@ ISR(WDT_vect)
 			//------------------------------------------------------------------------------
 			//	Ramping - pressed button
 			//------------------------------------------------------------------------------
-			else if (ramping)
+			else if (rampingMode)
 			{
 				if ((wPressDuration >= SHORT_CLICK_DUR) && !byLockOutSet && !byDelayRamping && (modeIdx < BATT_CHECK_MODE))
 				{
@@ -1153,7 +1160,7 @@ ISR(WDT_vect)
 			//---------------------------------------------------------------------------------------
 			// LONG hold - for previous mode
 			//---------------------------------------------------------------------------------------
-			if (!ramping && (wPressDuration == LONG_PRESS_DUR) && !byLockOutSet)
+			if (!rampingMode && (wPressDuration == LONG_PRESS_DUR) && !byLockOutSet)
 			{
 				if ((modeIdx < 16) && !momentaryState)
 				{
@@ -1186,7 +1193,7 @@ ISR(WDT_vect)
 				if ((fastClicks == 2) && (wIdleTicks < DBL_CLICK_TICKS))
 				{
 				  #ifndef ADV_RAMP_OPTIONS
-					if (!ramping || (byLockOutSet == 1))
+					if (!rampingMode || (byLockOutSet == 1))
 				  #endif
 					{
 						modeIdx = outLevel = rampingLevel = 0;
@@ -1201,7 +1208,7 @@ ISR(WDT_vect)
 					if ((fastClicks == 1) && (wIdleTicks < DBL_CLICK_TICKS))
 					{
 					  #ifndef ADV_RAMP_OPTIONS
-						if (!ramping)
+						if (!rampingMode)
 					  #endif
 						{
 							modeIdx = BATT_CHECK_MODE;
@@ -1231,7 +1238,7 @@ ISR(WDT_vect)
 						configClicks = 0;
 						holdHandled = 1;		// suppress more hold events on this hold
 					}
-					else if (!ramping && (blinkyMode > 0) && (modeIdx != BATT_CHECK_MODE) && !momentaryState)
+					else if (!rampingMode && (blinkyMode > 0) && (modeIdx != BATT_CHECK_MODE) && !momentaryState)
 					{
 						// Engage first special mode!
 						EnterSpecialModes ();
@@ -1244,9 +1251,9 @@ ISR(WDT_vect)
 			//---------------------------------------------------------------------------------------
 			if ((byLockOutSet == 0) && !momentaryState)
 			{
-				if ((!ramping && (wPressDuration == CONFIG_ENTER_DUR) && (fastClicks != 2) && (modeIdx != BATT_CHECK_MODE))
+				if ((!rampingMode && (wPressDuration == CONFIG_ENTER_DUR) && (fastClicks != 2) && (modeIdx != BATT_CHECK_MODE))
 											||
-					 (ramping && (wPressDuration == 500)))	// 8 secs in ramping mode
+					 (rampingMode && (wPressDuration == 500)))	// 8 secs in ramping mode
 				{
 					modeIdx = 0;
 					rampingLevel = 0;
@@ -1307,7 +1314,7 @@ ISR(WDT_vect)
 			//------------------------------------------------------------------------------
 			//	Ramping - button released
 			//------------------------------------------------------------------------------
-			if (ramping)
+			if (rampingMode)
 			{
 				rampState = 0;	// reset state to not ramping
 				
@@ -1515,7 +1522,7 @@ ISR(WDT_vect)
 
 				if (fastClicks == 5)	// --> 5X clicks: toggle momentary mode (click&hold - light ON at max)
 				{
-					if (ramping && !byLockOutSet && !momentaryState)
+					if (rampingMode && !byLockOutSet && !momentaryState)
 					{
 						momentaryState = 1;
 						modeIdx = outLevel = rampingLevel = 0;
@@ -1527,7 +1534,7 @@ ISR(WDT_vect)
 			  #ifdef LOCKOUT_ENABLE
 				else if (fastClicks == 4)	// --> 4X clicks: do a lock-out
 				{
-					if ((ramping || byLockOutSet) && !momentaryState)	// only for ramping, or un-locking out
+					if ((rampingMode || byLockOutSet) && !momentaryState)	// only for ramping, or un-locking out
 					{
 						modeIdx = outLevel = rampingLevel = 0;
 						rampState = 0;
@@ -1550,7 +1557,7 @@ ISR(WDT_vect)
 						SetOutput(OFF_OUTPUT);	// suppress main LED output
 					}
 				}
-				else if (ramping && !byLockOutSet  && !momentaryState)
+				else if (rampingMode && !byLockOutSet  && !momentaryState)
 				{
 				  #ifdef TRIPLE_CLICK_BATT
 					if (fastClicks == 3)						// --> triple click: display battery check/status
@@ -1596,7 +1603,7 @@ ISR(WDT_vect)
 			// Only do timed stepdown check when switch isn't pressed
 			if (stepdownMode > 1)
 			{
-				if (ramping)  // ramping
+				if (rampingMode)  // ramping
 				{
 					if ((outLevel > TIMED_STEPDOWN_MIN) && (outLevel < 255))	// 255= moon, so must add this check!
 						if (++wStepdownTicks > wTimedStepdownTickLimit)
@@ -1617,7 +1624,7 @@ ISR(WDT_vect)
 			}
 			
 			// For ramping, timeout the direction toggling
-			if (ramping && (rampingLevel > 1) && (rampingLevel < MAX_RAMP_LEVEL))
+			if (rampingMode && (rampingLevel > 1) && (rampingLevel < MAX_RAMP_LEVEL))
 			{
 				if (wIdleTicks > RAMP_SWITCH_TIMEOUT)
 					dontToggleDir = 1;
@@ -1630,7 +1637,7 @@ ISR(WDT_vect)
 			if (adc_ticks == 0)
 			{
 				byte atLowLimit = (modeIdx == 1);
-				if (ramping)
+				if (rampingMode)
 					atLowLimit = ((outLevel == 1) || (outLevel == 255));	// 08/28/16 TE: add check for moon mode (255)
 				
 				// See if voltage is lower than what we were looking for
@@ -1717,6 +1724,21 @@ int main(void)
 	OCR1C = 255;  // Set ceiling value to maximum
   #endif
 
+  #ifdef S42_PINS  			// special S42 driver (uses PWM on PB4 for the 7135)
+  // Second PWM counter is ... weird (straight from bistro-tripledown.c)
+  TCCR1 = _BV (CS10);
+  GTCCR = _BV (COM1B1) | _BV (PWM1B);
+  OCR1C = 255;  // Set ceiling value to maximum
+  #endif
+
+  #ifdef TWOCHAN_3C_PINS	// using a triple channel board for 2 channels
+  // Second PWM counter is ... weird (straight from bistro-tripledown.c)
+  TCCR1 = _BV (CS10);
+  GTCCR = _BV (COM1B1) | _BV (PWM1B);
+  OCR1C = 255;  // Set ceiling value to maximum
+  #endif
+
+
 	// Turn features on or off as needed
 	ADC_on();
 
@@ -1750,7 +1772,7 @@ int main(void)
 
 	wTimedStepdownTickLimit = pgm_read_word(timedStepdownOutVals+stepdownMode);
 	
-	if (OffTimeEnable && !ramping)
+	if (OffTimeEnable && !rampingMode)
 	{
 		if (!noinit_decay)
 		{
@@ -1777,7 +1799,7 @@ int main(void)
 	if (modeIdx == 0)
 	{
 		// If tail mode switching is enabled for mode set operation, don't blink the LED
-		if (ramping || !OffTimeEnable)
+		if (rampingMode || !OffTimeEnable)
 			Blink(2, 80);
 	}
   #endif
@@ -1994,7 +2016,7 @@ int main(void)
 			//---------------------------------------------------------------------
 			if (LowBattSignal)
 			{
-				if (ramping)
+				if (rampingMode)
 				{
 					if (outLevel > 0)
 					{
@@ -2047,7 +2069,7 @@ int main(void)
 				{
 					// Be sure to leave the indicator LED in it's proper state after blinking twice
 					if ((locatorLed != 0) &&
-							((ramping && (outLevel != 0)) || (!ramping && (modeIdx > 0))))
+							((rampingMode && (outLevel != 0)) || (!rampingMode && (modeIdx > 0))))
 					{
 						BlinkIndLed(500, 2);
 					}
@@ -2072,7 +2094,7 @@ int main(void)
 			//---------------------------------------------------------------------
 			if ((stepdownMode == 1) && (byTempReading >= byStepdownTemp) && (wThermalTicks == 0))
 			{
-				if (ramping)
+				if (rampingMode)
 				{
 					if ((outLevel >= FET_START_LVL) && (outLevel < 255))	// 255 is special value for moon mode (use 1)
 					{
@@ -2112,7 +2134,7 @@ int main(void)
 			if (LowBattState)
 				wWaitTicks = 22500;	// 6 minutes
 			
-			if (((!ramping && (modeIdx == 0)) || (ramping && outLevel == 0))
+			if (((!rampingMode && (modeIdx == 0)) || (rampingMode && outLevel == 0))
 									 &&
 				 !IsPressed() && (wIdleTicks > wWaitTicks))
 			{
@@ -2171,7 +2193,7 @@ int main(void)
 				 case 3:	// 1 - (exiting) ramping mode selection
 					if ((configClicks > 0) && (configClicks <= 8))
 					{
-						ramping = 1 - (configClicks & 1);
+						rampingMode = 1 - (configClicks & 1);
 						SaveConfig();
 					}
 					ConfigBlink(2);
@@ -2184,7 +2206,8 @@ int main(void)
 					locatorLed = locatorLedOn;
 					DefineModeSet();
 					byStepdownTemp = DEFAULT_STEPDOWN_TEMP;	// the current temperature in C for doing the stepdown
-					WrEEPROM (250, byStepdownTemp);				// save it at the fixed address of 250 in the EEPROM space
+					
+					eeprom_write_byte((uint8_t *)(250), byStepdownTemp);	// save it at the fixed address of 250 in the EEPROM space
 
 					wTimedStepdownTickLimit = pgm_read_word(timedStepdownOutVals+stepdownMode);
 				
@@ -2197,7 +2220,7 @@ int main(void)
 					outLevel = rampingLevel = 0;
 					modeIdx = 0;
 					
-					if (ramping)
+					if (rampingMode)
 						SetLevel(rampingLevel);
 					break;
 				
@@ -2242,7 +2265,7 @@ int main(void)
 					break;
 
 				case 100:	// thermal calibration in effect
-					Blink(3, 40);			// 3 quick blinks
+					Blink(3, 40);		 	// 3 quick blinks
 					SetOutput(MAX_BRIGHTNESS);	// set max output
 					wThermalTicks = 312;	// set for 5 seconds as the minimum time to set a new stepdown temperature
 					break;
@@ -2254,11 +2277,12 @@ int main(void)
 					{
 						// Save the current temperature to use as the threshold to step down output
 						byStepdownTemp = byTempReading;
-						WrEEPROM (250, byStepdownTemp);
+						
+						eeprom_write_byte((uint8_t *)(250), byStepdownTemp);	// save it at the fixed address of 250 in the EEPROM space
 					}
 				
 					// Continue to next setting (blinky modes)
-					if (ramping)
+					if (rampingMode)
 					{
 						ConfigBlink(4);
 						prevConfigMode = ConfigMode = 5;
@@ -2284,7 +2308,7 @@ int main(void)
 					}
 
 					// Continue to next setting (blinky modes)
-					if (ramping)
+					if (rampingMode)
 					{
 						ConfigBlink(4);
 						prevConfigMode = ConfigMode = 5;
@@ -2297,7 +2321,7 @@ int main(void)
 					break;
 				
 				default:
-					if (ramping)
+					if (rampingMode)
 					{
 						//---------------------------------------------------------------------
 						// Ramping Configuration Settings
@@ -2354,7 +2378,7 @@ int main(void)
 						switch (ConfigMode)	
 						{
 						case 4:	// 2 - (exiting) mode set selection
-							if ((configClicks > 0) && (configClicks <= 12))
+							if ((configClicks > 0) && (configClicks <= sizeof(modeSetCnts)))
 							{
 								modeSetIdx = configClicks - 1;
 								DefineModeSet();

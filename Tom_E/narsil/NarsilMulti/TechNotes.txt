@@ -1,3 +1,15 @@
+	Program Memory Usage 	:	7248 bytes   88.5 % Full
+	Data Memory Usage 		:	149 bytes   29.1 % Full
+
+	Program Memory Usage 	:	7240 bytes   88.4 % Full
+	Data Memory Usage 		:	149 bytes   29.1 % Full
+
+
+v1.3 start on 2018-08-11:
+	Program Memory Usage 	:	7236 bytes   88.3 % Full
+	Data Memory Usage 		:	149 bytes   29.1 % Full
+
+
 Changes from Narsil Q8 1.3:
 --> 7610 bytes to start with in v1.3
 
@@ -40,3 +52,4 @@ Aug 08 - 7354 bytes for GT Buck Driver
 
 Oct 16 - 7348 bytes for 3C2S
 Oct 16 - 7476 bytes for Q8 2C1S
+Oct 17 - 7762 bytes for 3C1s

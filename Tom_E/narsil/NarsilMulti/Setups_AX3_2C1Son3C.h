@@ -1,6 +1,6 @@
 /****************************************************************************************
- * Setups_OTRM3.h - special for the OTR M3: 3 channels, 1S batteries, uses 3 7135's in the bank
- * ==============
+ * Setups_AX3_2C1Son3C.h - for the Amutorch AX3 double LED, 2 channels, 1S battery on a 3
+ * =====================  channel TA driver (only using the FET and single 7135 channel)
  *
  * Created: 4/30/2017 9:27:32 AM
  *  Author: Tom E
@@ -11,7 +11,11 @@
 //----------------------------------------------------------------------------------------
 //			Driver Board Settings
 //----------------------------------------------------------------------------------------
-#define OUT_CHANNELS 3			// define the output channels as 1, 2 or 3
+#define OUT_CHANNELS 2			// define the output channels as 1, 2 or 3
+
+#define TWOCHAN_3C_PINS			// special setting for using a FET+1 config on a 3 channel TA driver
+
+//#define TURBO_LEVEL_SUPPORT	// set if you want a max turbo level above the max ramping level
 
 #define VOLTAGE_MON				// Comment out to disable - ramp down and eventual shutoff when battery is low
 //#define VOLT_MON_R1R2			// uses external R1/R2 voltage divider, comment out for 1.1V internal ref
@@ -20,16 +24,17 @@
 //#define USING_220K	// for using the 220K resistor
 //#define USING_360K	// for using a 360K resistor (LDO and 2S cells)
 
-#define D1_DIODE 24				// Drop over rev. polarity protection diode: using 0.24V
+// This is added to reading, so the higher the #, the higher the reading
+#define D1_DIODE 32				// Drop over rev. polarity protection diode: using 0.24V
 
 // For 2 channel (FET+1) boards:
  //#define USING_3807135_BANK	// (default OFF) sets up ramping for 380 mA 7135's instead of a FET
 
 // For 3 channel (triple) boards:
-#define TRIPLE_3_7135			// Configure for 3 7135's
+//#define TRIPLE_3_7135			// Configure for 3 7135's
 //#define TRIPLE_8_7135			// Configure for 8 7135's
 
-#define ONBOARD_LED				// Enable the LED support
+//#define ONBOARD_LED				// Enable the LED support
 //----------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------
 
@@ -37,9 +42,17 @@
 //----------------------------------------------------------------------------------------
 //			Temperature Monitoring
 //----------------------------------------------------------------------------------------
-// Temperature Calibration Offset -
-#define TEMP_CAL_OFFSET (-19)
-//   -19  For the OTR M3 (15 mm TA triple), -22 might be closer/better
+// Temperature Calibration Offset - value is added to reading, higher the #, higher the reading:
+#define TEMP_CAL_OFFSET (-5)
+//	  -5   about right for the AX3
+//   -12  rough guess for the X6R triple
+//   -14  about for the TA driver for the M8
+//   -3   try for SP03
+//    1   about right for the C8F #1
+//   -12  guess for the JM70 #2
+//   -19  is about right for the Lumintop SD Mini, IOS proto driver
+//   -3   Decided to use this for Q8 production
+//   -6   BLF Q8 Round 3 - blinks 29C w/3 setting for 20C (68F) room temp
 //   -2   try for the Manker U21 (LJ)
 //   -2   works for the Warsun X60 (robo) using the 17 mm DEL driver
 //   -1   try this for proto #1, OSHPark BLF Q8 driver
@@ -49,7 +62,7 @@
 //   -8   For the Manker U11 - at -11, reads 18C at 71F room temp (22C)
 //   -2   For the Lumintop SD26 - at -2, reading a solid 19C-20C (66.2F-68F for 67F room temp)
 
-#define DEFAULT_STEPDOWN_TEMP (60)	// default for stepdown temperature (50C=122F, 55C=131F)
+#define DEFAULT_STEPDOWN_TEMP (55)	// default for stepdown temperature (50C=122F, 55C=131F)
 // use 50C for smaller size hosts, or a more conservative level (SD26, U11, etc.)
 // use 55C to 60C for larger size hosts, maybe C8 and above, or for a more aggressive setting
 
@@ -75,7 +88,7 @@
 #else
  #define DEF_MOON_LEVEL		3		// 0..7, 0: disabled, usually set to 3 (350 mA) or 5 (380 mA) - 2 might work on a 350 mA
 #endif
-#define DEF_STEPDOWN_MODE	1		// 0=disabled, 1=thermal, 2=60s, 3=90s, 4=120s, 5=3min, 6=5min, 7=7min (3 mins is good for Q8 production)
+#define DEF_STEPDOWN_MODE	0		// 0=disabled, 1=thermal, 2=60s, 3=90s, 4=120s, 5=3min, 6=5min, 7=7min (3 mins is good for production)
 #define DEF_BLINKY_MODE		2		// blinky mode config: 1=strobe only, 2=all blinkies, 0=disable
 
 #define DEF_MODE_SET_IDX	3		// 0..11, mode set currently in effect, chosen by user (3=4 modes)

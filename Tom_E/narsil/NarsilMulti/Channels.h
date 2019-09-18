@@ -52,12 +52,16 @@ void TurnOnBoardLed(byte on)
 		if (on)
 		{
 			DDRB = (1 << ONE7135_PWM_PIN) | (1 << FET_PWM_PIN) | (1 << ONBOARD_LED_PIN);
+		  #ifndef GRND_TO_LED
 			PORTB |= (1 << ONBOARD_LED_PIN);
+		  #endif
 		}
 		else
 		{
 			DDRB = (1 << ONE7135_PWM_PIN) | (1 << FET_PWM_PIN);
+		  #ifndef GRND_TO_LED
 			PORTB &= 0xff ^ (1 << ONBOARD_LED_PIN);
+		  #endif
 		}
 	}
 }
@@ -188,13 +192,17 @@ void TurnOnBoardLed(byte on)
 		if (on)
 		{
 			DDRB = (1 << ONE7135_PWM_PIN) | (1 << BANK_PWM_PIN) | (1 << FET_PWM_PIN) | (1 << ONBOARD_LED_PIN);
-			
+		
+		  #ifndef GRND_TO_LED
 			PORTB |= (1 << ONBOARD_LED_PIN);
+		  #endif
 		}
 		else
 		{
 			DDRB = (1 << ONE7135_PWM_PIN) | (1 << BANK_PWM_PIN) | (1 << FET_PWM_PIN);
+		  #ifndef GRND_TO_LED
 			PORTB &= 0xff ^ (1 << ONBOARD_LED_PIN);
+		  #endif
 		}
 	}
 }
@@ -304,12 +312,16 @@ void TurnOnBoardLed(byte on)
 		if (on)
 		{
 			DDRB = (1 << MAIN_PWM_PIN) | (1 << ONBOARD_LED_PIN);
+		  #ifndef GRND_TO_LED
 			PORTB |= (1 << ONBOARD_LED_PIN);
+		  #endif
 		}
 		else
 		{
 			DDRB = (1 << MAIN_PWM_PIN);
+		  #ifndef GRND_TO_LED
 			PORTB &= 0xff ^ (1 << ONBOARD_LED_PIN);
+		  #endif
 		}
 	}
 }
