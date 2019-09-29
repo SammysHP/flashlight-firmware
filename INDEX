@@ -112,6 +112,9 @@ Summary of each project
     ToyKeeper/spaghetti-monster/darkhorse:
         DarkHorse, a ZebraLight clone UI for FSM.
 
+    ToyKeeper/spaghetti-monster/fireflies-ui:
+        Fireflies UI, a custom UI for Fireflies-brand lights.
+
     ToyKeeper/spaghetti-monster/momentary:
         Momentary, a simple example UI for FSM.
 
@@ -159,6 +162,9 @@ Summary of each project
 
     hello_world:
         quick example to help test if flashing hardware works
+
+    loneoceans/gxb172:
+        GXB172 driver example firmware
 
     odd/MGdriver:
         Off-time multigroup driver by odd, based on luxdrv030 by DrJones
@@ -249,6 +255,7 @@ Authors
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/baton
         ToyKeeper/spaghetti-monster/darkhorse
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
@@ -278,6 +285,9 @@ Authors
 
     gchart:
         gchart/babka
+
+    loneoceans:
+        loneoceans/gxb172
 
     odd:
         odd/MGdriver
@@ -346,11 +356,13 @@ Button-Type
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/baton
         ToyKeeper/spaghetti-monster/darkhorse
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
         Werner/STAR_improvements
         dthoang
+        loneoceans/gxb172
         tterev3/attiny10_starter_code
         tterev3/pic10f322-examples
 
@@ -383,6 +395,7 @@ Extras
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/baton
         ToyKeeper/spaghetti-monster/darkhorse
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
@@ -416,6 +429,7 @@ Extras
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/baton
         ToyKeeper/spaghetti-monster/darkhorse
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
@@ -484,6 +498,7 @@ Extras
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/crescendo
         ToyKeeper/spaghetti-monster/anduril
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
         gchart/ramping-ui
@@ -530,9 +545,11 @@ Extras
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/baton
         ToyKeeper/spaghetti-monster/darkhorse
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
         ToyKeeper/spaghetti-monster/werner
+        loneoceans/gxb172
 
     thermal step-down:
         JonnyC/STAR/MTN_momentary_temp
@@ -545,6 +562,7 @@ Extras
         ToyKeeper/spaghetti-monster
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/darkhorse
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
@@ -660,6 +678,9 @@ MCU
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/ramping-ui
 
+    attiny841:
+        loneoceans/gxb172
+
     attiny85:
         Flintrock/bistro-hd
         Mike_C/X85
@@ -674,6 +695,7 @@ MCU
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/baton
         ToyKeeper/spaghetti-monster/darkhorse
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
@@ -810,9 +832,11 @@ Memory
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/baton
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
         ToyKeeper/spaghetti-monster/werner
+        loneoceans/gxb172
 
 Modes
 
@@ -833,6 +857,7 @@ Modes
         Tido/BLF-VLD
         ToyKeeper/bistro/biscotti
         ToyKeeper/crescendo
+        ToyKeeper/spaghetti-monster/fireflies-ui
         gchart/babka
 
     alpine beacon:
@@ -856,6 +881,7 @@ Modes
         ToyKeeper/s7
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/darkhorse
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
         ToyKeeper/spaghetti-monster/werner
@@ -926,6 +952,7 @@ Modes
     discrete ramp:
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/baton
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
         ToyKeeper/spaghetti-monster/werner
@@ -957,6 +984,7 @@ Modes
         Tom_E/RampingIOS
         Tom_E/narsil
         ToyKeeper/spaghetti-monster/anduril
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/momentary
         ToyKeeper/spaghetti-monster/rampingios
         ToyKeeper/spaghetti-monster/werner
@@ -987,6 +1015,7 @@ Modes
         ToyKeeper/bistro
         ToyKeeper/bistro/tripledown
         ToyKeeper/crescendo
+        ToyKeeper/spaghetti-monster/fireflies-ui
 
     ramp:
         DrJones/luxdrv
@@ -996,6 +1025,7 @@ Modes
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/crescendo
         ToyKeeper/spaghetti-monster/anduril
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
         alexvh/basic_off_time_driver
@@ -1013,6 +1043,7 @@ Modes
         ToyKeeper/Ferrero_Rocher
         ToyKeeper/spaghetti-monster/anduril
         ToyKeeper/spaghetti-monster/baton
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/rampingios
 
     strobe:
@@ -1043,6 +1074,7 @@ Modes
         Tom_E/RampingIOS
         Tom_E/narsil
         ToyKeeper/spaghetti-monster/anduril
+        ToyKeeper/spaghetti-monster/fireflies-ui
         ToyKeeper/spaghetti-monster/ramping-ui
         ToyKeeper/spaghetti-monster/rampingios
         ToyKeeper/spaghetti-monster/werner

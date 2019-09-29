@@ -41,6 +41,8 @@
     <preserveEEPROM>true</preserveEEPROM>
     <avrtool />
     <ExternalProgrammingToolCommand />
+    <ResetRule>0</ResetRule>
+    <EraseKey />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
@@ -127,7 +129,13 @@
     <Compile Include="Setups_1C1S.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="Setups_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="Setups_2C2S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_2HL_1C1S.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="Setups_3C1S.h">
@@ -136,7 +144,43 @@
     <Compile Include="Setups_3C2S.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="Setups_AX3_2C1Son3C.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_C20C#2_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_C20C_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_C8F21700_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_C8FXPLHI_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_C8F_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_D1_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_D4Ti.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_D4_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="Setups_GTBuck.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_JM70_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_M8_2C1Son3C.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_NA40_2C1S.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="Setups_OTRM3.h">
@@ -145,13 +189,46 @@
     <Compile Include="Setups_Q8_2C1S.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="tk-calibGT.h">
+    <Compile Include="Setups_S42_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_SDMini_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_SP03.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_SparkSF3_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_Spark_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_X1R_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_X6R_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_X6R_2C1Son3C.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_X7R_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_X9_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_ZY-T114_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Setups_ZY-T115_2C1S.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="tk-calib.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="tk-calibMTN17DDm.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="tk-calibWight.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="tk-delay.h">

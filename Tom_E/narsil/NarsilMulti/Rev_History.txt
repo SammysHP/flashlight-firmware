@@ -1,3 +1,21 @@
+Vers 1.3 2018-08-11:
+- make SaveConfig() safer by disabling ints, ensure 0xff's get written in old position, using library routine first
+  eeprom writes and not using eeprom erase
+- limit mode set choices to just those sets that are compiled in, if it's 12 or 8 sets for example
+
+Vers 1.3 2018-07-29:
+- added the TWOCHAN_3C_PINS option, so a standard TA triple board can be used in FET+1 mode (no 7135 bank needed)
+
+Vers 1.3 2018-01-28:
+- added support for TA's driver for the new Astrolux S42. It uses the single 7135 on pin #3 and the FET on pin#5, with the Indicator LED on pin #7.
+
+Vers 1.3 2017-10-16:
+tweaks made to battery voltage level readings:
+- The single cell mode using the internal V ref and no resistors appears to be more accurate now, rounded to the blinked out value.
+- for using R1/R2, it should also be more accurate now - still in testing
+
+
+----------------------------------------------------------------
 Vers 1.2 2017-10-16
 - changed momentary/tactical mode so fast clicks have no effect, and only way to exit is to power cycle
 
@@ -19,6 +37,7 @@ Vers 1.2 2017-10-15
   mode is chosen. It can also result in an immediate jump to the stepdown level as soon as the light
   is turned on in moon mode. Might appear as a bright flash when ramping first starts.
 
+----------------------------------------------------------------
 Vers 1.1 2017-08-12
 - added in the BLF GT Buck driver support, all conditionally compilied in
 - to build what you want, choose the applicable setup header file, and tk-calib header file.
