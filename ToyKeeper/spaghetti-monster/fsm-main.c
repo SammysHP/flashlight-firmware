@@ -41,18 +41,17 @@ static inline void hw_setup() {
     // configure PWM channels
     #if PWM_CHANNELS >= 1
     DDRB |= (1 << PWM1_PIN);
-    TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
-    TCCR0A = PHASE;
-    #endif
-    #if PWM_CHANNELS >= 2
-    DDRB |= (1 << PWM2_PIN);
-    #endif
-    #if PWM_CHANNELS >= 3
-    // Second PWM counter is ... weird
-    DDRB |= (1 << PWM3_PIN);
     TCCR1 = _BV (CS10);
     GTCCR = _BV (COM1B1) | _BV (PWM1B);
     OCR1C = 255;  // Set ceiling value to maximum
+    #endif
+    #if PWM_CHANNELS >= 2
+    DDRB |= (1 << PWM2_PIN);
+    TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
+    TCCR0A = PHASE;
+    #endif
+    #if PWM_CHANNELS >= 3
+    DDRB |= (1 << PWM3_PIN);
     #endif
     #if PWM_CHANNELS >= 4
     // 4th PWM channel is ... not actually supported in hardware  :(
