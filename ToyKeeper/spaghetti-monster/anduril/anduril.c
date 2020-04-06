@@ -821,8 +821,8 @@ uint8_t steady_state(Event event, uint16_t arg) {
         return MISCHIEF_MANAGED;
     }
     #ifdef USE_RAMP_CONFIG
-    // 4 clicks: configure this ramp mode
-    else if (event == EV_4clicks) {
+    // 6 clicks: configure this ramp mode
+    else if (event == EV_6clicks) {
         push_state(ramp_config_state, 0);
         return MISCHIEF_MANAGED;
     }
@@ -1631,8 +1631,8 @@ uint8_t tempcheck_state(Event event, uint16_t arg) {
         return MISCHIEF_MANAGED;
     }
     #endif
-    // 4 clicks: thermal config mode
-    else if (event == EV_4clicks) {
+    // 6 clicks: thermal config mode
+    else if (event == EV_6clicks) {
         push_state(thermal_config_state, 0);
         return MISCHIEF_MANAGED;
     }
@@ -1661,8 +1661,8 @@ uint8_t beacon_state(Event event, uint16_t arg) {
         #endif
         return MISCHIEF_MANAGED;
     }
-    // 4 clicks: beacon config mode
-    else if (event == EV_4clicks) {
+    // 6 clicks: beacon config mode
+    else if (event == EV_6clicks) {
         push_state(beacon_config_state, 0);
         return MISCHIEF_MANAGED;
     }
