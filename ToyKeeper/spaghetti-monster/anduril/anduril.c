@@ -799,17 +799,22 @@ uint8_t steady_state(Event event, uint16_t arg) {
     }
     // 2 clicks: go to/from highest level
     else if (event == EV_2clicks) {
-        if (actual_level < MAX_LEVEL) {
-            // true turbo, not the mode-specific ceiling
-            set_level_and_therm_target(MAX_LEVEL);
+        if (actual_level < mode_max) {
+            set_level_and_therm_target(mode_max);
         }
         else {
             set_level_and_therm_target(memorized_level);
         }
         return MISCHIEF_MANAGED;
     }
-    // 3 clicks: toggle smooth vs discrete ramping
+    // 3 clicks: go to turbo
     else if (event == EV_3clicks) {
+        // true turbo, not the mode-specific ceiling
+        set_level_and_therm_target(MAX_LEVEL);
+        return MISCHIEF_MANAGED;
+    }
+    // 4 clicks: toggle smooth vs discrete ramping
+    else if (event == EV_4clicks) {
         ramp_style = !ramp_style;
         save_config();
         #ifdef START_AT_MEMORIZED_LEVEL
