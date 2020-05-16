@@ -1,0 +1,20 @@
+// Noctigon KR4 by SammysHP
+#include "cfg-noctigon-kr4.h"
+// ATTINY: 1634
+
+#define RGB_LED_OFF_DEFAULT 0x22  // high, green
+#define RGB_LED_LOCKOUT_DEFAULT 0x10  // low, red
+#define RGB_RAINBOW_SPEED 0x0f
+
+#define QUARTERSPEED_LEVEL 1
+
+#define RAMP_SMOOTH_FLOOR 3
+#define RAMP_SMOOTH_CEIL 120
+#define RAMP_DISCRETE_FLOOR 20
+#define RAMP_DISCRETE_CEIL RAMP_SMOOTH_CEIL
+#define RAMP_DISCRETE_STEPS 5
+
+#undef USE_TENCLICK_THERMAL_CONFIG
+
+#define SLEEP_TICKS_PER_SECOND 7.8125
+#define USE_AUTOLOCK
