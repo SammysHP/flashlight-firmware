@@ -202,6 +202,9 @@ typedef enum {
     rgb_led_off_mode_e,
     rgb_led_lockout_mode_e,
     #endif
+    #if defined(USE_AUTOLOCK) && defined(TICK_DURING_STANDBY)
+    autolock_e,
+    #endif
     eeprom_indexes_e_END
 } eeprom_indexes_e;
 #define EEPROM_BYTES eeprom_indexes_e_END
@@ -224,6 +227,10 @@ typedef enum {
 
 #ifdef USE_SOFT_FACTORY_RESET
 #define USE_REBOOT
+#endif
+
+#if defined(USE_AUTOLOCK) && !defined(TICK_DURING_STANDBY)
+    #warning "USE_AUTOLOCK requires TICK_DURING_STANDBY."
 #endif
 
 #include "spaghetti-monster.h"
@@ -310,6 +317,10 @@ uint8_t momentary_active = 0;  // boolean, true if active *right now*
 // muggle mode, super-simple, hard to exit
 uint8_t muggle_state(Event event, uint16_t arg);
 uint8_t muggle_mode_active = 0;
+#endif
+#if defined(USE_AUTOLOCK) && defined(TICK_DURING_STANDBY)
+uint8_t autolock_config_state(Event event, uint16_t arg);
+uint8_t autolock = 0;
 #endif
 
 // general helper function for config modes
@@ -547,7 +558,7 @@ uint8_t off_state(Event event, uint16_t arg) {
         }
         return MISCHIEF_MANAGED;
     }
-    #if defined(TICK_DURING_STANDBY) && (defined(USE_INDICATOR_LED) || defined(USE_AUX_RGB_LEDS))
+    #if defined(TICK_DURING_STANDBY) && (defined(USE_INDICATOR_LED) || defined(USE_AUX_RGB_LEDS) || defined(USE_AUTOLOCK))
     // blink the indicator LED, maybe
     else if (event == EV_sleep_tick) {
         #ifdef USE_INDICATOR_LED
@@ -556,6 +567,12 @@ uint8_t off_state(Event event, uint16_t arg) {
         }
         #elif defined(USE_AUX_RGB_LEDS)
         rgb_led_update(rgb_led_off_mode, arg);
+        #endif
+        #ifdef USE_AUTOLOCK
+        uint16_t locktime = autolock * (uint16_t)(SLEEP_TICKS_PER_SECOND * 60);
+        if (autolock && arg > locktime) {
+            set_state(lockout_state, 0);
+        }
         #endif
         return MISCHIEF_MANAGED;
     }
@@ -1849,6 +1866,13 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         set_state(off_state, 0);
         return MISCHIEF_MANAGED;
     }
+    #if defined(USE_AUTOLOCK) && defined(TICK_DURING_STANDBY)
+    // 5 clicks: enable autolock
+    else if (event == EV_5clicks) {
+        push_state(autolock_config_state, 0);
+        return MISCHIEF_MANAGED;
+    }
+    #endif
 
     return EVENT_NOT_HANDLED;
 }
@@ -2204,6 +2228,20 @@ inline void beacon_mode_iter() {
     nice_delay_ms(((beacon_seconds) * 1000) - 100);
 }
 #endif  // #ifdef USE_BEACON_MODE
+
+
+#if defined(USE_AUTOLOCK) && defined(TICK_DURING_STANDBY)
+void autolock_config_save() {
+    // No range check or overflow handling. If user presses more than ~120 times
+    // the counter might overflow in the final calculation, but we don't care.
+    autolock = config_state_values[0];
+}
+
+uint8_t autolock_config_state(Event event, uint16_t arg) {
+    return config_state_base(event, arg,
+                             1, autolock_config_save);
+}
+#endif  // #if defined(USE_AUTOLOCK) && defined(TICK_DURING_STANDBY)
 
 
 uint8_t number_entry_state(Event event, uint16_t arg) {
@@ -2585,6 +2623,9 @@ void load_config() {
         rgb_led_off_mode = eeprom[rgb_led_off_mode_e];
         rgb_led_lockout_mode = eeprom[rgb_led_lockout_mode_e];
         #endif
+        #if defined(USE_AUTOLOCK) && defined(TICK_DURING_STANDBY)
+        autolock = eeprom[autolock_e];
+        #endif
     }
     #ifdef START_AT_MEMORIZED_LEVEL
     if (load_eeprom_wl()) {
@@ -2632,6 +2673,9 @@ void save_config() {
     #ifdef USE_AUX_RGB_LEDS
     eeprom[rgb_led_off_mode_e] = rgb_led_off_mode;
     eeprom[rgb_led_lockout_mode_e] = rgb_led_lockout_mode;
+    #endif
+    #if defined(USE_AUTOLOCK) && defined(TICK_DURING_STANDBY)
+    eeprom[autolock_e] = autolock;
     #endif
 
     save_eeprom();
