@@ -96,19 +96,7 @@ BLF:  (not a company, just people on BudgetLightForum doing collaborations with 
     AKA: Mateminco T01
     Year: 2015
 
-  - BLF X5
-    Firmware: Bistro / FET_7135_LAYOUT
-    OEM: Manker / Mateminco
-    AKA: Astrolux S3
-    AKA: Astrolux SC  (copper version)
-    Year: 2016
-
-  - BLF X6v2
-    Firmware: Bistro / FET_7135_LAYOUT
-    OEM: Manker / Mateminco
-    AKA: Astrolux S2
-    AKA: Astrolux SS  (steel+copper version)
-    Year: 2016
+  - BLF / TLF FW3A -> Lumintop FW3A
 
   - BLF GT -> Lumintop GT
 
@@ -124,6 +112,20 @@ BLF:  (not a company, just people on BudgetLightForum doing collaborations with 
     OEM: ThorFire (sofirn)
     AKA: sofirn Q8 / ThorFire Q8
     Year: 2017
+
+  - BLF X5
+    Firmware: Bistro / FET_7135_LAYOUT
+    OEM: Manker / Mateminco
+    AKA: Astrolux S3
+    AKA: Astrolux SC  (copper version)
+    Year: 2016
+
+  - BLF X6v2
+    Firmware: Bistro / FET_7135_LAYOUT
+    OEM: Manker / Mateminco
+    AKA: Astrolux S2
+    AKA: Astrolux SS  (steel+copper version)
+    Year: 2016
 
 
 Convoy:
@@ -257,6 +259,7 @@ Lumintop:
     Year: 2019
 
   - Lumintop FW3A, FW3B, FW3C, FW3S, FW3T
+    AKA: BLF / TLF FW3A
     Firmware: Anduril / cfg-fw3a.h
     Year: 2019
 
