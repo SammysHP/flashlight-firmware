@@ -26,82 +26,88 @@ If a firmware file ends in "-219", it means that build uses a lower maximum
 power, and is intended for use on Nichia 219 emitters.
 
 
-Astrolux:  (Banggood store rebrands of other misc manufacturers)
+Astrolux:  (Banggood store rebrands of other manufacturers)
 
-  ? Astrolux C8
-    Firmware: BLF A6
-    OEM: TBD
-    Year: 2019
+  - Astrolux C8 -> Mateminco C8
+
+  - Astrolux A01 -> Mateminco A01
 
   - Astrolux EC01 -> sofirn EC01
 
   - Astrolux EC03 -> sofirn EC03
 
-  - Astrolux FT03 -> Mateminco MT35?
+  - Astrolux FT01 -> Mateminco TK01 (XHP50.2)
 
-  - Astrolux FT03-Mini -> Mateminco MT35mini
+  - Astrolux FT02 -> Mateminco T02 (XHP35-HI before, XHP70.2 after)
 
-  - Astrolux FT03S -> Mateminco MT90mini
+  - Astrolux FT03 -> Mateminco MT35-Mini (SST40 / XHP50.2)
+
+  - Astrolux FT03-Mini -> Mateminco MT35-Mini-S
+
+  - Astrolux FT03S -> Mateminco MT90-Mini
 
   - Astrolux HL01 -> Mateminco G01
+
+  - Astrolux K1 -> Mateminco CSF02
+
+  - Astrolux M01 -> Mateminco K01
+
+  - Astrolux M03 -> Mateminco K01 Copper
+
+  - Astrolux MF01 -> Mateminco MT18
 
   - Astrolux MF01S -> Mateminco MT18S
 
   - Astrolux MF01-Mini -> Mateminco MT07
 
+  - Astrolux MF02 -> Mateminco MT35
+
+  - Astrolux MF02S -> Mateminco MT70
+
+  - Astrolux MF04 -> Mateminco MT35-Plus
+
+  - Astrolux MF04S -> Mateminco MT70-Plus
+
+  - Astrolux MF05 -> Mateminco MT90-Plus
+
   - Astrolux S1 -> BLF A6
 
-  - Astrolux S2 -> BLF X6v2
-  - Astrolux SS -> BLF X6v2 (steel+copper version)
+  - Astrolux S2 / SS -> BLF X6v2
 
-  - Astrolux S3 -> BLF X5
-  - Astrolux SC -> BLF X5 (copper version)
+  - Astrolux S3 / SC -> BLF X5
 
-  ? Astrolux S41 / S41S
-    Firmware: BLF A6
-    OEM: TBD (based on DB Custom's modded BLF X5 quad)
-    Year: 2016
+  - Astrolux S41 / S41S -> Mateminco S01
 
-  ? Astrolux S42 / S42S
-    Firmware: proprietary (as shipped, bad clone of BLF A6)
-    Firmware: NarsilM / Setups_S42_2C1S.h?
-    OEM: TBD
-    Year: 2017
-    Warning: Initial batch didn't work with the battery it was designed for,
-      and the UI has been widely regarded as terrible.
+  - Astrolux S42 / S42S -> Mateminco S02
 
-  ? Astrolux S43 / S43S
-    Firmware: NarsilM / TBD ("NarsilM V1.3")
-    OEM: TBD
-    Year: 2018
+  - Astrolux S43 / S43S -> Mateminco S03
 
-  ? Astrolux X6S
-    Firmware: TBD (Bistro?)
-    OEM: Mateminco
-    Year: 2018
+  - Astrolux X6S -> Mateminco X6S
 
 
 BLF:  (not a company, just people on BudgetLightForum doing collaborations with companies)
 
   - BLF A6 / BLF EE A6
     Firmware: BLF A6
-    OEM: Manker
-    original OEM: EagleEyes A6 (cancelled before production)
+    OEM: EagleEyes A6 (cancelled before production)
+    OEM: Manker (at launch)
+    OEM: Mateminco (later)
     AKA: Astrolux S1
+    AKA: Mateminco T01
     Year: 2015
 
   - BLF X5
     Firmware: Bistro / FET_7135_LAYOUT
-    OEM: Manker
+    OEM: Manker / Mateminco
     AKA: Astrolux S3
-    AKA: Astrolux SC
+    AKA: Astrolux SC  (copper version)
     Year: 2016
 
   - BLF X6v2
     Firmware: Bistro / FET_7135_LAYOUT
-    OEM: Manker
+    OEM: Manker / Mateminco
     AKA: Astrolux S2
-    AKA: Astrolux SS
+    AKA: Astrolux SS  (steel+copper version)
     Year: 2016
 
   - BLF GT -> Lumintop GT
@@ -115,7 +121,7 @@ BLF:  (not a company, just people on BudgetLightForum doing collaborations with 
   - BLF Q8
     Firmware: NarsilM / Setups_Q8_2C1S.h? (stock)
     Firmware: Anduril / cfg-blf-q8.h
-    OEM: sofirn / ThorFire
+    OEM: ThorFire (sofirn)
     AKA: sofirn Q8 / ThorFire Q8
     Year: 2017
 
@@ -232,6 +238,9 @@ Haikelite:
     Firmware: Anduril / TBD
     Year: 2020
 
+  ? Haikelite HT70
+    Firmware: NarsilM / TBD?
+
   ? Haikelite MT03 / MT03 Brass
     Firmware: NarsilM / TBD
     Year: ?
@@ -312,6 +321,7 @@ Lumintop:
 
 
 Manker:
+  OEM: Mateminco (TBD)
 
   ? CPFi Cometa
     Firmware: Bistro / TBD
@@ -319,38 +329,105 @@ Manker:
     Warning: This product is known to destroy itself with some types of 26650
       batteries, due to errors in the host design.
 
+  - Manker E14 -> Mateminco S01 / Astrolux S41
+
+  ? Manker E14 II
+    Note: Slightly modified clone of Mateminco S02 / Astrolux S42
+
 
 Mateminco:
 
-  - Mateminco MT18S
-    Firmware: Anduril / cfg-mateminco-mt18s.h
-    AKA: Astrolux MF01S
+  ? Mateminco A01
+    AKA: Astrolux A01
+
+  - Mateminco C8
+    AKA: Astrolux C8
+    Firmware: BLF A6
     Year: 2019
+
+  ? Mateminco CSF02
+    AKA: Astrolux K1
+
+  - Mateminco G01
+    Firmware: Anduril / cfg-mateminco-mt07.h
+    AKA: Astrolux HL01
+    Year: 2020
+
+  ? Mateminco K01
+    AKA: Astrolux M01
+
+  ? Mateminco K01 Copper
+    AKA: Astrolux M03
 
   - Mateminco MT07
     Firmware: Anduril / cfg-mateminco-mt07.h
     AKA: Astrolux MF01-Mini
     Year: 2019
 
-  ? Mateminco MT35?
-    Firmware: NarsilM / TBD ("NarsilM v1.3 adapted by Texas_Ace")
-    AKA: Astrolux FT03
+  ? Mateminco MT18
+    AKA: Astrolux MF01
+
+  - Mateminco MT18S
+    Firmware: Anduril / cfg-mateminco-mt18s.h
+    AKA: Astrolux MF01S
     Year: 2019
 
-  - Mateminco MT35mini
+  ? Mateminco MT35
+    Firmware: NarsilM / TBD ("NarsilM v1.3 adapted by Texas_Ace")
+    AKA: Astrolux MF02
+    Year: 2019
+
+  - Mateminco MT35-Mini
     Firmware: Anduril / cfg-emisar-d4v2.h
-    AKA: Astrolux FT03-Mini
+    AKA: Astrolux FT03
     Year: 2020
 
-  - Mateminco MT90mini
+  ? Mateminco MT35-Mini-S
+    AKA: Astrolux FT03-Mini
+
+  ? Mateminco MT35-Plus
+    AKA: Astrolux MF04
+
+  ? Mateminco MT70
+    AKA: Astrolux MF02S
+
+  ? Mateminco MT70-Plus
+    AKA: Astrolux MF04S
+
+  - Mateminco MT90-Mini
     Firmware: Anduril / cfg-mateminco-mt07.h
     AKA: Astrolux FT03S
     Year: 2020
 
-  - Mateminco G01
-    Firmware: Anduril / cfg-mateminco-mt07.h
-    AKA: Astrolux HL01
-    Year: 2020
+  ? Mateminco MT90-Plus
+    AKA: Astrolux MF05
+
+  - Mateminco S01 / S01 Stainless Steel
+    AKA: Astrolux S41 / S41S
+    Firmware: BLF A6
+    Note: based on DB Custom's modded BLF X5 quad
+    Year: 2016
+
+  ? Mateminco S02 / S02 Stainless Steel
+    AKA: Astrolux S42 / S42S
+    Firmware: proprietary (as shipped, bad clone of BLF A6)
+    Firmware: NarsilM / Setups_S42_2C1S.h?
+    Year: 2017
+    Warning: Initial batch didn't work with the battery it was designed for,
+      and the UI has been widely regarded as terrible.
+
+  ? Mateminco S03 / S03 Copper
+    AKA: Astrolux S43 / S43S
+    Firmware: NarsilM / TBD ("NarsilM V1.3")
+    Year: 2018
+
+  - Mateminco T01 -> BLF A6
+
+  ? Mateminco T02
+    AKA: Astrolux FT02
+
+  ? Mateminco TK01
+    AKA: Astrolux FT01
 
   ? Mateminco X6S
     Firmware: Bistro / TBD
@@ -372,19 +449,19 @@ Noctigon:  (a brand by Intl-Outdoor)
     Firmware: Anduril / cfg-noctigon-k1.h
     Year: 2019
 
-  - Noctigon K1 SBT90.2
+  - Noctigon K1 (SBT90.2)
     Firmware: Anduril / cfg-noctigon-k1-sbt90.h
     Year: 2020
 
-  - Noctigon K1 XHP35
+  - Noctigon K1 (XHP35)
     Firmware: Anduril / cfg-noctigon-k1-12v.h
     Year: 2020
 
-  - Noctigon KR1
+  - Noctigon KR1 Finca
     Firmware: Anduril / cfg-noctigon-kr4.h (?)
     Year: 2020
 
-  - Noctigon KR4
+  - Noctigon KR4 Quinta
     Firmware: Anduril / cfg-noctigon-kr4.h
     Year: 2020
 
@@ -425,7 +502,7 @@ sofirn:  (lowercase because Barry says so)
     Firmware: Anduril / TBD
     Year: 2020
 
-  - sofirn LT -> BLF Lantern
+  - sofirn LT1 -> BLF Lantern
 
   - sofirn Q8 -> BLF Q8
 
@@ -436,6 +513,7 @@ sofirn:  (lowercase because Barry says so)
 
 
 ThorFire:
+  OEM: sofirn
 
   - Thorfire Q8 -> BLF Q8
 
