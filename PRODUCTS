@@ -184,14 +184,18 @@ Emisar:  (a brand by Intl-Outdoor)
     Firmware: NarsilM / Setups_D4Ti.h
     Year: 2017
 
+  - Emisar D4v2
+    Firmware: Anduril / cfg-emisar-d4v2.h
+    Firmware: Anduril / cfg-emisar-d4v2-219.h (219C)
+    Firmware: Anduril / cfg-noctigon-kr4-nofet.h (E21A)
+    Year: 2019
+
+  - Emisar D4v2.5 -> Emisar D4v2 with Noctigon KR4 driver
+
   - Emisar D4S
     Firmware: RampingIOSv3 / cfg-emisar-d4s.h
     Firmware: Anduril / cfg-emisar-d4s.h
     Year: 2018
-
-  - Emisar D4v2
-    Firmware: Anduril / cfg-emisar-d4v2.h
-    Year: 2019
 
   - Emisar D4Sv2
     Firmware: Anduril / cfg-emisar-d4sv2.h
@@ -402,8 +406,9 @@ Mateminco:
     AKA: Astrolux FT03S
     Year: 2020
 
-  ? Mateminco MT90-Plus
+  - Mateminco MT90-Plus
     AKA: Astrolux MF05
+    Firmware: proprietary
 
   - Mateminco S01 / S01 Stainless Steel
     AKA: Astrolux S41 / S41S
@@ -461,15 +466,13 @@ Noctigon:  (a brand by Intl-Outdoor)
     Year: 2020
 
   - Noctigon KR1 Finca
-    Firmware: Anduril / cfg-noctigon-kr4.h (?)
+    Firmware: Anduril / cfg-noctigon-kr4-nofet.h
     Year: 2020
 
   - Noctigon KR4 Quinta
     Firmware: Anduril / cfg-noctigon-kr4.h
-    Year: 2020
-
-  - Noctigon KR4 (E21A versions)
-    Firmware: Anduril / cfg-noctigon-kr4-nofet.h
+    Firmware: Anduril / cfg-noctigon-kr4-nofet.h (E21A)
+    Firmware: Anduril / cfg-noctigon-kr4-219.h (219C)
     Year: 2020
 
   - Noctigon Meteor M43
@@ -491,13 +494,13 @@ ReyLight:
 
 sofirn:  (lowercase because Barry says so)
 
-  - sofirn EC01 (?)
+  - sofirn EC01 (?) (unsure of original name)
     Firmware: Anduril / cfg-sofirn-sp36.h
     AKA: Astrolux EC01
     Year: 2019
 
-  - sofirn EC03 (?)
-    Firmware: Anduril / sofirn-sp36.h
+  - sofirn EC03 (?) (unsure of original name)
+    Firmware: Anduril / cfg-sofirn-sp36.h
     AKA: Astrolux EC03
     Year: 2020
 
