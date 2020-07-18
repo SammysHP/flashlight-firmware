@@ -32,9 +32,9 @@ Astrolux:  (Banggood store rebrands of other manufacturers)
 
   - Astrolux A01 -> Mateminco A01
 
-  - Astrolux EC01 -> sofirn EC01
+  - Astrolux EC01 -> sofirn Astrolux EC01
 
-  - Astrolux EC03 -> sofirn EC03
+  - Astrolux EC03 -> sofirn Astrolux EC03
 
   - Astrolux FT01 -> Mateminco TK01 (XHP50.2)
 
@@ -130,6 +130,13 @@ BLF:  (not a company, just people on BudgetLightForum doing collaborations with 
 
 Convoy:
 
+  - "Biscotti" lights and drivers
+    Firmware: Biscotti (in the "convoy" repo branch)
+    Year: 2017
+
+  - "Biscotti clone" lights and drivers
+    Firmware: proprietary
+
   - Convoy C8 Biscotti / C8+
     Firmware: Biscotti (in the "convoy" repo branch)
     Year: 2018
@@ -149,6 +156,10 @@ Convoy:
   - Convoy S2+ Biscotti
     Firmware: Biscotti (in the "convoy" repo branch)
     Year: 2017
+
+  ? Convoy S2+ SST-40
+    Firmware: Biscotti clone (proprietary)
+    Year: TBD
 
 
 Emisar:  (a brand by Intl-Outdoor)
@@ -494,19 +505,23 @@ ReyLight:
 
 sofirn:  (lowercase because Barry says so)
 
-  - sofirn EC01 (?) (unsure of original name)
+  - Astrolux EC01  (is not sold under sofirn brand)
     Firmware: Anduril / cfg-sofirn-sp36.h
-    AKA: Astrolux EC01
     Year: 2019
+    Warning: Thermal regulation may not work correctly on items
+      manufactured before 2020-08.
 
-  - sofirn EC03 (?) (unsure of original name)
+  - Astrolux EC03  (is not sold under sofirn brand)
     Firmware: Anduril / cfg-sofirn-sp36.h
-    AKA: Astrolux EC03
     Year: 2020
+    Warning: Thermal regulation may not work correctly on items
+      manufactured before 2020-08.
 
-  ? sofirn IF25A
-    Firmware: Anduril / TBD
+  - sofirn IF25A
+    Firmware: Anduril / cfg-sofirn-sp36.h
     Year: 2020
+    Warning: Thermal regulation may not work correctly on items
+      manufactured before 2020-08.
 
   - sofirn LT1 -> BLF Lantern
 
