@@ -401,6 +401,8 @@ Mateminco:
     Year: 2020
 
   ? Mateminco MT35-Mini-S
+    Firmware: Anduril / TBD?
+      (has the same RGB aux modes, at least)
     AKA: Astrolux FT03-Mini
 
   ? Mateminco MT35-Plus
@@ -526,6 +528,10 @@ sofirn:  (lowercase because Barry says so)
   - sofirn LT1 -> BLF Lantern
 
   - sofirn Q8 -> BLF Q8
+
+  ? sofirn SC31 Pro
+    Firmware: Anduril / TBD
+    Year: 2020
 
   - sofirn SP36 / SP36A
     Firmware: NarsilM / Setups_Q8_2C1S.h?  (SP36)
