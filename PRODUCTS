@@ -529,8 +529,8 @@ sofirn:  (lowercase because Barry says so)
 
   - sofirn Q8 -> BLF Q8
 
-  ? sofirn SC31 Pro
-    Firmware: Anduril / TBD
+  - sofirn SC31 Pro
+    Firmware: Anduril / cfg-sofirn-sp36.h
     Year: 2020
 
   - sofirn SP36 / SP36A
