@@ -33,7 +33,7 @@ const PROGMEM uint8_t rgb_led_colors[] = {
 // intentionally 1 higher than total modes, to make "voltage" easier to reach
 // (at Hank's request)
 #define RGB_LED_NUM_COLORS 11
-#define RGB_LED_NUM_PATTERNS 4
+#define RGB_LED_NUM_PATTERNS 6
 #ifndef RGB_LED_OFF_DEFAULT
 #define RGB_LED_OFF_DEFAULT 0x19  // low, voltage
 //#define RGB_LED_OFF_DEFAULT 0x18  // low, rainbow
