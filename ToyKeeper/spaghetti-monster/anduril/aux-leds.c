@@ -145,6 +145,10 @@ void rgb_led_update(uint8_t mode, uint8_t arg) {
                                             1, 0, 0, 0,  0, 0, 0, 0,  0, 1};
         frame = (frame + 1) % sizeof(animation);
         pattern = animation[frame];
+    } else if (pattern == 4) {
+        pattern = (arg % 8) ? 0 : 1;
+    } else if (pattern == 5) {
+        pattern = (arg % 8) ? 0 : 2;
     }
     uint8_t result;
     #ifdef USE_BUTTON_LED
