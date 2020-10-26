@@ -21,3 +21,5 @@
 #define RAMP_DISCRETE_STEPS 5
 
 #define SIMPLE_UI_ACTIVE 0
+
+#define BLINK_ONCE_TIME 32
