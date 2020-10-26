@@ -44,7 +44,7 @@ void blink_once() {
     if (bump > MAX_LEVEL) bump = 0;
 
     set_level(bump);
-    delay_4ms(10/4);
+    delay_4ms(8);
     set_level(brightness);
 }
 
