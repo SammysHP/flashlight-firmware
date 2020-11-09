@@ -396,13 +396,12 @@ Mateminco:
     Year: 2019
 
   - Mateminco MT35-Mini
-    Firmware: Anduril / cfg-emisar-d4v2.h
+    Firmware: NarsilM / TBD ("NarsilM v1.3 adapted by Texas_Ace")
     AKA: Astrolux FT03
     Year: 2020
 
-  ? Mateminco MT35-Mini-S
-    Firmware: Anduril / TBD?
-      (has the same RGB aux modes, at least)
+  - Mateminco MT35-Mini-S
+    Firmware: Anduril / cfg-emisar-d4v2.h
     AKA: Astrolux FT03-Mini
 
   ? Mateminco MT35-Plus
