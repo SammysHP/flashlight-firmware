@@ -45,16 +45,16 @@
 #define QUARTERSPEED_LEVEL 5
 
 // the default of 26 looks a bit flat, so increase it
-#define CANDLE_AMPLITUDE 40
+#define CANDLE_AMPLITUDE 30
 
 // override default ramp style
 #undef RAMP_STYLE
-#define RAMP_STYLE 1  // 0 = smooth, 1 = stepped
+#define RAMP_STYLE 0  // 0 = smooth, 1 = stepped
 // set floor and ceiling as far apart as possible
 // because this lantern isn't overpowered
 #define RAMP_SMOOTH_FLOOR 1
 #define RAMP_SMOOTH_CEIL  150
-#define RAMP_DISCRETE_FLOOR 10
+#define RAMP_DISCRETE_FLOOR RAMP_SMOOTH_FLOOR
 #define RAMP_DISCRETE_CEIL  RAMP_SMOOTH_CEIL
 #define RAMP_DISCRETE_STEPS 5
 
@@ -62,9 +62,6 @@
 #define SIMPLE_UI_FLOOR RAMP_DISCRETE_FLOOR
 #define SIMPLE_UI_CEIL RAMP_DISCRETE_CEIL
 #define SIMPLE_UI_STEPS RAMP_DISCRETE_STEPS
-
-#define USE_SOS_MODE
-#define USE_SOS_MODE_IN_BLINKY_GROUP
 
 // the sensor (attiny85) is nowhere near the emitters
 // so thermal regulation can't work
