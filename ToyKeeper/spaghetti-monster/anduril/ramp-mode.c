@@ -95,10 +95,15 @@ uint8_t steady_state(Event event, uint16_t arg) {
     #endif  // if (B_TIMING_OFF == B_RELEASE_T)
     // 1 click: off
     else if (event == EV_1click) {
+        // Go back from ceiling/turbo to memorized level
+        if (memorized_level < actual_level) {
+            set_level_and_therm_target(memorized_level);
+            return MISCHIEF_MANAGED;
+        }
         set_state(off_state, 0);
         return MISCHIEF_MANAGED;
     }
-    // 2 clicks: go to/from highest level
+    // 2 clicks: go to highest level
     else if (event == EV_2clicks) {
         uint8_t turbo_level;
         #ifdef USE_2C_MAX_TURBO
@@ -110,10 +115,10 @@ uint8_t steady_state(Event event, uint16_t arg) {
             #endif
             turbo_level = MAX_LEVEL;
         #else
-            // simple UI: to/from ceiling
-            // full UI: to/from ceiling if mem < ceiling,
-            //          or to/from turbo if mem >= ceiling
-            if ((memorized_level < mode_max)
+            // simple UI: to ceiling
+            // full UI: to ceiling if current < ceiling,
+            //          or to turbo if current >= ceiling
+            if ((actual_level < mode_max)
                 #ifdef USE_SIMPLE_UI
                 || simple_ui_active
                 #endif
@@ -121,12 +126,7 @@ uint8_t steady_state(Event event, uint16_t arg) {
             else { turbo_level = MAX_LEVEL; }
         #endif
 
-        if (actual_level < turbo_level) {
-            set_level_and_therm_target(turbo_level);
-        }
-        else {
-            set_level_and_therm_target(memorized_level);
-        }
+        set_level_and_therm_target(turbo_level);
         #ifdef USE_SUNSET_TIMER
         timer_orig_level = actual_level;
         #endif
