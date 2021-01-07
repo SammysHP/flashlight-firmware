@@ -103,6 +103,9 @@
 // dual-switch support (second switch is a tail clicky)
 // (currently incompatible with factory reset)
 //#define START_AT_MEMORIZED_LEVEL
+// start at manual memory level if set
+// (Requires USE_MANUAL_MEMORY and START_AT_MEMORIZED_LEVEL)
+//#define START_AT_MANUAL_MEMORY_LEVEL
 
 
 ///// extra modes (enable / disable / configure each mode) /////

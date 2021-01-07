@@ -81,6 +81,11 @@ void load_config() {
     if (load_eeprom_wl()) {
         memorized_level = eeprom_wl[0];
     }
+    #if defined(USE_MANUAL_MEMORY) && defined(START_AT_MANUAL_MEMORY_LEVEL)
+    if (manual_memory) {
+        memorized_level = manual_memory;
+    }
+    #endif
     #endif
 }
 
