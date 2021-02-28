@@ -229,7 +229,10 @@ uint8_t steady_state(Event event, uint16_t arg) {
         #ifdef USE_SUNSET_TIMER
         // reduce output if shutoff timer is active
         if (sunset_timer) {
-            uint8_t dimmed_level = timer_orig_level * (sunset_timer-1) / sunset_timer_peak;
+            uint8_t dimmed_level = timer_orig_level * sunset_timer / sunset_timer_peak;
+            const uint8_t dimmed_level_next = timer_orig_level * (sunset_timer-1) / sunset_timer_peak;
+            const uint8_t dimmed_level_delta = dimmed_level - dimmed_level_next;
+            dimmed_level -= dimmed_level_delta * (sunset_ticks/TICKS_PER_SECOND) / 60;
             if (dimmed_level < 1) dimmed_level = 1;
             #ifdef USE_SET_LEVEL_GRADUALLY
             set_level_gradually(dimmed_level);
