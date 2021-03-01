@@ -47,7 +47,6 @@ uint8_t steady_state(Event event, uint16_t arg) {
 
     #ifdef USE_SUNSET_TIMER
     // handle the shutoff timer first
-    static uint8_t timer_orig_level = 0;
     uint8_t sunset_active = sunset_timer;  // save for comparison
     // clock tick
     sunset_timer_state(event, arg);
@@ -128,7 +127,7 @@ uint8_t steady_state(Event event, uint16_t arg) {
             set_level_and_therm_target(memorized_level);
         }
         #ifdef USE_SUNSET_TIMER
-        timer_orig_level = actual_level;
+        reset_sunset_timer();
         #endif
         return MISCHIEF_MANAGED;
     }
@@ -208,7 +207,7 @@ uint8_t steady_state(Event event, uint16_t arg) {
         #endif
         set_level_and_therm_target(memorized_level);
         #ifdef USE_SUNSET_TIMER
-        timer_orig_level = actual_level;
+        reset_sunset_timer();
         #endif
         return MISCHIEF_MANAGED;
     }
@@ -356,7 +355,7 @@ uint8_t steady_state(Event event, uint16_t arg) {
         memorized_level = nearest_level(actual_level);
         set_level_and_therm_target(memorized_level);
         #ifdef USE_SUNSET_TIMER
-        timer_orig_level = actual_level;
+        reset_sunset_timer();
         #endif
         return MISCHIEF_MANAGED;
     }
@@ -521,6 +520,16 @@ void set_level_and_therm_target(uint8_t level) {
 }
 #else
 #define set_level_and_therm_target(level) set_level(level)
+#endif
+
+#ifdef USE_SUNSET_TIMER
+void reset_sunset_timer() {
+    if (sunset_timer) {
+        timer_orig_level = actual_level;
+        sunset_timer_peak = sunset_timer;
+        sunset_ticks = 0;
+    }
+}
 #endif
 
 
