@@ -192,5 +192,10 @@ uint8_t ramp_stepss[] = {
     };
 uint8_t ramp_discrete_step_size;  // don't set this
 
+#ifdef USE_SUNSET_TIMER
+uint8_t timer_orig_level = 0;
+void reset_sunset_timer();
+#endif
+
 
 #endif
