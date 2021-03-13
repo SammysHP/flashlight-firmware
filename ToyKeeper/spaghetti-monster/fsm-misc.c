@@ -110,14 +110,6 @@ uint8_t blink_num(uint8_t num) {
 #ifdef USE_INDICATOR_LED
 void indicator_led(uint8_t lvl) {
     switch (lvl) {
-        case 0:  // indicator off
-            DDRB &= 0xff ^ (1 << AUXLED_PIN);
-            PORTB &= 0xff ^ (1 << AUXLED_PIN);
-            #ifdef AUXLED2_PIN  // second LED mirrors the first
-            DDRB &= 0xff ^ (1 << AUXLED2_PIN);
-            PORTB &= 0xff ^ (1 << AUXLED2_PIN);
-            #endif
-            break;
         case 1:  // indicator low
             DDRB &= 0xff ^ (1 << AUXLED_PIN);
             PORTB |= (1 << AUXLED_PIN);
@@ -126,12 +118,20 @@ void indicator_led(uint8_t lvl) {
             PORTB |= (1 << AUXLED2_PIN);
             #endif
             break;
-        default:  // indicator high
+        case 2:  // indicator high
             DDRB |= (1 << AUXLED_PIN);
             PORTB |= (1 << AUXLED_PIN);
             #ifdef AUXLED2_PIN  // second LED mirrors the first
             DDRB |= (1 << AUXLED2_PIN);
             PORTB |= (1 << AUXLED2_PIN);
+            #endif
+            break;
+        default:  // indicator off
+            DDRB &= 0xff ^ (1 << AUXLED_PIN);
+            PORTB &= 0xff ^ (1 << AUXLED_PIN);
+            #ifdef AUXLED2_PIN  // second LED mirrors the first
+            DDRB &= 0xff ^ (1 << AUXLED2_PIN);
+            PORTB &= 0xff ^ (1 << AUXLED2_PIN);
             #endif
             break;
     }
