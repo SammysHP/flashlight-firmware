@@ -49,6 +49,9 @@ Summary of each project
     RMM/dragon:
         RMM/CWF "Dragon" firmware for 2-color clicky-switch lights
 
+    SammysHP/rampinglight:
+        "rampinglight" firmware for clicky-switch Convoy/nanjg lights
+
     Tamagotchi/7135x8v2:
         Very flexible clicky firmware with hidden modes, from fonarevka.ru
 
@@ -223,6 +226,9 @@ Authors
     RMM:
         RMM/dragon
 
+    SammysHP:
+        SammysHP/rampinglight
+
     Tamagotchi:
         Tamagotchi/7135x8v2
 
@@ -316,6 +322,7 @@ Button-Type
         JonnyC/STAR/STAR_off_time
         Mike_C/X85
         RMM/dragon
+        SammysHP/rampinglight
         Tamagotchi/7135x8v2
         Tido/BLF-VLD
         ToyKeeper/STAR_1mode
@@ -384,6 +391,7 @@ Extras
     LVP:
         Flintrock/bistro-hd
         RMM/dragon
+        SammysHP/rampinglight
         Tamagotchi/7135x8v2
         Tom_E/RampingIOS
         Tom_E/narsil
@@ -597,6 +605,7 @@ License
         Flintrock/bistro-hd
         Mike_C/X85
         RMM/dragon
+        SammysHP/rampinglight
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
         ToyKeeper/bistro/tripledown
@@ -625,6 +634,7 @@ MCU
         JonnyC/STAR/STAR_dual_switch
         JonnyC/STAR/STAR_momentary
         JonnyC/STAR/STAR_off_time
+        SammysHP/rampinglight
         Tamagotchi/7135x8v2
         Tido/BLF-VLD
         Tom_E/eswitch-13
@@ -730,6 +740,7 @@ Memory
         Flintrock/bistro-hd
         Mike_C/X85
         RMM/dragon
+        SammysHP/rampinglight
         Tom_E/narsil
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
@@ -775,6 +786,7 @@ Memory
         JonnyC/STAR/STAR_off_time
         Mike_C/X85
         RMM/dragon
+        SammysHP/rampinglight
         ToyKeeper/STAR_noinit
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
@@ -867,6 +879,7 @@ Modes
         DrJones/luxdrv
         Flintrock/bistro-hd
         RMM/dragon
+        SammysHP/rampinglight
         Tamagotchi/7135x8v2
         Tom_E/RampingIOS
         Tom_E/narsil
@@ -895,6 +908,7 @@ Modes
         ToyKeeper/battcheck
 
     beacon:
+        SammysHP/rampinglight
         Tom_E/RampingIOS
         Tom_E/narsil
         ToyKeeper/cypreus
@@ -935,6 +949,7 @@ Modes
         DrJones/luxdrv
         Flintrock/bistro-hd
         RMM/dragon
+        SammysHP/rampinglight
         Tom_E/narsil
         ToyKeeper/bistro
         ToyKeeper/bistro/biscotti
@@ -1019,6 +1034,7 @@ Modes
 
     ramp:
         DrJones/luxdrv
+        SammysHP/rampinglight
         Tamagotchi/7135x8v2
         Tom_E/RampingIOS
         Tom_E/narsil
@@ -1055,6 +1071,7 @@ Modes
         DrJones/luxdrv
         Flintrock/bistro-hd
         RMM/dragon
+        SammysHP/rampinglight
         Tom_E/eswitch-13
         Tom_E/narsil
         ToyKeeper/bistro

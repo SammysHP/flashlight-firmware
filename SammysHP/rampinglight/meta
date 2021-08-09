@@ -1,0 +1,11 @@
+Description: "rampinglight" firmware for clicky-switch Convoy/nanjg lights
+  Includes both a smooth ramp and discrete steps, plus a shortcut to turbo,
+  battery check, beacon, strobe, and several configurable options.
+  https://git.finf.uni-hannover.de/SammysHP/rampinglight
+Button-Type: clicky
+Memory: offtime, configurable
+MCU: attiny13
+Authors: SammysHP
+Modes: ramp, battcheck, tactical strobe, config, beacon
+Extras: LVP
+License: GPLv3
