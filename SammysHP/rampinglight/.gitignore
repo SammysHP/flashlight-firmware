@@ -1,0 +1,7 @@
+/obj/
+*.eep
+*.elf
+*.hex
+*.lss
+*.i
+*.s
