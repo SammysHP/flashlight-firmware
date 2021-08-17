@@ -94,7 +94,7 @@ void rgb_led_update(uint8_t mode, uint8_t arg) {
     uint8_t color = mode & 0x0f;
 
     // preview in blinking mode is awkward... use high instead
-    if ((! go_to_standby) && (pattern > 2)) { pattern = 2; }
+    if (setting_rgb_mode_now) { pattern = 2; }
 
 
     const uint8_t *colors = rgb_led_colors;
@@ -116,8 +116,8 @@ void rgb_led_update(uint8_t mode, uint8_t arg) {
         actual_color = pgm_read_byte(colors + rainbow);
     }
     else if (color == 8) {  // rainbow
-        uint8_t speed = 0x03;  // awake speed
-        if (go_to_standby) speed = RGB_RAINBOW_SPEED;  // asleep speed
+        uint8_t speed = 0x03;  // preview speed
+        if (!setting_rgb_mode_now) speed = RGB_RAINBOW_SPEED;  // normal speed
         if (0 == (arg & speed)) {
             rainbow = (rainbow + 1) % 6;
         }
@@ -125,7 +125,7 @@ void rgb_led_update(uint8_t mode, uint8_t arg) {
     }
     else {  // voltage
         // show actual voltage while asleep...
-        if (go_to_standby) {
+        if (!setting_rgb_mode_now) {
             actual_color = voltage_to_rgb();
             // choose a color based on battery voltage
             //if (volts >= 38) actual_color = pgm_read_byte(colors + 4);
