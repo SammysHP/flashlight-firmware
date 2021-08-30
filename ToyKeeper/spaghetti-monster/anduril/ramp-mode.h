@@ -197,5 +197,11 @@ void globals_config_save(uint8_t step, uint8_t value);
 uint8_t globals_config_state(Event event, uint16_t arg);
 #endif
 
+#ifdef USE_2C_MAX_TURBO
+uint8_t use_2c_max_turbo = 1;
+#else
+uint8_t use_2c_max_turbo = 0;
+#endif
+
 
 #endif

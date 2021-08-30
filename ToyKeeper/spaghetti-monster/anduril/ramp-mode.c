@@ -101,7 +101,7 @@ uint8_t steady_state(Event event, uint16_t arg) {
     // 2 clicks: go to/from highest level
     else if (event == EV_2clicks) {
         uint8_t turbo_level;
-        #ifdef USE_2C_MAX_TURBO
+        if (use_2c_max_turbo) {
             // simple UI: to/from ceiling
             // full UI: to/from turbo (Anduril1 behavior)
             #ifdef USE_SIMPLE_UI
@@ -109,7 +109,7 @@ uint8_t steady_state(Event event, uint16_t arg) {
             else
             #endif
             turbo_level = MAX_LEVEL;
-        #else
+        } else {
             // simple UI: to/from ceiling
             // full UI: to/from ceiling if mem < ceiling,
             //          or to/from turbo if mem >= ceiling
@@ -119,7 +119,7 @@ uint8_t steady_state(Event event, uint16_t arg) {
                 #endif
                ) { turbo_level = mode_max; }
             else { turbo_level = MAX_LEVEL; }
-        #endif
+        }
 
         if (actual_level < turbo_level) {
             set_level_and_therm_target(turbo_level);
@@ -475,19 +475,32 @@ uint8_t manual_memory_timer_config_state(Event event, uint16_t arg) {
 
 #ifdef USE_GLOBALS_CONFIG
 void globals_config_save(uint8_t step, uint8_t value) {
+    uint8_t step_index = 0;
     if (0) {}
     #ifdef USE_2C_STYLE_CONFIG
-    // TODO: make double-click style configurable (turbo or ceil)
-    else if (1 == step) {}
+    else if (++step_index == step) {
+        if (value > 0) {
+            use_2c_max_turbo = (value == 1);
+        }
+    }
     #endif
     #ifdef USE_JUMP_START
-    else { jump_start_level = value; }
+    else if (++step_index == step) {
+        jump_start_level = value;
+    }
     #endif
 }
 
 uint8_t globals_config_state(Event event, uint16_t arg) {
-    // TODO: set number of steps based on how many configurable options
-    return config_state_base(event, arg, 1, globals_config_save);
+    const uint8_t step_count = 0
+        #ifdef USE_2C_STYLE_CONFIG
+        +1
+        #endif
+        #ifdef USE_JUMP_START
+        +1
+        #endif
+        ;
+    return config_state_base(event, arg, step_count, globals_config_save);
 }
 #endif
 
