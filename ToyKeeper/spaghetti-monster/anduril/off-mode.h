@@ -23,5 +23,11 @@
 // when the light is "off" or in standby
 uint8_t off_state(Event event, uint16_t arg);
 
+#ifdef MOON_START_RAMPING
+uint8_t moon_start_ramping = 1;
+#else
+uint8_t moon_start_ramping = 0;
+#endif
+
 
 #endif

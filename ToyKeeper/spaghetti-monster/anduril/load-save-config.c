@@ -85,6 +85,9 @@ void load_config() {
         #ifdef USE_2C_STYLE_CONFIG
         use_2c_max_turbo = eeprom[use_2c_max_turbo_e];
         #endif
+        #ifdef USE_MOON_START_RAMPING_CONFIG
+        moon_start_ramping = eeprom[moon_start_ramping_e];
+        #endif
     }
     #ifdef START_AT_MEMORIZED_LEVEL
     if (load_eeprom_wl()) {
@@ -153,6 +156,9 @@ void save_config() {
     #endif
     #ifdef USE_2C_STYLE_CONFIG
     eeprom[use_2c_max_turbo_e] = use_2c_max_turbo,
+    #endif
+    #ifdef USE_MOON_START_RAMPING_CONFIG
+    eeprom[moon_start_ramping_e] = moon_start_ramping;
     #endif
 
     save_eeprom();

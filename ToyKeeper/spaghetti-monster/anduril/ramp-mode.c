@@ -489,6 +489,11 @@ void globals_config_save(uint8_t step, uint8_t value) {
         jump_start_level = value;
     }
     #endif
+    #ifdef USE_MOON_START_RAMPING_CONFIG
+    else if (++step_index == step) {
+        moon_start_ramping = value;
+    }
+    #endif
 }
 
 uint8_t globals_config_state(Event event, uint16_t arg) {
@@ -497,6 +502,9 @@ uint8_t globals_config_state(Event event, uint16_t arg) {
         +1
         #endif
         #ifdef USE_JUMP_START
+        +1
+        #endif
+        #ifdef USE_MOON_START_RAMPING_CONFIG
         +1
         #endif
         ;

@@ -108,6 +108,8 @@
 
 // automatically start ramping up when entering moon from off
 #define MOON_START_RAMPING
+// make this configurable at runtime
+//#define USE_MOON_START_RAMPING_CONFIG
 
 
 ///// What to do when power is connected /////

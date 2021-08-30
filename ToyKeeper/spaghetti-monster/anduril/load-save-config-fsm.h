@@ -85,6 +85,9 @@ typedef enum {
     #ifdef USE_2C_STYLE_CONFIG
     use_2c_max_turbo_e,
     #endif
+    #ifdef USE_MOON_START_RAMPING_CONFIG
+    moon_start_ramping_e,
+    #endif
     eeprom_indexes_e_END
 } eeprom_indexes_e;
 #define EEPROM_BYTES eeprom_indexes_e_END

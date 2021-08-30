@@ -645,7 +645,7 @@ Global Config Menu
 Some models may have an extra config menu for settings which don't fit 
 anywhere else.  These settings are, in order:
 
-  - 2C style:  (not yet implemented)
+  - 2C style:
 
     1: 2C goes to turbo         (Anduril V1 style)
     2: 2C goes to ramp ceiling  (Anduril V2 style)
@@ -658,6 +658,14 @@ anywhere else.  These settings are, in order:
     This setting specifies how bright that pulse should be.
 
     The value can be from 1 to 150, but is usually between 10 and 30.
+
+  - Start ramping up from moon:
+
+    When entering moon from off by holding the button and then keep 
+    holding it ...
+
+    0: stay at moon
+    1: start to ramp up
 
 Some settings are hardware-specific and may not be present on all 
 lights.  The number of settings in the global menu depends on the 
