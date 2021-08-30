@@ -106,6 +106,9 @@
 // timer is available in regular ramp mode and candle mode
 #define USE_SUNSET_TIMER
 
+// automatically start ramping up when entering moon from off
+#define MOON_START_RAMPING
+
 
 ///// What to do when power is connected /////
 // factory reset function erases user's runtime configuration in eeprom
