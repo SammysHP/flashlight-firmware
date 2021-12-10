@@ -123,6 +123,11 @@ void rgb_led_update(uint8_t mode, uint8_t arg) {
         }
         actual_color = pgm_read_byte(colors + rainbow);
     }
+    #ifdef USE_BUTTON_LED
+    else if (color == RGB_LED_NUM_COLORS - 1) {  // off
+        actual_color = 0;
+    }
+    #endif
     else {  // voltage
         // show actual voltage while asleep...
         if (go_to_standby) {
