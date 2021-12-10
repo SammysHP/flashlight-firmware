@@ -113,7 +113,11 @@ void rgb_led_update(uint8_t mode, uint16_t arg) {
         // use high mode unless prev_level was really low
         pattern = 1 + (prev_level >= POST_OFF_VOLTAGE_BRIGHTNESS);
         // voltage mode
-        color = RGB_LED_NUM_COLORS - 1;
+        color = RGB_LED_NUM_COLORS - 1
+            #ifdef USE_BUTTON_LED
+            -1
+            #endif
+            ;
     }
     #endif
 
@@ -134,6 +138,11 @@ void rgb_led_update(uint8_t mode, uint16_t arg) {
         }
         actual_color = pgm_read_byte(colors + rainbow);
     }
+    #ifdef USE_BUTTON_LED
+    else if (color == RGB_LED_NUM_COLORS - 1) {  // off
+        actual_color = 0;
+    }
+    #endif
     else {  // voltage
         // show actual voltage while asleep...
         if (go_to_standby) {
