@@ -89,11 +89,15 @@ uint8_t tint_ramping_state(Event event, uint16_t arg) {
         tint_ramp_direction = -tint_ramp_direction;
         if (tint <= 1) tint_ramp_direction = 1;
         else if (tint >= 254) tint_ramp_direction = -1;
+
+        #ifdef SAVE_TINT
         // remember tint after battery change
         save_config();
         // bug?: for some reason, brightness can seemingly change
         // from 1/150 to 2/150 without this next line... not sure why
         set_level(actual_level);
+        #endif
+
         return EVENT_HANDLED;
     }
 
