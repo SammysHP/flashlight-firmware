@@ -224,9 +224,14 @@ void setup() {
         load_config();
 
         #if defined(USE_MANUAL_MEMORY) && defined(USE_MANUAL_MEMORY_TIMER)
-        // without this, initial boot-up brightness is wrong
+        // without this, initial boot-up brightness and tint are wrong
         // when manual mem is enabled with a non-zero timer
-        if (manual_memory) memorized_level = manual_memory;
+        if (manual_memory) {
+            memorized_level = manual_memory;
+            #ifdef USE_TINT_RAMPING
+            tint = manual_memory_tint;
+            #endif
+        }
         #endif
 
         #ifdef USE_TINT_RAMPING
