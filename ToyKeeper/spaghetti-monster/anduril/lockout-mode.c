@@ -55,13 +55,24 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     // (allow staying awake long enough to exit, but otherwise
     //  be persistent about going back to sleep every few seconds
     //  even if the user keeps pressing the button)
-    #ifdef USE_INDICATOR_LED
+    #if defined(USE_INDICATOR_LED) || defined(USE_AUX_RGB_LEDS) || defined(USE_MANUAL_MEMORY)
     if (event == EV_enter_state) {
+        #ifdef USE_INDICATOR_LED
         indicator_led(indicator_led_mode >> 2);
-    } else
-    #elif defined(USE_AUX_RGB_LEDS)
-    if (event == EV_enter_state) {
+        #elif defined(USE_AUX_RGB_LEDS)
         rgb_led_update(rgb_led_lockout_mode, 0);
+        #endif
+        #ifdef USE_MANUAL_MEMORY
+        // Hybrid memory timer isn't handled in lockout,
+        // but we will reset it every time the light gets locked.
+        // This will also ensure that manual memory tint is used in lockout.
+        if (manual_memory) {
+            memorized_level = manual_memory;
+            #ifdef USE_TINT_RAMPING
+            tint = manual_memory_tint;
+            #endif
+        }
+        #endif
     } else
     #endif
     if (event == EV_tick) {
@@ -96,12 +107,6 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     }
     // 4 clicks: exit and turn on
     else if (event == EV_4clicks) {
-        #ifdef USE_MANUAL_MEMORY
-        // FIXME: memory timer is totally ignored
-        if (manual_memory)
-            set_state(steady_state, manual_memory);
-        else
-        #endif
         set_state(steady_state, memorized_level);
         return MISCHIEF_MANAGED;
     }
