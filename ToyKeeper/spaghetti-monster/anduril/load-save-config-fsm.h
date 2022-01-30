@@ -59,7 +59,9 @@ typedef enum {
         #endif
     #endif
     #ifdef USE_TINT_RAMPING
-        tint_e,
+        #ifdef SAVE_TINT
+            tint_e,
+        #endif
         tint_style_e,
     #endif
     #ifdef USE_JUMP_START

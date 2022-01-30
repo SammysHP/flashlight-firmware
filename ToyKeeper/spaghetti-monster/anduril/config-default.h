@@ -124,6 +124,10 @@
 // timer is available in regular ramp mode and candle mode
 #define USE_SUNSET_TIMER
 
+// save and restore tint after power reconnect
+// if disabled, the default tint can be set via manual memory
+#define SAVE_TINT
+
 
 ///// What to do when power is connected /////
 // factory reset function erases user's runtime configuration in eeprom
