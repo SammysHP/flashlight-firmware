@@ -29,8 +29,8 @@ void indicator_led_update(uint8_t mode, uint8_t arg) {
     // turn off aux LEDs when battery is empty
     if (voltage < VOLTAGE_LOW) { indicator_led(0); return; }
 
-    // Only low bits are relevant
-    mode &= 0x03;
+    // Only low nibble is relevant
+    mode &= 0x0F;
 
     uint8_t level = mode;
     switch (mode) {
@@ -39,6 +39,11 @@ void indicator_led_update(uint8_t mode, uint8_t arg) {
             static const uint8_t seq[] = {0, 1, 2, 1,  0, 0, 0, 0,
                                           0, 0, 1, 0,  0, 0, 0, 0};
             level = seq[arg & 15];
+            break;
+        case 4:
+        case 5:
+            // low or high blink, 1/8th duty cycle
+            level = (arg & 7) ? 0 : mode - 3;
             break;
     }
     indicator_led(level);

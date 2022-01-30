@@ -57,7 +57,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     //  even if the user keeps pressing the button)
     #ifdef USE_INDICATOR_LED
     if (event == EV_enter_state) {
-        indicator_led_update(indicator_led_mode >> 2, 0);
+        indicator_led_update(indicator_led_mode >> 4, 0);
     } else
     #elif defined(USE_AUX_RGB_LEDS)
     if (event == EV_enter_state) {
@@ -68,7 +68,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         if (arg > HOLD_TIMEOUT) {
             go_to_standby = 1;
             #ifdef USE_INDICATOR_LED
-            indicator_led_update(indicator_led_mode >> 2, arg);
+            indicator_led_update(indicator_led_mode >> 4, arg);
             #elif defined(USE_AUX_RGB_LEDS)
             rgb_led_update(rgb_led_lockout_mode, arg);
             #endif
@@ -78,7 +78,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     #if defined(TICK_DURING_STANDBY) && (defined(USE_INDICATOR_LED) || defined(USE_AUX_RGB_LEDS))
     else if (event == EV_sleep_tick) {
         #if defined(USE_INDICATOR_LED)
-        indicator_led_update(indicator_led_mode >> 2, arg);
+        indicator_led_update(indicator_led_mode >> 4, arg);
         #elif defined(USE_AUX_RGB_LEDS)
         rgb_led_update(rgb_led_lockout_mode, arg);
         #endif
@@ -137,16 +137,16 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     #if defined(USE_INDICATOR_LED)
     // 7 clicks: rotate through indicator LED modes (lockout mode)
     else if (event == EV_7clicks) {
-        uint8_t mode = (indicator_led_mode >> 2) + 1;
+        uint8_t mode = (indicator_led_mode >> 4) + 1;
         #ifdef TICK_DURING_STANDBY
-        mode = mode & 3;
+        mode = mode % 6;
         #else
         mode = mode % 3;
         #endif
         #ifdef INDICATOR_LED_SKIP_LOW
         if (mode == 1) { mode ++; }
         #endif
-        indicator_led_mode = (mode << 2) | (indicator_led_mode & 0x03);
+        indicator_led_mode = (mode << 4) | (indicator_led_mode & 0x0F);
         indicator_led_update(mode, 0);
         save_config();
         return MISCHIEF_MANAGED;
