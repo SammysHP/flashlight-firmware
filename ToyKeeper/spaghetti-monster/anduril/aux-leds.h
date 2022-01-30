@@ -20,8 +20,8 @@
 #ifndef AUX_LEDS_H
 #define AUX_LEDS_H
 
-#if defined(USE_INDICATOR_LED) && defined(TICK_DURING_STANDBY)
-void indicator_blink(uint8_t arg);
+#ifdef USE_INDICATOR_LED
+void indicator_led_update(uint8_t mode, uint8_t arg);
 #endif
 #if defined(USE_AUX_RGB_LEDS) && defined(TICK_DURING_STANDBY)
 uint8_t setting_rgb_mode_now = 0;
@@ -49,8 +49,12 @@ const PROGMEM uint8_t rgb_led_colors[] = {
 };
 // intentionally 1 higher than total modes, to make "voltage" easier to reach
 // (at Hank's request)
-#define RGB_LED_NUM_COLORS 11
-#define RGB_LED_NUM_PATTERNS 4
+const uint8_t RGB_LED_NUM_COLORS = 11
+    #ifdef USE_BUTTON_LED
+    +1
+    #endif
+    ;
+#define RGB_LED_NUM_PATTERNS 6
 #ifndef RGB_LED_OFF_DEFAULT
 #define RGB_LED_OFF_DEFAULT 0x19  // low, voltage
 //#define RGB_LED_OFF_DEFAULT 0x18  // low, rainbow
@@ -65,20 +69,18 @@ uint8_t rgb_led_off_mode = RGB_LED_OFF_DEFAULT;
 uint8_t rgb_led_lockout_mode = RGB_LED_LOCKOUT_DEFAULT;
 #endif
 
-//#define USE_OLD_BLINKING_INDICATOR
-//#define USE_FANCIER_BLINKING_INDICATOR
 #ifdef USE_INDICATOR_LED
-    // bits 2-3 control lockout mode
-    // bits 0-1 control "off" mode
-    // modes are: 0=off, 1=low, 2=high, 3=blinking (if TICK_DURING_STANDBY enabled)
+    // bits 3-5 control lockout mode
+    // bits 0-2 control "off" mode
+    // modes are: 0=off, 1=low, 2=high
+    // if TICK_DURING_STANDBY enabled: 3=fancy blinking, 4=low blinking, 5=high blinking
     #ifdef INDICATOR_LED_DEFAULT_MODE
     uint8_t indicator_led_mode = INDICATOR_LED_DEFAULT_MODE;
     #else
         #ifdef USE_INDICATOR_LED_WHILE_RAMPING
-        //uint8_t indicator_led_mode = (1<<2) + 2;
-        uint8_t indicator_led_mode = (2<<2) + 1;
+        uint8_t indicator_led_mode = (2<<3) + 1;
         #else
-        uint8_t indicator_led_mode = (3<<2) + 1;
+        uint8_t indicator_led_mode = (3<<3) + 1;
         #endif
     #endif
 #endif
