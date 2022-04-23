@@ -98,11 +98,12 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     #endif
 
     // 3 clicks: exit and turn off
-    else if (event == EV_3clicks) {
+    else if (event == EV_5clicks) {
         blink_once();
         set_state(off_state, 0);
         return MISCHIEF_MANAGED;
     }
+    #if 0
     // 4 clicks: exit and turn on
     else if (event == EV_4clicks) {
         set_state(steady_state, memorized_level);
@@ -123,6 +124,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         set_state(steady_state, MAX_LEVEL);
         return MISCHIEF_MANAGED;
     }
+    #endif
 
     ////////// Every action below here is blocked in the simple UI //////////
     #ifdef USE_SIMPLE_UI
