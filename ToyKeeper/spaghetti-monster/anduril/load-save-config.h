@@ -155,6 +155,9 @@ Config cfg = {
     #ifdef USE_JUMP_START
         .jump_start_level = DEFAULT_JUMP_START_LEVEL,
     #endif
+    #ifdef USE_POCKET_UI
+        .pocket_ui_active = 0,
+    #endif
 
 };
 

@@ -32,7 +32,8 @@
 
 // include an extra config mode for random stuff which doesn't fit elsewhere
 #if defined(USE_JUMP_START) || \
-    (defined(USE_CHANNEL_MODE_ARGS) && defined(USE_STEPPED_TINT_RAMPING))
+    (defined(USE_CHANNEL_MODE_ARGS) && defined(USE_STEPPED_TINT_RAMPING)) || \
+    defined(USE_POCKET_UI)
 #define USE_GLOBALS_CONFIG
 #endif
 

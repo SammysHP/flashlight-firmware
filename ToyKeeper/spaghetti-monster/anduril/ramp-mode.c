@@ -593,6 +593,9 @@ void globals_config_save(uint8_t step, uint8_t value) {
     #ifdef USE_JUMP_START
     else if (step == 1+jump_start_config_step) { cfg.jump_start_level = value; }
     #endif
+    #ifdef USE_POCKET_UI
+    else if (step == 1+pocket_ui_step) { pocket_ui_active = !!value; }
+    #endif
 }
 
 uint8_t globals_config_state(Event event, uint16_t arg) {
