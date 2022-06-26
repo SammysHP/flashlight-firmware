@@ -151,7 +151,7 @@ uint8_t steady_state(Event event, uint16_t arg) {
 
     #ifdef USE_LOCKOUT_MODE
     // 4 clicks: shortcut to lockout mode
-    else if (event == EV_5clicks) {
+    else if (event == (pocket_ui_active ? EV_5clicks : EV_4clicks)) {
         set_level(0);
         set_state(lockout_state, 0);
         return MISCHIEF_MANAGED;
@@ -421,7 +421,7 @@ uint8_t steady_state(Event event, uint16_t arg) {
 
     #ifdef USE_MOMENTARY_MODE
     // 5 clicks: shortcut to momentary mode
-    else if (event == EV_6clicks) {
+    else if (event == (pocket_ui_active ? EV_6clicks : EV_5clicks)) {
         set_level(0);
         set_state(momentary_state, 0);
         return MISCHIEF_MANAGED;
@@ -573,6 +573,9 @@ void globals_config_save(uint8_t step, uint8_t value) {
     #endif
     #ifdef USE_JUMP_START
     else if (step == 1+jump_start_config_step) { jump_start_level = value; }
+    #endif
+    #ifdef USE_POCKET_UI
+    else if (step == 1+pocket_ui_step) { pocket_ui_active = !!value; }
     #endif
 }
 
