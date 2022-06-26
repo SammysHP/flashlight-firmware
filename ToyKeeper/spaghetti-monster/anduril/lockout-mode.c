@@ -24,6 +24,9 @@
 
 uint8_t lockout_state(Event event, uint16_t arg) {
     #ifdef USE_MOON_DURING_LOCKOUT_MODE
+    #ifdef USE_POCKET_UI
+    if (!pocket_ui_active) {
+    #endif
     // momentary(ish) moon mode during lockout
     // button is being held
     #ifdef USE_AUX_RGB_LEDS
@@ -48,6 +51,9 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     else if ((event & (B_CLICK | B_PRESS)) == (B_CLICK)) {
         set_level(0);
     }
+    #ifdef USE_POCKET_UI
+    }  // if (!pocket_ui_active)
+    #endif
     #endif  // ifdef USE_MOON_DURING_LOCKOUT_MODE
 
     // regular event handling
@@ -98,19 +104,18 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     #endif
 
     // 3 clicks: exit and turn off
-    else if (event == EV_5clicks) {
+    else if (event == (pocket_ui_active ? EV_5clicks : EV_3clicks)) {
         blink_once();
         set_state(off_state, 0);
         return MISCHIEF_MANAGED;
     }
-    #if 0
     // 4 clicks: exit and turn on
-    else if (event == EV_4clicks) {
+    else if (!pocket_ui_active && event == EV_4clicks) {
         set_state(steady_state, memorized_level);
         return MISCHIEF_MANAGED;
     }
     // 4 clicks, but hold last: exit and start at floor
-    else if (event == EV_click4_hold) {
+    else if (!pocket_ui_active && event == EV_click4_hold) {
         //blink_once();
         blip();
         // reset button sequence to avoid activating anything in ramp mode
@@ -120,11 +125,10 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         return MISCHIEF_MANAGED;
     }
     // 5 clicks: exit and turn on at ceiling level
-    else if (event == EV_5clicks) {
+    else if (!pocket_ui_active && event == EV_5clicks) {
         set_state(steady_state, MAX_LEVEL);
         return MISCHIEF_MANAGED;
     }
-    #endif
 
     ////////// Every action below here is blocked in the simple UI //////////
     #ifdef USE_SIMPLE_UI

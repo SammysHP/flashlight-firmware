@@ -97,6 +97,9 @@ void load_config() {
         #ifdef USE_AUTOLOCK
         autolock_time = eeprom[autolock_time_e];
         #endif
+        #ifdef USE_POCKET_UI
+        pocket_ui_active = eeprom[pocket_ui_active_e];
+        #endif
     }
     #ifdef START_AT_MEMORIZED_LEVEL
     if (load_eeprom_wl()) {
@@ -177,6 +180,9 @@ void save_config() {
     #endif
     #ifdef USE_AUTOLOCK
     eeprom[autolock_time_e] = autolock_time;
+    #endif
+    #ifdef USE_POCKET_UI
+    eeprom[pocket_ui_active_e] = pocket_ui_active;
     #endif
 
     save_eeprom();
