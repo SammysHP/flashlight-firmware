@@ -57,7 +57,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     //  even if the user keeps pressing the button)
     #ifdef USE_INDICATOR_LED
     if (event == EV_enter_state) {
-        indicator_led(indicator_led_mode >> 2);
+        indicator_led_update(indicator_led_mode >> 2, 0);
     } else
     #elif defined(USE_AUX_RGB_LEDS)
     if (event == EV_enter_state) {
@@ -68,7 +68,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         if (arg > HOLD_TIMEOUT) {
             go_to_standby = 1;
             #ifdef USE_INDICATOR_LED
-            indicator_led(indicator_led_mode >> 2);
+            indicator_led_update(indicator_led_mode >> 2, arg);
             #elif defined(USE_AUX_RGB_LEDS)
             rgb_led_update(rgb_led_lockout_mode, arg);
             #endif
@@ -78,9 +78,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     #if defined(TICK_DURING_STANDBY) && (defined(USE_INDICATOR_LED) || defined(USE_AUX_RGB_LEDS))
     else if (event == EV_sleep_tick) {
         #if defined(USE_INDICATOR_LED)
-        if ((indicator_led_mode & 0b00001100) == 0b00001100) {
-            indicator_blink(arg);
-        }
+        indicator_led_update(indicator_led_mode >> 2, arg);
         #elif defined(USE_AUX_RGB_LEDS)
         rgb_led_update(rgb_led_lockout_mode, arg);
         #endif
@@ -139,20 +137,17 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     #if defined(USE_INDICATOR_LED)
     // 7 clicks: rotate through indicator LED modes (lockout mode)
     else if (event == EV_7clicks) {
-        #if defined(USE_INDICATOR_LED)
-            uint8_t mode = indicator_led_mode >> 2;
-            #ifdef TICK_DURING_STANDBY
-            mode = (mode + 1) & 3;
-            #else
-            mode = (mode + 1) % 3;
-            #endif
-            #ifdef INDICATOR_LED_SKIP_LOW
-            if (mode == 1) { mode ++; }
-            #endif
-            indicator_led_mode = (mode << 2) + (indicator_led_mode & 0x03);
-            indicator_led(mode);
-        #elif defined(USE_AUX_RGB_LEDS)
+        uint8_t mode = (indicator_led_mode >> 2) + 1;
+        #ifdef TICK_DURING_STANDBY
+        mode = mode & 3;
+        #else
+        mode = mode % 3;
         #endif
+        #ifdef INDICATOR_LED_SKIP_LOW
+        if (mode == 1) { mode ++; }
+        #endif
+        indicator_led_mode = (mode << 2) | (indicator_led_mode & 0x03);
+        indicator_led_update(mode, 0);
         save_config();
         return MISCHIEF_MANAGED;
     }

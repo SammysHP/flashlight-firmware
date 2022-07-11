@@ -23,30 +23,25 @@
 #include "aux-leds.h"
 
 
-#if defined(USE_INDICATOR_LED) && defined(TICK_DURING_STANDBY)
-// beacon-like mode for the indicator LED
-void indicator_blink(uint8_t arg) {
+#ifdef USE_INDICATOR_LED
+// do fancy stuff with the indicator LED
+void indicator_led_update(uint8_t mode, uint8_t arg) {
     // turn off aux LEDs when battery is empty
     if (voltage < VOLTAGE_LOW) { indicator_led(0); return; }
 
-    #ifdef USE_OLD_BLINKING_INDICATOR
+    // Only low bits are relevant
+    mode &= 0x03;
 
-    // basic blink, 1/8th duty cycle
-    if (! (arg & 7)) {
-        indicator_led(2);
+    uint8_t level = mode;
+    switch (mode) {
+        case 3:
+            // fancy blink, set off/low/high levels here:
+            static const uint8_t seq[] = {0, 1, 2, 1,  0, 0, 0, 0,
+                                          0, 0, 1, 0,  0, 0, 0, 0};
+            level = seq[arg & 15];
+            break;
     }
-    else {
-        indicator_led(0);
-    }
-
-    #else
-
-    // fancy blink, set off/low/high levels here:
-    static const uint8_t seq[] = {0, 1, 2, 1,  0, 0, 0, 0,
-                                  0, 0, 1, 0,  0, 0, 0, 0};
-    indicator_led(seq[arg & 15]);
-
-    #endif  // ifdef USE_OLD_BLINKING_INDICATOR
+    indicator_led(level);
 }
 #endif
 
