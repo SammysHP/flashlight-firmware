@@ -85,15 +85,25 @@ uint8_t off_state(Event event, uint16_t arg) {
         return MISCHIEF_MANAGED;
     }
     #endif
+    else if (pocket_ui_active && event == EV_click1_hold) {
+        uint8_t lvl = ramp_floors[0];
+        if (ramp_floors[1] < lvl) lvl = ramp_floors[1];
+        set_level(lvl);
+        return MISCHIEF_MANAGED;
+    }
+    else if (pocket_ui_active && event == EV_click1_hold_release) {
+        set_level(0);
+        return MISCHIEF_MANAGED;
+    }
     #if (B_TIMING_ON == B_PRESS_T)
     // hold (initially): go to lowest level (floor), but allow abort for regular click
-    else if (event == EV_click1_press) {
+    else if (event == (pocket_ui_active ? EV_click2_press : EV_click1_press)) {
         set_level(nearest_level(1));
         return MISCHIEF_MANAGED;
     }
     #endif  // B_TIMING_ON == B_PRESS_T
     // hold: go to lowest level
-    else if (event == EV_click1_hold) {
+    else if (event == (pocket_ui_active ? EV_click2_hold : EV_click1_hold)) {
         #if (B_TIMING_ON == B_PRESS_T)
         #ifdef MOON_TIMING_HINT
         if (arg == 0) {
@@ -118,13 +128,13 @@ uint8_t off_state(Event event, uint16_t arg) {
         return MISCHIEF_MANAGED;
     }
     // hold, release quickly: go to lowest level (floor)
-    else if (event == EV_click1_hold_release) {
+    else if (event == (pocket_ui_active ? EV_click2_hold_release : EV_click1_hold_release)) {
         set_state(steady_state, 1);
         return MISCHIEF_MANAGED;
     }
     #if (B_TIMING_ON != B_TIMEOUT_T)
     // 1 click (before timeout): go to memorized level, but allow abort for double click
-    else if (event == EV_click1_release) {
+    else if (event == (pocket_ui_active ? EV_click2_release : EV_click1_release)) {
         #if defined(USE_MANUAL_MEMORY) && !defined(USE_MANUAL_MEMORY_TIMER)
             // this clause probably isn't used by any configs any more
             // but is included just in case someone configures it this way
@@ -140,7 +150,7 @@ uint8_t off_state(Event event, uint16_t arg) {
     }
     #endif  // if (B_TIMING_ON != B_TIMEOUT_T)
     // 1 click: regular mode
-    else if (event == EV_1click) {
+    else if (event == (pocket_ui_active ? EV_2clicks : EV_1click)) {
         #if (B_TIMING_ON != B_TIMEOUT_T)
         // brightness was already set; reuse previous value
         set_state(steady_state, actual_level);
@@ -152,7 +162,7 @@ uint8_t off_state(Event event, uint16_t arg) {
         return MISCHIEF_MANAGED;
     }
     // click, hold: momentary at ceiling or turbo
-    else if (event == EV_click2_hold) {
+    else if (event == (pocket_ui_active ? EV_click3_hold : EV_click2_hold)) {
         uint8_t turbo_level;  // how bright is "turbo"?
 
         #if defined(USE_2C_STYLE_CONFIG)  // user can choose 2C behavior
@@ -178,30 +188,30 @@ uint8_t off_state(Event event, uint16_t arg) {
         set_level(turbo_level);
         return MISCHIEF_MANAGED;
     }
-    else if (event == EV_click2_hold_release) {
+    else if (event == (pocket_ui_active ? EV_click3_hold_release : EV_click2_hold_release)) {
         set_level(0);
         return MISCHIEF_MANAGED;
     }
     // 2 clicks: highest mode (ceiling)
-    else if (event == EV_2clicks) {
+    else if (event == (pocket_ui_active ? EV_3clicks : EV_2clicks)) {
         set_state(steady_state, MAX_LEVEL);
         return MISCHIEF_MANAGED;
     }
     // 3 clicks (initial press): off, to prep for later events
-    else if (event == EV_click3_press) {
+    else if (event == (pocket_ui_active ? EV_click4_press : EV_click3_press)) {
         set_level(0);
         return MISCHIEF_MANAGED;
     }
     #ifdef USE_BATTCHECK
     // 3 clicks: battcheck mode / blinky mode group 1
-    else if (event == EV_3clicks) {
+    else if (event == (pocket_ui_active ? EV_4clicks : EV_3clicks)) {
         set_state(battcheck_state, 0);
         return MISCHIEF_MANAGED;
     }
     #endif
     #ifdef USE_LOCKOUT_MODE
     // 4 clicks: soft lockout
-    else if (event == EV_4clicks) {
+    else if (event == (pocket_ui_active ? EV_5clicks : EV_4clicks)) {
         blink_once();
         set_state(lockout_state, 0);
         return MISCHIEF_MANAGED;
@@ -251,19 +261,19 @@ uint8_t off_state(Event event, uint16_t arg) {
 
     // click, click, long-click: strobe mode
     #ifdef USE_STROBE_STATE
-    else if (event == EV_click3_hold) {
+    else if (event == (pocket_ui_active ? EV_click4_hold : EV_click3_hold)) {
         set_state(strobe_state, 0);
         return MISCHIEF_MANAGED;
     }
     #elif defined(USE_BORING_STROBE_STATE)
-    else if (event == EV_click3_hold) {
+    else if (event == (pocket_ui_active ? EV_click4_hold : EV_click3_hold)) {
         set_state(boring_strobe_state, 0);
         return MISCHIEF_MANAGED;
     }
     #endif
     #ifdef USE_MOMENTARY_MODE
     // 5 clicks: momentary mode
-    else if (event == EV_5clicks) {
+    else if (event == (pocket_ui_active ? EV_6clicks : EV_5clicks)) {
         blink_once();
         set_state(momentary_state, 0);
         return MISCHIEF_MANAGED;
