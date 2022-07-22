@@ -26,6 +26,10 @@
 #ifdef USE_INDICATOR_LED
 // do fancy stuff with the indicator LED
 void indicator_led_update(uint8_t mode, uint8_t arg) {
+    // fancy blink, set off/low/high levels here:
+    static const uint8_t seq[] = {0, 1, 2, 1,  0, 0, 0, 0,
+                                  0, 0, 1, 0,  0, 0, 0, 0};
+
     // turn off aux LEDs when battery is empty
     if (voltage < VOLTAGE_LOW) { indicator_led(0); return; }
 
@@ -35,9 +39,6 @@ void indicator_led_update(uint8_t mode, uint8_t arg) {
     uint8_t level = mode;
     switch (mode) {
         case 3:
-            // fancy blink, set off/low/high levels here:
-            static const uint8_t seq[] = {0, 1, 2, 1,  0, 0, 0, 0,
-                                          0, 0, 1, 0,  0, 0, 0, 0};
             level = seq[arg & 15];
             break;
         case 4:
