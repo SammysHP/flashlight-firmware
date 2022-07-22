@@ -1,0 +1,28 @@
+// Sofirn SP10 Pro config options for Anduril (by SammysHP)
+#include "cfg-sofirn-sp10-pro.h"
+// ATTINY: 1616
+
+#define SIMPLE_UI_ACTIVE 0
+
+#undef RAMP_STYLE
+#define RAMP_STYLE 0
+
+#undef DEFAULT_2C_STYLE
+#define DEFAULT_2C_STYLE 2
+
+#undef DEFAULT_DONT_RAMP_AFTER_MOON
+#define DEFAULT_DONT_RAMP_AFTER_MOON 1
+
+#undef AUTO_REVERSE_TIME
+#define AUTO_REVERSE_TIME (TICKS_PER_SECOND / 2)
+
+#undef USE_SOFT_FACTORY_RESET
+
+// #undef DEFAULT_MANUAL_MEMORY
+// #undef DEFAULT_MANUAL_MEMORY_TIMER
+// #undef DEFAULT_AUTOLOCK_TIME
+// #define DEFAULT_MANUAL_MEMORY 50
+// #define DEFAULT_MANUAL_MEMORY_TIMER 10
+// #define DEFAULT_AUTOLOCK_TIME 5
+
+#define USE_POCKET_UI
