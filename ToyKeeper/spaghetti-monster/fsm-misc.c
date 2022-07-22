@@ -112,14 +112,6 @@ void indicator_led(uint8_t lvl) {
     switch (lvl) {
         #ifdef AVRXMEGA3  // ATTINY816, 817, etc
 
-        case 0:  // indicator off
-            AUXLED_PORT.DIRSET = (1 << AUXLED_PIN); // set as output
-            AUXLED_PORT.OUTCLR = (1 << AUXLED_PIN); // set output low
-            #ifdef AUXLED2_PIN  // second LED mirrors the first
-            AUXLED2_PORT.DIRSET = (1 << AUXLED2_PIN); // set as output
-            AUXLED2_PORT.OUTCLR = (1 << AUXLED2_PIN); // set output low
-            #endif
-            break;
         case 1:  // indicator low
             AUXLED_PORT.DIRCLR = (1 << AUXLED_PIN); // set as input
             // this resolves to PORTx.PINxCTRL = PORT_PULLUPEN_bm;
@@ -130,7 +122,7 @@ void indicator_led(uint8_t lvl) {
             *((uint8_t *)&AUXLED2_PORT + 0x10 + AUXLED2_PIN) = PORT_PULLUPEN_bm; // enable internal pull-up
             #endif
             break;
-        default:  // indicator high
+        case 2:  // indicator high
             AUXLED_PORT.DIRSET = (1 << AUXLED_PIN); // set as output
             AUXLED_PORT.OUTSET = (1 << AUXLED_PIN); // set as high
             #ifdef AUXLED2_PIN  // second LED mirrors the first
@@ -138,17 +130,17 @@ void indicator_led(uint8_t lvl) {
             AUXLED2_PORT.OUTSET = (1 << AUXLED2_PIN); // set as high
             #endif
             break;
+        default:  // indicator off
+            AUXLED_PORT.DIRSET = (1 << AUXLED_PIN); // set as output
+            AUXLED_PORT.OUTCLR = (1 << AUXLED_PIN); // set output low
+            #ifdef AUXLED2_PIN  // second LED mirrors the first
+            AUXLED2_PORT.DIRSET = (1 << AUXLED2_PIN); // set as output
+            AUXLED2_PORT.OUTCLR = (1 << AUXLED2_PIN); // set output low
+            #endif
+            break;
       
         #else
 
-        case 0:  // indicator off
-            DDRB &= 0xff ^ (1 << AUXLED_PIN);
-            PORTB &= 0xff ^ (1 << AUXLED_PIN);
-            #ifdef AUXLED2_PIN  // second LED mirrors the first
-            DDRB &= 0xff ^ (1 << AUXLED2_PIN);
-            PORTB &= 0xff ^ (1 << AUXLED2_PIN);
-            #endif
-            break;
         case 1:  // indicator low
             DDRB &= 0xff ^ (1 << AUXLED_PIN);
             PORTB |= (1 << AUXLED_PIN);
@@ -157,12 +149,20 @@ void indicator_led(uint8_t lvl) {
             PORTB |= (1 << AUXLED2_PIN);
             #endif
             break;
-        default:  // indicator high
+        case 2:  // indicator high
             DDRB |= (1 << AUXLED_PIN);
             PORTB |= (1 << AUXLED_PIN);
             #ifdef AUXLED2_PIN  // second LED mirrors the first
             DDRB |= (1 << AUXLED2_PIN);
             PORTB |= (1 << AUXLED2_PIN);
+            #endif
+            break;
+        default:  // indicator off
+            DDRB &= 0xff ^ (1 << AUXLED_PIN);
+            PORTB &= 0xff ^ (1 << AUXLED_PIN);
+            #ifdef AUXLED2_PIN  // second LED mirrors the first
+            DDRB &= 0xff ^ (1 << AUXLED2_PIN);
+            PORTB &= 0xff ^ (1 << AUXLED2_PIN);
             #endif
             break;
 
