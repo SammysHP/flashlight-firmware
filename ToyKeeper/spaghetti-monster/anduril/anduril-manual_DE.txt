@@ -228,13 +228,13 @@ Verfügung:
                 0: Nach Moon Helligkeit erhöhen.
                 1: Helligkeit nicht erhöhen, bei Moon bleiben.
     - Option 4: Den Turbo-Stil des Advanced UI konfigurieren:
-              0: Kein Turbo, nur höchste Helligkeit.
-              1: Anduril 1 Stil.  Ramping -> 2C zu voller Leistung.
-              2: Anduril 2 Stil.  Ramping -> 2C zu konfigurierter höchster 
-                 Helligkeit oder zu voller Leistung, falls bereits zur 
-                 höchsten Helligkeit gerampt wurde.
-              Diese Einstellungen beeinflusst auch das Verhalten des 
-              momentanen Turbos.
+                0: Kein Turbo, nur höchste Helligkeit.
+                1: Anduril 1 Stil.  Ramping -> 2C zu voller Leistung.
+                2: Anduril 2 Stil.  Ramping -> 2C zu konfigurierter höchster 
+                   Helligkeit oder zu voller Leistung, falls bereits zur 
+                   höchsten Helligkeit gerampt wurde.
+                Diese Einstellungen beeinflusst auch das Verhalten des 
+                momentanen Turbos.
 
 Speichern definiert die Helligkeit, die verwendet werden soll, wenn die 
 Taschenlampe mit 1C von Aus eingeschaltet wird.  Es kann zwischen drei Arten 
@@ -321,7 +321,7 @@ Oder den letzten Druck halten um die Lampe stattdessen im Floor einzuschalten:
   - 3C: Entsperren und ausschalten
 
   - 4C: Entsperren und in gespeicherte Helligkeit einschalten
-    (verwendet manuell gespeicherte Helligkeit, falls gesetzt)
+        (verwendet manuell gespeicherte Helligkeit, falls gesetzt)
 
   - 4H: Entsperren und im Floor einschalten
 
