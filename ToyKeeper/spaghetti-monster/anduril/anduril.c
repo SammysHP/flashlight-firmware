@@ -114,18 +114,6 @@
 #include "version-check-mode.h"
 #endif
 
-#ifdef USE_BATTCHECK_MODE
-#include "battcheck-mode.h"
-#endif
-
-#ifdef USE_BEACON_MODE
-#include "beacon-mode.h"
-#endif
-
-#ifdef USE_THERMAL_REGULATION
-#include "tempcheck-mode.h"
-#endif
-
 #ifdef USE_LOCKOUT_MODE
 #include "lockout-mode.h"
 #endif
@@ -144,10 +132,7 @@
 
 // this one detects its own enable/disable settings
 #include "strobe-modes.h"
-
-#ifdef USE_SOS_MODE
-#include "sos-mode.h"
-#endif
+#include "blinky-modes.h"
 
 
 /********* Include all the app logic source files *********/

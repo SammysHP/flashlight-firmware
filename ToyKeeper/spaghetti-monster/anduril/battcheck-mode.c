@@ -38,13 +38,13 @@ uint8_t battcheck_state(Event event, uint16_t arg) {
 
     // 2 clicks: next blinky mode
     else if (event == EV_2clicks) {
-        #if defined(USE_THERMAL_REGULATION)
-        set_state(tempcheck_state, 0);
-        #elif defined(USE_BEACON_MODE)
-        set_state(beacon_state, 0);
-        #elif defined(USE_SOS_MODE) && defined(USE_SOS_MODE_IN_BLINKY_GROUP)
-        set_state(sos_state, 0);
-        #endif
+        set_next_blinky_state(1);
+        return MISCHIEF_MANAGED;
+    }
+
+    // 3 clicks: previous blinky mode
+    else if (event == EV_3clicks) {
+        set_next_blinky_state(-1);
         return MISCHIEF_MANAGED;
     }
 
