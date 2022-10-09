@@ -143,7 +143,7 @@ uint8_t strobe_state(Event event, uint16_t arg) {
     }
     #ifdef USE_MOMENTARY_MODE
     // 5 clicks: go to momentary mode (momentary strobe)
-    else if (event == (pocket_ui_active ? EV_6clicks : EV_5clicks)) {
+    else if (event == (pocket_ui_active ? EV_click6_hold : EV_click5_hold)) {
         set_state(momentary_state, 0);
         set_level(0);
         return MISCHIEF_MANAGED;

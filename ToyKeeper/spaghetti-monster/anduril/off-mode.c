@@ -273,7 +273,7 @@ uint8_t off_state(Event event, uint16_t arg) {
     #endif
     #ifdef USE_MOMENTARY_MODE
     // 5 clicks: momentary mode
-    else if (event == (pocket_ui_active ? EV_6clicks : EV_5clicks)) {
+    else if (event == (pocket_ui_active ? EV_click6_hold : EV_click5_hold)) {
         blink_once();
         set_state(momentary_state, 0);
         return MISCHIEF_MANAGED;

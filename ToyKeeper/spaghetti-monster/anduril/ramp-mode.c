@@ -438,7 +438,7 @@ uint8_t steady_state(Event event, uint16_t arg) {
 
     #ifdef USE_MOMENTARY_MODE
     // 5 clicks: shortcut to momentary mode
-    else if (event == (pocket_ui_active ? EV_6clicks : EV_5clicks)) {
+    else if (event == (pocket_ui_active ? EV_click6_hold : EV_click5_hold)) {
         // Allow to use turbo in momentary mode. It is safe to overwrite
         // memorized_level because the only way to exit momentary mode is to
         // reboot the flashlight which restores memorized_level to the default
