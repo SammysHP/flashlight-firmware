@@ -26,30 +26,27 @@ void indicator_led_update(uint8_t mode, uint8_t tick) {
     }
     #endif
     //#endif
-    // normal steady output, 0/1/2 = off / low / high
-    else if ((mode & 0b00001111) < 3) {
-        indicator_led(mode);
-    }
-    // beacon-like blinky mode
     else {
-        #ifdef USE_OLD_BLINKING_INDICATOR
-
-        // basic blink, 1/8th duty cycle
-        if (! (tick & 7)) {
-            indicator_led(2);
-        }
-        else {
-            indicator_led(0);
-        }
-
-        #else
+        // Only low nibble is relevant
+        mode &= 0x0F;
 
         // fancy blink, set off/low/high levels here:
-        static const uint8_t seq[] = {0, 1, 2, 1,  0, 0, 0, 0,
-                                      0, 0, 1, 0,  0, 0, 0, 0};
-        indicator_led(seq[tick & 15]);
+        static const uint8_t fancy_seq[] = {0, 1, 2, 1,  0, 0, 0, 0,
+                                            0, 0, 1, 0,  0, 0, 0, 0};
 
-        #endif  // ifdef USE_OLD_BLINKING_INDICATOR
+        uint8_t level = mode;
+        switch (mode) {
+            case 3:
+                level = fancy_seq[tick & 15];
+                break;
+            case 4:
+            case 5:
+                // low or high blink, 1/8th duty cycle
+                level = (tick & 7) ? 0 : mode - 3;
+                break;
+        }
+
+        indicator_led(level);
     }
 }
 #endif

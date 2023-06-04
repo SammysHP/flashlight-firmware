@@ -51,17 +51,17 @@ const uint8_t RGB_LED_NUM_COLORS = 11
 #endif
 #endif
 
-//#define USE_OLD_BLINKING_INDICATOR
 //#define USE_FANCIER_BLINKING_INDICATOR
 #ifdef USE_INDICATOR_LED
-    // bits 2-3 control lockout mode
-    // bits 0-1 control "off" mode
-    // modes are: 0=off, 1=low, 2=high, 3=blinking (if TICK_DURING_STANDBY enabled)
+    // high nibble controls lockout mode
+    // low nibble controls "off" mode
+    // modes are: 0=off, 1=low, 2=high
+    // with TICK_DURING_STANDBY: 3=fancy blinking, 4=low blinking, 5=high blinking
     #ifndef INDICATOR_LED_DEFAULT_MODE
         #ifdef USE_INDICATOR_LED_WHILE_RAMPING
-            #define INDICATOR_LED_DEFAULT_MODE ((2<<2) + 1)
+            #define INDICATOR_LED_DEFAULT_MODE ((2<<4) + 1)
         #else
-            #define INDICATOR_LED_DEFAULT_MODE ((3<<2) + 1)
+            #define INDICATOR_LED_DEFAULT_MODE ((3<<4) + 1)
         #endif
     #endif
 #endif
