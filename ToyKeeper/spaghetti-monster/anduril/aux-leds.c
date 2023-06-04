@@ -27,8 +27,8 @@ void indicator_led_update(uint8_t mode, uint8_t tick) {
     #endif
     //#endif
     else {
-        // Only low nibble is relevant
-        mode &= 0x0F;
+        // Keep only relevant bits
+        mode &= INDICATOR_LED_CFG_MASK;
 
         // fancy blink, set off/low/high levels here:
         static const uint8_t fancy_seq[] = {0, 1, 2, 1,  0, 0, 0, 0,
@@ -39,11 +39,13 @@ void indicator_led_update(uint8_t mode, uint8_t tick) {
             case 3:
                 level = fancy_seq[tick & 15];
                 break;
+            #ifdef USE_EXTENDED_INDICATOR_PATTERNS
             case 4:
             case 5:
                 // low or high blink, 1/8th duty cycle
                 level = (tick & 7) ? 0 : mode - 3;
                 break;
+            #endif
         }
 
         indicator_led(level);

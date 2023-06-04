@@ -43,7 +43,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         ticks_since_on = 0;
         #ifdef USE_INDICATOR_LED
             // redundant, sleep tick does the same thing
-            // indicator_led_update(cfg.indicator_led_mode >> 4, 0);
+            // indicator_led_update(cfg.indicator_led_mode >> INDICATOR_LED_CFG_OFFSET, 0);
         #elif defined(USE_AUX_RGB_LEDS)
             rgb_led_update(cfg.rgb_led_lockout_mode, 0);
         #endif
@@ -54,7 +54,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
             go_to_standby = 1;
             #ifdef USE_INDICATOR_LED
             // redundant, sleep tick does the same thing
-            //indicator_led_update(cfg.indicator_led_mode >> 4, arg);
+            //indicator_led_update(cfg.indicator_led_mode >> INDICATOR_LED_CFG_OFFSET, arg);
             #elif defined(USE_AUX_RGB_LEDS)
             rgb_led_update(cfg.rgb_led_lockout_mode, arg);
             #endif
@@ -73,7 +73,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         }
         #endif
         #if defined(USE_INDICATOR_LED)
-        indicator_led_update(cfg.indicator_led_mode >> 4, arg);
+        indicator_led_update(cfg.indicator_led_mode >> INDICATOR_LED_CFG_OFFSET, arg);
         #elif defined(USE_AUX_RGB_LEDS)
         rgb_led_update(cfg.rgb_led_lockout_mode, arg);
         #endif
@@ -139,16 +139,16 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     #if defined(USE_INDICATOR_LED)
     // 7 clicks: rotate through indicator LED modes (lockout mode)
     else if (event == EV_7clicks) {
-        uint8_t mode = (cfg.indicator_led_mode >> 4) + 1;
+        uint8_t mode = (cfg.indicator_led_mode >> INDICATOR_LED_CFG_OFFSET) + 1;
         #ifdef TICK_DURING_STANDBY
-        mode = mode % 6;
+        mode = mode % INDICATOR_LED_NUM_PATTERNS;
         #else
         mode = mode % 3;
         #endif
         #ifdef INDICATOR_LED_SKIP_LOW
         if (mode == 1) { mode ++; }
         #endif
-        cfg.indicator_led_mode = (mode << 4) + (cfg.indicator_led_mode & 0x0F);
+        cfg.indicator_led_mode = (mode << INDICATOR_LED_CFG_OFFSET) + (cfg.indicator_led_mode & INDICATOR_LED_CFG_MASK);
         save_config();
         return MISCHIEF_MANAGED;
     }

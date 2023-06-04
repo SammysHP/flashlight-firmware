@@ -51,6 +51,16 @@ const uint8_t RGB_LED_NUM_COLORS = 11
 #endif
 #endif
 
+#ifdef USE_EXTENDED_INDICATOR_PATTERNS
+    #define INDICATOR_LED_NUM_PATTERNS 6
+    #define INDICATOR_LED_CFG_MASK 0x0F
+    #define INDICATOR_LED_CFG_OFFSET 4
+#else
+    #define INDICATOR_LED_NUM_PATTERNS 4
+    #define INDICATOR_LED_CFG_MASK 0x03
+    #define INDICATOR_LED_CFG_OFFSET 2
+#endif
+
 //#define USE_FANCIER_BLINKING_INDICATOR
 #ifdef USE_INDICATOR_LED
     // high nibble controls lockout mode
@@ -59,9 +69,9 @@ const uint8_t RGB_LED_NUM_COLORS = 11
     // with TICK_DURING_STANDBY: 3=fancy blinking, 4=low blinking, 5=high blinking
     #ifndef INDICATOR_LED_DEFAULT_MODE
         #ifdef USE_INDICATOR_LED_WHILE_RAMPING
-            #define INDICATOR_LED_DEFAULT_MODE ((2<<4) + 1)
+            #define INDICATOR_LED_DEFAULT_MODE ((2<<INDICATOR_LED_CFG_OFFSET) + 1)
         #else
-            #define INDICATOR_LED_DEFAULT_MODE ((3<<4) + 1)
+            #define INDICATOR_LED_DEFAULT_MODE ((3<<INDICATOR_LED_CFG_OFFSET) + 1)
         #endif
     #endif
 #endif

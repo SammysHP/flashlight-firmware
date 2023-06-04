@@ -258,16 +258,16 @@ uint8_t off_state(Event event, uint16_t arg) {
     #ifdef USE_INDICATOR_LED
     // 7 clicks: change indicator LED mode
     else if (event == EV_7clicks) {
-        uint8_t mode = (cfg.indicator_led_mode & 0x0F) + 1;
+        uint8_t mode = (cfg.indicator_led_mode & INDICATOR_LED_CFG_MASK) + 1;
         #ifdef TICK_DURING_STANDBY
-        mode = mode % 6;
+        mode = mode % INDICATOR_LED_NUM_PATTERNS;
         #else
         mode = mode % 3;
         #endif
         #ifdef INDICATOR_LED_SKIP_LOW
         if (mode == 1) { mode ++; }
         #endif
-        cfg.indicator_led_mode = (cfg.indicator_led_mode & 0xF0) | mode;
+        cfg.indicator_led_mode = (cfg.indicator_led_mode & ~INDICATOR_LED_CFG_MASK) | mode;
         save_config();
         return MISCHIEF_MANAGED;
     }
