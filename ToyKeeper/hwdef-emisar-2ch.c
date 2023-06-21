@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include "chan-rgbaux.c"
+
 // set new values for both channels,
 // handling any possible combination
 // and any before/after state
