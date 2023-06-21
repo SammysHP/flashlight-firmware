@@ -10,6 +10,7 @@ void set_level_auxcyn(uint8_t level);
 void set_level_auxblu(uint8_t level);
 void set_level_auxprp(uint8_t level);
 void set_level_auxwht(uint8_t level);
+void set_level_auxmix(uint8_t level);
 
 bool gradual_tick_null(uint8_t gt);
 
