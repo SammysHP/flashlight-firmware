@@ -68,9 +68,9 @@ StatePtr channel_3H_modes[NUM_CHANNEL_MODES];
     // one byte of extra data per channel mode, like for tint value
     uint8_t channel_mode_args[NUM_CHANNEL_MODES] = { CHANNEL_MODE_ARGS };
     #endif
-    // bitmask: which modes respond to their "arg", and which don't?
-    //const uint8_t channel_has_args = CHANNEL_HAS_ARGS;
-    #define channel_has_args(n) ((CHANNEL_HAS_ARGS >> n) & 1)
+    // which modes respond to their "arg", and which don't?
+    const uint8_t channel_mode_argc[NUM_CHANNEL_MODES] = { CHANNEL_MODE_ARGC };
+    #define channel_has_args(n) (channel_mode_argc[n])
 #endif
 
 void set_channel_mode(uint8_t mode);

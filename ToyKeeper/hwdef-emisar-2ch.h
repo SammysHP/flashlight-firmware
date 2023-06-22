@@ -52,10 +52,10 @@ enum CHANNEL_MODES {
 };
 
 #define CHANNEL_MODES_ENABLED 0b00011111
-#define CHANNEL_HAS_ARGS      0b00111000
 #define USE_CHANNEL_MODE_ARGS
-// _, _, _, 128=middle CCT, 0=warm-to-cool
+// _, _, _, 128=middle CCT, 0=warm-to-cool, 0=red
 #define CHANNEL_MODE_ARGS     0,0,0,128,0,0
+#define CHANNEL_MODE_ARGC     0,0,0,1,2,6
 
 #define SET_LEVEL_MODES      set_level_ch1, \
                              set_level_ch2, \

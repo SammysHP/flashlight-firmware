@@ -73,6 +73,13 @@ uint8_t channel_mode_state(Event event, uint16_t arg) {
         #ifdef USE_STEPPED_TINT_RAMPING
             if ((tint_ramp_direction > 0 && tint < 255) ||
                 (tint_ramp_direction < 0 && tint > 0)) {
+                #ifdef USE_CHANNEL_MODE_ARGS
+                uint8_t old_tint_ramp_style = cfg.tint_ramp_style;
+                if (channel_mode_argc[cfg.channel_mode] > 1) {
+                    cfg.tint_ramp_style = channel_mode_argc[cfg.channel_mode];
+                }
+                #endif
+
                 // ramp slower in stepped mode
                 if (cfg.tint_ramp_style && (arg % HOLD_TIMEOUT != 0))
                     return EVENT_HANDLED;
@@ -82,6 +89,10 @@ uint8_t channel_mode_state(Event event, uint16_t arg) {
                 tint = nearest_tint_value(
                           tint + ((int16_t)step_size * tint_ramp_direction)
                           );
+
+                #ifdef USE_CHANNEL_MODE_ARGS
+                cfg.tint_ramp_style = old_tint_ramp_style;
+                #endif
             }
         #else  // smooth tint ramping only
             if ((tint_ramp_direction > 0) && (tint < 255)) { tint ++; }

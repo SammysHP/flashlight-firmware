@@ -32,9 +32,9 @@
 #define CM_WHITE_RED  4
 
 #define CHANNEL_MODES_ENABLED 0b00011111
-#define CHANNEL_HAS_ARGS      0b00010001
 // 128=middle CCT, _, _, _, 255=100% red
 #define CHANNEL_MODE_ARGS     128,0,0,0,255
+#define CHANNEL_MODE_ARGC     1,0,0,0,1
 
 // TODO: blend mode should enable this automatically?
 #define USE_CHANNEL_MODES
