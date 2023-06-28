@@ -31,6 +31,7 @@ void set_level_auxwht(uint8_t level) {
     rgb_led_set(!(!(level)) * 0b101010);  // red+green+blue, high (or off)
 }
 
+#ifdef USE_CHANNEL_MODE_ARGS
 void set_level_auxmix(uint8_t level) {
     const uint8_t rgb_led_colors[] = {
         0b00000010,  // 0: red
@@ -43,6 +44,7 @@ void set_level_auxmix(uint8_t level) {
     uint8_t color = cfg.channel_mode_args[cfg.channel_mode] / 43;
     rgb_led_set(!!level * rgb_led_colors[color]);
 }
+#endif
 
 bool gradual_tick_null(uint8_t gt) { return true; }  // do nothing
 
