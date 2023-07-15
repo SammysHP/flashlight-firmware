@@ -31,6 +31,12 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     // button was released
     else if ((event & (B_CLICK | B_PRESS)) == (B_CLICK)) {
         set_level(0);
+        // Don't wait for first EV_sleep_tick
+        #if defined(USE_INDICATOR_LED)
+        indicator_led_update(cfg.indicator_led_mode >> INDICATOR_LED_CFG_OFFSET, arg);
+        #elif defined(USE_AUX_RGB_LEDS)
+        rgb_led_update(cfg.rgb_led_lockout_mode, arg);
+        #endif
     }
     #endif  // ifdef USE_MOON_DURING_LOCKOUT_MODE
 
@@ -42,8 +48,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     if (event == EV_enter_state) {
         ticks_since_on = 0;
         #ifdef USE_INDICATOR_LED
-            // redundant, sleep tick does the same thing
-            // indicator_led_update(cfg.indicator_led_mode >> INDICATOR_LED_CFG_OFFSET, 0);
+            indicator_led_update(cfg.indicator_led_mode >> INDICATOR_LED_CFG_OFFSET, 0);
         #elif defined(USE_AUX_RGB_LEDS)
             rgb_led_update(cfg.rgb_led_lockout_mode, 0);
         #endif
@@ -53,8 +58,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         if (arg > HOLD_TIMEOUT) {
             go_to_standby = 1;
             #ifdef USE_INDICATOR_LED
-            // redundant, sleep tick does the same thing
-            //indicator_led_update(cfg.indicator_led_mode >> INDICATOR_LED_CFG_OFFSET, arg);
+            indicator_led_update(cfg.indicator_led_mode >> INDICATOR_LED_CFG_OFFSET, arg);
             #elif defined(USE_AUX_RGB_LEDS)
             rgb_led_update(cfg.rgb_led_lockout_mode, arg);
             #endif

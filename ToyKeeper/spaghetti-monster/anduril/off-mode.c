@@ -17,8 +17,7 @@ uint8_t off_state(Event event, uint16_t arg) {
         set_level(0);
         ticks_since_on = 0;
         #ifdef USE_INDICATOR_LED
-        // redundant, sleep tick does the same thing
-        //indicator_led_update(cfg.indicator_led_mode, 0);
+        indicator_led_update(cfg.indicator_led_mode, 0);
         #elif defined(USE_AUX_RGB_LEDS)
         rgb_led_update(cfg.rgb_led_off_mode, 0);
         #endif
@@ -36,8 +35,7 @@ uint8_t off_state(Event event, uint16_t arg) {
         if (arg > HOLD_TIMEOUT) {
             go_to_standby = 1;
             #ifdef USE_INDICATOR_LED
-            // redundant, sleep tick does the same thing
-            //indicator_led_update(cfg.indicator_led_mode, arg);
+            indicator_led_update(cfg.indicator_led_mode, arg);
             #elif defined(USE_AUX_RGB_LEDS)
             rgb_led_update(cfg.rgb_led_off_mode, arg);
             #endif
