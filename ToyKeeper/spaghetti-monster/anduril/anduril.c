@@ -373,6 +373,13 @@ void low_voltage() {
             set_state(off_state, 0);
         }
     }
+
+    // stay in lockout mode, it's already kind of off,
+    // leaving it could cause more harm
+    else if (state == lockout_state) {
+        set_level(0);
+    }
+
     // all other modes, just turn off when voltage is low
     else {
         set_state(off_state, 0);
