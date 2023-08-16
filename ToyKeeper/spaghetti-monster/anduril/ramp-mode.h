@@ -198,6 +198,9 @@ typedef enum {
     #ifdef USE_JUMP_START
     jump_start_config_step,
     #endif
+    #ifdef USE_POCKET_UI
+    pocket_ui_step,
+    #endif
     globals_config_num_steps
 } globals_config_steps_e;
 
@@ -205,3 +208,9 @@ void globals_config_save(uint8_t step, uint8_t value);
 uint8_t globals_config_state(Event event, uint16_t arg);
 #endif
 
+// Always included. Will be optimized by the compiler
+// if USE_POCKET_UI is not defined.
+#ifndef USE_POCKET_UI
+const
+#endif
+uint8_t pocket_ui_active = 0;
