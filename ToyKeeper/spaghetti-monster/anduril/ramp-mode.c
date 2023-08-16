@@ -18,6 +18,9 @@ uint8_t steady_state(Event event, uint16_t arg) {
     // and this stores the level to return to
     static uint8_t level_before_off = 0;
     #endif
+    #ifdef BLINK_AT_RAMP_MIDDLE_DELAY
+    static uint8_t middle_delay_time = 0;
+    #endif
 
     // make sure ramp globals are correct...
     // ... but they already are; no need to do it here
@@ -155,6 +158,15 @@ uint8_t steady_state(Event event, uint16_t arg) {
             return EVENT_HANDLED;
         }
         #endif
+        #ifdef BLINK_AT_RAMP_MIDDLE_DELAY
+        if (arg && !cfg.ramp_style && middle_delay_time) {
+            --middle_delay_time;
+            return MISCHIEF_MANAGED;
+        }
+        else {
+            middle_delay_time = 0;
+        }
+        #endif
         // fix ramp direction on first frame if necessary
         if (!arg) {
             // click, hold should always go down if possible
@@ -208,6 +220,9 @@ uint8_t steady_state(Event event, uint16_t arg) {
                 #endif
                 )) {
             blip();
+            #ifdef BLINK_AT_RAMP_MIDDLE_DELAY
+            middle_delay_time = HOLD_TIMEOUT;
+            #endif
         }
         #endif
         #if defined(BLINK_AT_STEPS)
