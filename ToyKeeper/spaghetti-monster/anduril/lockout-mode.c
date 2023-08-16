@@ -32,6 +32,12 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     // button was released
     else if ((event & (B_CLICK | B_PRESS)) == (B_CLICK)) {
         set_level(0);
+        // Don't wait for first EV_sleep_tick
+        #if defined(USE_INDICATOR_LED)
+        indicator_led_update(cfg.indicator_led_mode >> INDICATOR_LED_CFG_OFFSET, arg);
+        #elif defined(USE_AUX_RGB_LEDS)
+        rgb_led_update(cfg.rgb_led_lockout_mode, arg);
+        #endif
     }
     }  // if (!pocket_ui_active)
     #endif  // ifdef USE_MOON_DURING_LOCKOUT_MODE
@@ -44,8 +50,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     if (event == EV_enter_state) {
         ticks_since_on = 0;
         #ifdef USE_INDICATOR_LED
-            // redundant, sleep tick does the same thing
-            // indicator_led_update(cfg.indicator_led_mode >> 2, 0);
+            indicator_led_update(cfg.indicator_led_mode >> INDICATOR_LED_CFG_OFFSET, 0);
         #elif defined(USE_AUX_RGB_LEDS)
             rgb_led_update(cfg.rgb_led_lockout_mode, 0);
         #endif
@@ -55,8 +60,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         if (arg > HOLD_TIMEOUT) {
             go_to_standby = 1;
             #ifdef USE_INDICATOR_LED
-            // redundant, sleep tick does the same thing
-            //indicator_led_update(cfg.indicator_led_mode >> 2, arg);
+            indicator_led_update(cfg.indicator_led_mode >> INDICATOR_LED_CFG_OFFSET, arg);
             #elif defined(USE_AUX_RGB_LEDS)
             rgb_led_update(cfg.rgb_led_lockout_mode, arg);
             #endif
@@ -75,7 +79,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         }
         #endif
         #if defined(USE_INDICATOR_LED)
-        indicator_led_update(cfg.indicator_led_mode >> 2, arg);
+        indicator_led_update(cfg.indicator_led_mode >> INDICATOR_LED_CFG_OFFSET, arg);
         #elif defined(USE_AUX_RGB_LEDS)
         rgb_led_update(cfg.rgb_led_lockout_mode, arg);
         #endif
@@ -141,21 +145,16 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     #if defined(USE_INDICATOR_LED)
     // 7 clicks: rotate through indicator LED modes (lockout mode)
     else if (event == EV_7clicks) {
-        #if defined(USE_INDICATOR_LED)
-            uint8_t mode = cfg.indicator_led_mode >> 2;
-            #ifdef TICK_DURING_STANDBY
-            mode = (mode + 1) & 3;
-            #else
-            mode = (mode + 1) % 3;
-            #endif
-            #ifdef INDICATOR_LED_SKIP_LOW
-            if (mode == 1) { mode ++; }
-            #endif
-            cfg.indicator_led_mode = (mode << 2) + (cfg.indicator_led_mode & 0x03);
-            // redundant, sleep tick does the same thing
-            //indicator_led_update(cfg.indicator_led_mode >> 2, arg);
-        #elif defined(USE_AUX_RGB_LEDS)
+        uint8_t mode = (cfg.indicator_led_mode >> INDICATOR_LED_CFG_OFFSET) + 1;
+        #ifdef TICK_DURING_STANDBY
+        mode = mode % INDICATOR_LED_NUM_PATTERNS;
+        #else
+        mode = mode % 3;
         #endif
+        #ifdef INDICATOR_LED_SKIP_LOW
+        if (mode == 1) { mode ++; }
+        #endif
+        cfg.indicator_led_mode = (mode << INDICATOR_LED_CFG_OFFSET) + (cfg.indicator_led_mode & INDICATOR_LED_CFG_MASK);
         save_config();
         return EVENT_HANDLED;
     }
