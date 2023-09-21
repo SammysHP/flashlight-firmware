@@ -85,7 +85,7 @@ uint8_t off_state(Event event, uint16_t arg) {
             else
         #endif
         set_level(lvl);
-        return MISCHIEF_MANAGED;
+        return EVENT_HANDLED;
     }
     else if (pocket_ui_active && event == EV_click1_hold_release) {
         #ifdef USE_SMOOTH_STEPS
@@ -94,7 +94,7 @@ uint8_t off_state(Event event, uint16_t arg) {
             } else
         #endif
         set_level(0);
-        return MISCHIEF_MANAGED;
+        return EVENT_HANDLED;
     }
 
     #if (B_TIMING_ON == B_PRESS_T)
