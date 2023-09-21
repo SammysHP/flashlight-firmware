@@ -26,10 +26,20 @@ uint8_t lockout_state(Event event, uint16_t arg) {
             if (cfg.manual_memory) lvl = cfg.manual_memory;
             #endif
         }
+        #ifdef USE_SMOOTH_STEPS
+            if (cfg.smooth_steps_style)
+                set_level_smooth(lvl, 8);
+            else
+        #endif
         set_level(lvl);
     }
     // button was released
     else if ((event & (B_CLICK | B_PRESS)) == (B_CLICK)) {
+        #ifdef USE_SMOOTH_STEPS
+            if (cfg.smooth_steps_style) {
+                set_level_smooth(0, 8);
+            } else
+        #endif
         set_level(0);
     }
     #endif  // ifdef USE_MOON_DURING_LOCKOUT_MODE
