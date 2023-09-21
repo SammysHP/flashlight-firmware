@@ -79,10 +79,20 @@ uint8_t off_state(Event event, uint16_t arg) {
         #ifdef USE_MANUAL_MEMORY
         if (cfg.manual_memory) lvl = cfg.manual_memory;
         #endif
+        #ifdef USE_SMOOTH_STEPS
+            if (cfg.smooth_steps_style)
+                set_level_smooth(lvl, 8);
+            else
+        #endif
         set_level(lvl);
         return MISCHIEF_MANAGED;
     }
     else if (pocket_ui_active && event == EV_click1_hold_release) {
+        #ifdef USE_SMOOTH_STEPS
+            if (cfg.smooth_steps_style) {
+                set_level_smooth(0, 8);
+            } else
+        #endif
         set_level(0);
         return MISCHIEF_MANAGED;
     }
