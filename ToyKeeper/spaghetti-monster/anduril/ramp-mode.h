@@ -207,8 +207,9 @@ typedef enum {
 
 #ifdef USE_GLOBALS_CONFIG
 typedef enum {
+    dummy_step = 0,
     #if defined(USE_CHANNEL_MODE_ARGS) && defined(USE_STEPPED_TINT_RAMPING)
-    tint_style_config_step = 1,
+    tint_style_config_step,
     #endif
     #ifdef USE_JUMP_START
     jump_start_config_step,
