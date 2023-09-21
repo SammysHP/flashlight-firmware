@@ -75,7 +75,10 @@ uint8_t off_state(Event event, uint16_t arg) {
 
     else if (pocket_ui_active && event == EV_click1_hold) {
         uint8_t lvl = cfg.ramp_floors[0];
-        if (cfg.ramp_floors[1] < lvl) lvl = cfg.ramp_floors[1];
+        if (cfg.ramp_floors[1] > lvl) lvl = cfg.ramp_floors[1];
+        #ifdef USE_MANUAL_MEMORY
+        if (cfg.manual_memory) lvl = cfg.manual_memory;
+        #endif
         set_level(lvl);
         return MISCHIEF_MANAGED;
     }
