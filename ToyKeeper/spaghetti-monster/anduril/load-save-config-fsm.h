@@ -122,6 +122,9 @@ typedef struct Config {
     #ifdef USE_JUMP_START
         uint8_t jump_start_level;
     #endif
+    #ifdef USE_POCKET_UI
+        uint8_t pocket_ui_active;
+    #endif
 
 } Config;
 

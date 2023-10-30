@@ -44,6 +44,9 @@
 // Include a simplified UI for non-enthusiasts?
 #define USE_SIMPLE_UI
 
+// Include a pocket safe UI?
+// #define USE_POCKET_UI
+
 
 ///// Ramp mode options /////
 

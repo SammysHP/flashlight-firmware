@@ -17,9 +17,19 @@ void load_config() {
         memorized_level = eeprom_wl[0];
     }
     #endif
+
+    #ifdef USE_POCKET_UI
+    // TODO Ugly, but required for compiler optimization
+    pocket_ui_active = cfg.pocket_ui_active;
+    #endif
 }
 
 void save_config() {
+    #ifdef USE_POCKET_UI
+    // TODO Ugly, but required for compiler optimization
+    cfg.pocket_ui_active = pocket_ui_active;
+    #endif
+
     eeprom = (uint8_t *)&cfg;
     save_eeprom();
 }

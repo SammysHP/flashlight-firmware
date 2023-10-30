@@ -791,6 +791,16 @@ These settings are, in order:
 
     The value can be from 1 to 150, but is usually between 20 and 50.
 
+  - Pocket UI:
+
+    0 = disabled
+    1 = enabled
+
+    If enabled, many button mappings are shifted and require one press 
+    more to activate, for example turn the light on with 2C from off. 
+    From off you get a momentary moon mode with 1H and lockout won't 
+    have any momentary mode at all.
+
 These settings are hardware-specific and may not be present on all 
 lights.  The number of settings in the Misc Config Menu depends on the 
 hardware model and the firmware version.
