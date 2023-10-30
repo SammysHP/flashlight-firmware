@@ -26,30 +26,29 @@ void indicator_led_update(uint8_t mode, uint8_t tick) {
     }
     #endif
     //#endif
-    // normal steady output, 0/1/2 = off / low / high
-    else if ((mode & 0b00001111) < 3) {
-        indicator_led(mode);
-    }
-    // beacon-like blinky mode
     else {
-        #ifdef USE_OLD_BLINKING_INDICATOR
-
-        // basic blink, 1/8th duty cycle
-        if (! (tick & 7)) {
-            indicator_led(2);
-        }
-        else {
-            indicator_led(0);
-        }
-
-        #else
+        // Keep only relevant bits
+        mode &= INDICATOR_LED_CFG_MASK;
 
         // fancy blink, set off/low/high levels here:
-        static const uint8_t seq[] = {0, 1, 2, 1,  0, 0, 0, 0,
-                                      0, 0, 1, 0,  0, 0, 0, 0};
-        indicator_led(seq[tick & 15]);
+        static const uint8_t fancy_seq[] = {0, 1, 2, 1,  0, 0, 0, 0,
+                                            0, 0, 1, 0,  0, 0, 0, 0};
 
-        #endif  // ifdef USE_OLD_BLINKING_INDICATOR
+        uint8_t level = mode;
+        switch (mode) {
+            case 3:
+                level = fancy_seq[tick & 15];
+                break;
+            #ifdef USE_EXTENDED_INDICATOR_PATTERNS
+            case 4:
+            case 5:
+                // low or high blink, 1/8th duty cycle
+                level = (tick & 7) ? 0 : mode - 3;
+                break;
+            #endif
+        }
+
+        indicator_led(level);
     }
 }
 #endif
@@ -127,7 +126,11 @@ void rgb_led_update(uint8_t mode, uint16_t arg) {
         // use high mode if regular aux level is high or prev level was high
         pattern = 1 + ((2 == pattern) | (prev_level >= POST_OFF_VOLTAGE_BRIGHTNESS));
         // voltage mode
-        color = RGB_LED_NUM_COLORS - 1;
+        color = RGB_LED_NUM_COLORS - 1
+            #ifdef USE_BUTTON_LED
+            -1
+            #endif
+            ;
     }
     #endif
 
@@ -148,6 +151,11 @@ void rgb_led_update(uint8_t mode, uint16_t arg) {
         }
         actual_color = pgm_read_byte(colors + rainbow);
     }
+    #ifdef USE_BUTTON_LED
+    else if (color == RGB_LED_NUM_COLORS - 1) {  // off
+        actual_color = 0;
+    }
+    #endif
     else {  // voltage
         // show actual voltage while asleep...
         if (go_to_standby) {
@@ -170,6 +178,10 @@ void rgb_led_update(uint8_t mode, uint16_t arg) {
                                             1, 0, 0, 0,  0, 0, 0, 0,  0, 1};
         frame = (frame + 1) % sizeof(animation);
         pattern = animation[frame];
+    } else if (pattern == 4) {
+        pattern = (arg % 8) ? 0 : 1;
+    } else if (pattern == 5) {
+        pattern = (arg % 8) ? 0 : 2;
     }
     uint8_t result;
     #ifdef USE_BUTTON_LED
