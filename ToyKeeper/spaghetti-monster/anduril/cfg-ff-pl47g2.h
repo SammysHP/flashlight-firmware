@@ -1,5 +1,11 @@
 // Fireflies PL47 G2 config options for Anduril
-#include "hwdef-FF_PL47.h"
+// Copyright (C) 2019-2023 Selene ToyKeeper
+// SPDX-License-Identifier: GPL-3.0-or-later
+#pragma once
+
+#define MODEL_NUMBER "0423"
+#include "hwdef-ff-pl47.h"
+// ATTINY: 85
 
 // the button lights up
 #define USE_INDICATOR_LED
@@ -7,18 +13,14 @@
 #ifdef USE_INDICATOR_LED_WHILE_RAMPING
 #undef USE_INDICATOR_LED_WHILE_RAMPING
 #endif
-// enable blinking indicator LED while off?
-#define TICK_DURING_STANDBY
-#define STANDBY_TICK_SPEED 3  // every 0.128 s
-#define USE_FANCIER_BLINKING_INDICATOR
 
-// If TICK_DURING_STANDBY is enabled...
 // off mode: low (1)
 // lockout: blinking (3)
 #define INDICATOR_LED_DEFAULT_MODE ((3<<2) + 1)
 
 
-#define RAMP_LENGTH 150
+
+#define RAMP_SIZE 150
 
 // driver is a FET + 3x7135, ~400 lm at highest regulated level
 // ramp copied from Emisar D4S ramp
@@ -28,28 +30,38 @@
 #define HALFSPEED_LEVEL 13
 #define QUARTERSPEED_LEVEL 6
 
+// ceiling is level 120/150
+#define RAMP_SMOOTH_FLOOR 1
+#define RAMP_SMOOTH_CEIL 120
+
+// 10, 28, 46, 65, 83, 101, 120  (83 is highest regulated)
+#define RAMP_DISCRETE_FLOOR 10
+#define RAMP_DISCRETE_CEIL  120
+#define RAMP_DISCRETE_STEPS 7
+
+// safe limit ~25% power / ~1000 lm
+// 10 34 59 [83] 108
+#define SIMPLE_UI_FLOOR RAMP_DISCRETE_FLOOR
+#define SIMPLE_UI_CEIL 108
+#define SIMPLE_UI_STEPS 5
+
 // thermal regulation parameters
 #ifdef MIN_THERM_STEPDOWN
 #undef MIN_THERM_STEPDOWN  // this should be lower, because 3x7135 instead of 1x7135
 #endif
 #define MIN_THERM_STEPDOWN 60  // lowest value it'll step down to
-
-// ceiling is level 120/150
-#define RAMP_SMOOTH_CEIL 120
-
-// 10, 28, 46, 65, [83], 101, 120
-#define RAMP_DISCRETE_FLOOR 10
-#define RAMP_DISCRETE_CEIL 120
-#define RAMP_DISCRETE_STEPS 7
-
-// ~25 lm to ~300 lm
-#define MUGGLE_FLOOR 30
-#define MUGGLE_CEILING MAX_1x7135
-
 // regulate down faster when the FET is active, slower otherwise
 #define THERM_FASTER_LEVEL 135  // throttle back faster when high
 
+#ifndef BLINK_AT_RAMP_CEIL
+#define BLINK_AT_RAMP_CEIL
+#endif
+
 // don't do this
 #undef BLINK_AT_RAMP_MIDDLE
-#undef BLINK_AT_RAMP_CEILING
 
+#define USE_SMOOTH_STEPS
+
+// too big, turn off extra features
+#undef USE_SOS_MODE
+#undef USE_TACTICAL_MODE

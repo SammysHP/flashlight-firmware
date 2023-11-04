@@ -7,6 +7,6 @@ Button-Type: clicky
 Memory: offtime, mem decay, short-cycle
 MCU: attiny13, attiny25, attiny45, attiny85
 Authors: ToyKeeper
-Modes: ramp, battcheck, tactical strobe, police strobe, bike flasher, SOS, heart beacon, goodnight, config
+Modes: ramp, battcheck, tactical strobe, police strobe, bike flasher, SOS, heart beacon, sunset, config
 Extras: ramping UI, LVP, thermal regulation, dual PWM
 License: GPLv3

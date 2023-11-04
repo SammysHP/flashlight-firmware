@@ -1,24 +1,8 @@
-/*
- * fsm-standby.c: standby mode functions for SpaghettiMonster.
- *
- * Copyright (C) 2017 Selene Scriven
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// fsm-standby.c: standby mode functions for SpaghettiMonster.
+// Copyright (C) 2017-2023 Selene ToyKeeper
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef FSM_STANDBY_C
-#define FSM_STANDBY_C
+#pragma once
 
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
@@ -56,6 +40,11 @@ void sleep_until_eswitch_pressed()
     #endif
 
         // configure sleep mode
+        #ifdef TICK_DURING_STANDBY
+            // needs a special sleep mode during measurements
+            if (adc_active_now) adc_sleep_mode();
+            else
+        #endif
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
         sleep_enable();
@@ -73,6 +62,9 @@ void sleep_until_eswitch_pressed()
             go_to_standby = 0;
         }
         if (irq_adc) {  // ADC done measuring
+            #ifndef USE_LOWPASS_WHILE_ASLEEP
+            adc_reset = 1;  // don't lowpass while asleep
+            #endif
             adc_deferred_enable = 1;
             adc_deferred();
             //ADC_off();  // takes care of itself
@@ -84,10 +76,9 @@ void sleep_until_eswitch_pressed()
     }
     #endif
 
-    #ifdef USE_THERMAL_REGULATION
-    // forget what the temperature was last time we were on
-    reset_thermal_history = 1;
-    #endif
+    // don't lowpass immediately after waking
+    // also, reset thermal history
+    adc_reset = 2;
 
     // go back to normal running mode
     // PCINT not needed any more, and can cause problems if on
@@ -112,4 +103,3 @@ void idle_mode()
 }
 #endif
 
-#endif

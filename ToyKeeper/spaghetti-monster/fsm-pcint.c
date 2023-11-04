@@ -1,24 +1,8 @@
-/*
- * fsm-pcint.c: PCINT (Pin Change Interrupt) functions for SpaghettiMonster.
- *
- * Copyright (C) 2017 Selene Scriven
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// fsm-pcint.c: PCINT (Pin Change Interrupt) functions for SpaghettiMonster.
+// Copyright (C) 2017-2023 Selene ToyKeeper
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef FSM_PCINT_C
-#define FSM_PCINT_C
+#pragma once
 
 #include <avr/interrupt.h>
 #include <util/delay_basic.h>
@@ -46,6 +30,8 @@ inline void PCINT_on() {
         #else
         GIMSK |= (1 << SWITCH_PCIE);
         #endif
+    #elif defined(AVRXMEGA3)  // ATTINY816, 817, etc)
+        SWITCH_ISC_REG |= PORT_ISC_BOTHEDGES_gc;
     #else
         #error Unrecognized MCU type
     #endif
@@ -58,6 +44,8 @@ inline void PCINT_off() {
     #elif (ATTINY == 1634)
         // disable all pin-change interrupts
         GIMSK &= ~(1 << SWITCH_PCIE);
+    #elif defined(AVRXMEGA3)  // ATTINY816, 817, etc)
+        SWITCH_ISC_REG &= ~(PORT_ISC_gm);
     #else
         #error Unrecognized MCU type
     #endif
@@ -65,19 +53,20 @@ inline void PCINT_off() {
 
 //void button_change_interrupt() {
 #if (ATTINY == 25) || (ATTINY == 45) || (ATTINY == 85) || (ATTINY == 1634)
-//EMPTY_INTERRUPT(PCINT0_vect);
-#ifdef PCINT_vect
-ISR(PCINT_vect) {
-#else
-ISR(PCINT0_vect) {
-#endif
-    irq_pcint = 1;
-}
+    #ifdef PCINT_vect
+    ISR(PCINT_vect) {
+    #else
+    ISR(PCINT0_vect) {
+    #endif
+#elif defined(AVRXMEGA3)  // ATTINY816, 817, etc)
+    ISR(SWITCH_VECT) {
+        // Write a '1' to clear the interrupt flag
+        SWITCH_INTFLG |= (1 << SWITCH_PIN);
 #else
     #error Unrecognized MCU type
 #endif
-/*
-ISR(PCINT0_vect) {
+
+    irq_pcint = 1;  // let deferred code know an interrupt happened
 
     //DEBUG_FLASH;
 
@@ -86,25 +75,22 @@ ISR(PCINT0_vect) {
     // noisy / bouncy switch (so the content of this function has been
     // moved to a separate function, called from WDT only)
     // PCINT_inner(button_is_pressed());
-
 }
-*/
 
 // should only be called from PCINT and/or WDT
 // (is a separate function to reduce code duplication)
 void PCINT_inner(uint8_t pressed) {
-    uint8_t pushed;
+    button_last_state = pressed;
 
-    if (pressed) {
-        pushed = push_event(B_PRESS);
-    } else {
-        pushed = push_event(B_RELEASE);
-    }
-
-    // send event to the current state callback
-    if (pushed) {
-        button_last_state = pressed;
+    // register the change, and send event to the current state callback
+    if (pressed) {  // user pressed button
+        push_event(B_PRESS);
         emit_current_event(0);
+    } else {  // user released button
+        // how long was the button held?
+        push_event(B_RELEASE);
+        emit_current_event(ticks_since_last_event);
     }
+    ticks_since_last_event = 0;
 }
-#endif
+
