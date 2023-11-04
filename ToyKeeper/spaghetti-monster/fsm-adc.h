@@ -1,25 +1,8 @@
-/*
- * fsm-adc.h: ADC (voltage, temperature) functions for SpaghettiMonster.
- *
- * Copyright (C) 2017 Selene Scriven
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// fsm-adc.h: ADC (voltage, temperature) functions for SpaghettiMonster.
+// Copyright (C) 2017-2023 Selene ToyKeeper
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef FSM_ADC_H
-#define FSM_ADC_H
-
+#pragma once
 
 #if defined(USE_LVP) || defined(USE_THERMAL_REGULATION)
 // use raw value instead of lowpassed value for the next N measurements
@@ -36,6 +19,10 @@ volatile uint8_t adc_reset = 2;
 #ifndef VOLTAGE_LOW
 #define VOLTAGE_LOW 29
 #endif
+// battery is low but not critical
+#ifndef VOLTAGE_RED
+#define VOLTAGE_RED 33
+#endif
 // MCU sees voltage 0.X volts lower than actual, add X/2 to readings
 #ifndef VOLTAGE_FUDGE_FACTOR
 #ifdef USE_VOLTAGE_DIVIDER
@@ -45,6 +32,9 @@ volatile uint8_t adc_reset = 2;
 #endif
 #endif
 
+#ifdef TICK_DURING_STANDBY
+volatile uint8_t adc_active_now = 0;  // sleep LVP needs a different sleep mode
+#endif
 volatile uint8_t irq_adc = 0;  // ADC interrupt happened?
 uint8_t adc_sample_count = 0;  // skip the first sample; it's junk
 uint8_t adc_channel = 0;  // 0=voltage, 1=temperature
@@ -57,7 +47,17 @@ uint8_t adc_deferred_enable = 0;  // stop waiting and run the deferred code
 void adc_deferred();  // do the actual ADC-related calculations
 
 static inline void ADC_voltage_handler();
-volatile uint8_t voltage = 0;
+uint8_t voltage = 0;
+#ifdef USE_VOLTAGE_CORRECTION
+    #ifdef USE_CFG
+        #define VOLT_CORR cfg.voltage_correction
+    #else
+        // same 0.05V units as fudge factor,
+        // but 7 is neutral, and the expected range is from 1 to 13
+        uint8_t voltage_correction = 7;
+        #define VOLT_CORR voltage_correction
+    #endif
+#endif
 #ifdef USE_LVP
 void low_voltage();
 #endif
@@ -88,9 +88,16 @@ void battcheck();
 #define THERM_CAL_OFFSET 0
 #endif
 // temperature now, in C (ish)
-volatile int16_t temperature;
-uint8_t therm_ceil = DEFAULT_THERM_CEIL;
-int8_t therm_cal_offset = 0;
+int16_t temperature;
+#ifdef USE_CFG
+    #define TH_CEIL cfg.therm_ceil
+    #define TH_CAL cfg.therm_cal_offset
+#else
+    #define TH_CEIL therm_ceil
+    #define TH_CAL therm_cal_offset
+    uint8_t therm_ceil = DEFAULT_THERM_CEIL;
+    int8_t therm_cal_offset = 0;
+#endif
 static inline void ADC_temperature_handler();
 #endif  // ifdef USE_THERMAL_REGULATION
 
@@ -99,5 +106,7 @@ inline void ADC_on();
 inline void ADC_off();
 inline void ADC_start_measurement();
 
-
+#ifdef TICK_DURING_STANDBY
+inline void adc_sleep_mode();
 #endif
+

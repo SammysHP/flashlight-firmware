@@ -1,20 +1,25 @@
 // Fireflies ROT66 G2 config options for Anduril
+// Copyright (C) 2019-2023 Selene ToyKeeper
+// SPDX-License-Identifier: GPL-3.0-or-later
+#pragma once
+
 #include "cfg-ff-rot66.h"
+#undef MODEL_NUMBER
+#define MODEL_NUMBER "0413"
 
 // if the "low" mode was disabled, turn it back on
 #ifdef INDICATOR_LED_SKIP_LOW
 #undef INDICATOR_LED_SKIP_LOW
 #endif
-// enable blinking indicator LED while off
-#define TICK_DURING_STANDBY
-#define STANDBY_TICK_SPEED 3  // every 0.128 s
-#define USE_FANCIER_BLINKING_INDICATOR
 
 // lockout: blinking (3), off: low (1)
 #ifdef INDICATOR_LED_DEFAULT_MODE
 #undef INDICATOR_LED_DEFAULT_MODE
 #endif
 #define INDICATOR_LED_DEFAULT_MODE ((3<<2) + 1)
+
+// the button is *not* visible while main LEDs are on
+#undef USE_INDICATOR_LED_WHILE_RAMPING
 
 // ramp shape is different than original ROT66
 // 1x7135: 150 lm
@@ -40,10 +45,15 @@
 
 // higher floor than default, and stop at highest regulated level
 #define RAMP_SMOOTH_FLOOR 1   // ~0.3 lm
-#define RAMP_SMOOTH_CEIL MAX_Nx7135  // ~1200 lm
+#define RAMP_SMOOTH_CEIL  MAX_Nx7135  // ~1200 lm
 // 10, 28, 46, [65], 83, 101, [120]
 #define RAMP_DISCRETE_FLOOR 10
-#define RAMP_DISCRETE_CEIL MAX_Nx7135
+#define RAMP_DISCRETE_CEIL  MAX_Nx7135
 #define RAMP_DISCRETE_STEPS 7
 
+// safe limit max regulated power
+// 10 37 65 92 [120]
+#define SIMPLE_UI_FLOOR RAMP_DISCRETE_FLOOR
+#define SIMPLE_UI_CEIL MAX_Nx7135
+#define SIMPLE_UI_STEPS 5
 

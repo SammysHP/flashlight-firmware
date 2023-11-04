@@ -1,28 +1,15 @@
-/*
- * fsm-main.c: main() function for SpaghettiMonster.
- *
- * Copyright (C) 2017 Selene Scriven
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// fsm-main.c: main() function for SpaghettiMonster.
+// Copyright (C) 2017-2023 Selene ToyKeeper
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef FSM_MAIN_C
-#define FSM_MAIN_C
+#pragma once
 
 #include "fsm-main.h"
 
 #if PWM_CHANNELS == 4
+#ifdef AVRXMEGA3  // ATTINY816, 817, etc
+#error 4-channel PWM not currently set up for the AVR 1-Series
+#endif
 // 4th PWM channel requires manually turning the pin on/off via interrupt :(
 ISR(TIMER1_OVF_vect) {
     //bitClear(PORTB, 3);
@@ -36,39 +23,57 @@ ISR(TIMER1_COMPA_vect) {
 }
 #endif
 
+// FIXME: hw_setup() shouldn't be here ... move it entirely to hwdef files
 #if (ATTINY == 25) || (ATTINY == 45) || (ATTINY == 85)
 static inline void hw_setup() {
-    // configure PWM channels
-    #if PWM_CHANNELS >= 1
-    DDRB |= (1 << PWM1_PIN);
-    TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
-    TCCR0A = PHASE;
-    #endif
-    #if PWM_CHANNELS >= 2
-    DDRB |= (1 << PWM2_PIN);
-    #endif
-    #if PWM_CHANNELS >= 3
-    // Second PWM counter is ... weird
-    DDRB |= (1 << PWM3_PIN);
-    TCCR1 = _BV (CS10);
-    GTCCR = _BV (COM1B1) | _BV (PWM1B);
-    OCR1C = 255;  // Set ceiling value to maximum
-    #endif
-    #if PWM_CHANNELS >= 4
-    // 4th PWM channel is ... not actually supported in hardware  :(
-    DDRB |= (1 << PWM4_PIN);
-    //OCR1C = 255;  // Set ceiling value to maximum
-    TCCR1 = 1<<CTC1 | 1<<PWM1A | 3<<COM1A0 | 2<<CS10;
-    GTCCR = (2<<COM1B0) | (1<<PWM1B);
-    // set up an interrupt to control PWM4 pin
-    TIMSK |= (1<<OCIE1A) | (1<<TOIE1);
-    #endif
+    #if !defined(USE_GENERIC_HWDEF_SETUP)
+        hwdef_setup();
+    #else
+        // configure PWM channels
+        #if PWM_CHANNELS >= 1
+            DDRB |= (1 << PWM1_PIN);
+            TCCR0B = 0x01; // pre-scaler for timer (1 => 1, 2 => 8, 3 => 64...)
+            TCCR0A = PHASE;
+            #if (PWM1_PIN == PB4) // Second PWM counter is ... weird
+                TCCR1 = _BV (CS10);
+                GTCCR = _BV (COM1B1) | _BV (PWM1B);
+                OCR1C = 255;  // Set ceiling value to maximum
+            #endif
+        #endif
+        // tint ramping needs second channel enabled,
+        // despite PWM_CHANNELS being only 1
+        #if (PWM_CHANNELS >= 2) || defined(USE_TINT_RAMPING)
+            DDRB |= (1 << PWM2_PIN);
+            #if (PWM2_PIN == PB4) // Second PWM counter is ... weird
+                TCCR1 = _BV (CS10);
+                GTCCR = _BV (COM1B1) | _BV (PWM1B);
+                OCR1C = 255;  // Set ceiling value to maximum
+            #endif
+        #endif
+        #if PWM_CHANNELS >= 3
+            DDRB |= (1 << PWM3_PIN);
+            #if (PWM3_PIN == PB4) // Second PWM counter is ... weird
+                TCCR1 = _BV (CS10);
+                GTCCR = _BV (COM1B1) | _BV (PWM1B);
+                OCR1C = 255;  // Set ceiling value to maximum
+            #endif
+        #endif
+        #if PWM_CHANNELS >= 4
+            // 4th PWM channel is ... not actually supported in hardware  :(
+            DDRB |= (1 << PWM4_PIN);
+            //OCR1C = 255;  // Set ceiling value to maximum
+            TCCR1 = 1<<CTC1 | 1<<PWM1A | 3<<COM1A0 | 2<<CS10;
+            GTCCR = (2<<COM1B0) | (1<<PWM1B);
+            // set up an interrupt to control PWM4 pin
+            TIMSK |= (1<<OCIE1A) | (1<<TOIE1);
+        #endif
 
-    // configure e-switch
-    PORTB = (1 << SWITCH_PIN);  // e-switch is the only input
-    PCMSK = (1 << SWITCH_PIN);  // pin change interrupt uses this pin
+        // configure e-switch
+        PORTB = (1 << SWITCH_PIN);  // e-switch is the only input
+        PCMSK = (1 << SWITCH_PIN);  // pin change interrupt uses this pin
+    #endif  // ifdef USE_GENERIC_HWDEF_SETUP
 }
-#elif (ATTINY == 1634)
+#elif (ATTINY == 1634) || defined(AVRXMEGA3)  // ATTINY816, 817, etc
 static inline void hw_setup() {
     // this gets tricky with so many pins...
     // ... so punt it to the hwdef file
@@ -82,7 +87,11 @@ static inline void hw_setup() {
 //#ifdef USE_REBOOT
 static inline void prevent_reboot_loop() {
     // prevent WDT from rebooting MCU again
+    #ifdef AVRXMEGA3  // ATTINY816, 817, etc
+    RSTCTRL.RSTFR &= ~(RSTCTRL_WDRF_bm);  // reset status flag
+    #else
     MCUSR &= ~(1<<WDRF);  // reset status flag
+    #endif
     wdt_disable();
 }
 //#endif
@@ -129,6 +138,7 @@ int main() {
     // fallback for handling a few things
     #ifndef DONT_USE_DEFAULT_STATE
     push_state(default_state, 0);
+    nice_delay_interrupt = 0;
     #endif
 
     // call recipe's setup
@@ -138,6 +148,14 @@ int main() {
     while (1) {
         // if event queue not empty, empty it
         process_emissions();
+
+        // if loop() tried to change state, process that now
+        StatePtr df = deferred_state;
+        if (df) {
+            set_state(df, deferred_state_arg);
+            deferred_state = NULL;
+            //deferred_state_arg = 0;  // unnecessary
+        }
 
         // enter standby mode if requested
         // (works better if deferred like this)
@@ -164,11 +182,12 @@ int main() {
         // catch up on interrupts
         handle_deferred_interrupts();
 
+        // turn delays back on, if they were off
+        nice_delay_interrupt = 0;
+
         // give the recipe some time slices
         loop();
 
-        // in case we fell through, turn delays back on
-        nice_delay_interrupt = 0;
     }
 }
 
@@ -190,4 +209,3 @@ void handle_deferred_interrupts() {
     }
 }
 
-#endif

@@ -1,25 +1,8 @@
-/*
- * fsm-misc.c: Miscellaneous function for SpaghettiMonster.
- *
- * Copyright (C) 2017 Selene Scriven
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// fsm-misc.c: Miscellaneous function for SpaghettiMonster.
+// Copyright (C) 2017-2023 Selene ToyKeeper
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef FSM_MISC_C
-#define FSM_MISC_C
-
+#pragma once
 
 #ifdef USE_DYNAMIC_UNDERCLOCKING
 void auto_clock_speed() {
@@ -47,14 +30,39 @@ uint8_t blink_digit(uint8_t num) {
 
     // "zero" digit gets a single short blink
     uint8_t ontime = BLINK_SPEED * 2 / 12;
-    if (!num) { ontime = 8; num ++; }
+    if (!num) { ontime = BLINK_ONCE_TIME; num ++; }
+
+    #ifdef BLINK_CHANNEL
+    // channel is set per blink, to prevent issues
+    // if another mode interrupts us (like a config menu)
+    uint8_t old_channel = channel_mode;
+    #endif
 
     for (; num>0; num--) {
+        // TODO: allow setting a blink channel mode per build target
+        #ifdef BLINK_CHANNEL
+            set_channel_mode(BLINK_CHANNEL);
+        #endif
         set_level(BLINK_BRIGHTNESS);
+        #ifdef BLINK_CHANNEL
+            channel_mode = old_channel;
+        #endif
         nice_delay_ms(ontime);
+
+        #ifdef BLINK_CHANNEL
+            set_channel_mode(BLINK_CHANNEL);
+        #endif
         set_level(0);
+        #ifdef BLINK_CHANNEL
+            channel_mode = old_channel;
+        #endif
         nice_delay_ms(BLINK_SPEED * 3 / 12);
     }
+
+    #ifdef BLINK_CHANNEL
+    set_channel_mode(old_channel);
+    #endif
+
     return nice_delay_ms(BLINK_SPEED * 8 / 12);
 }
 #endif
@@ -83,13 +91,12 @@ uint8_t blink_big_num(uint16_t num) {
 #endif
 #ifdef USE_BLINK_NUM
 uint8_t blink_num(uint8_t num) {
-    //StatePtr old_state = current_state;
-    #if 0
+    #if 1
     uint8_t hundreds = num / 100;
     num = num % 100;
     uint8_t tens = num / 10;
     num = num % 10;
-    #else  // 8 bytes smaller
+    #else  // can be smaller or larger, depending on whether divmod is used elsewhere
     uint8_t hundreds = 0;
     uint8_t tens = 0;
     for(; num >= 100; hundreds ++, num -= 100);
@@ -102,38 +109,46 @@ uint8_t blink_num(uint8_t num) {
     nice_delay_ms(200);
     #endif
 
-    #if 0
-    if (hundreds) {
-        if (! blink_digit(hundreds)) return 0;
-        if (! blink_digit(tens)) return 0;
-    }
-    else if (tens) {
-        if (! blink_digit(tens)) return 0;
-    }
-    if (! blink_digit(num)) return 0;
-    return nice_delay_ms(1000);
-    #else // same size :(
-    if (hundreds) if (! blink_digit(hundreds)) return 0;
-    if (hundreds || tens) if (! blink_digit(tens)) return 0;
-    if (! blink_digit(num)) return 0;
-    return nice_delay_ms(1000);
-    #endif
-
-    /*
-    uint8_t volts, tenths;
-    volts = voltage / 10;
-    tenths = voltage % 10;
-    if (! blink(volts)) return;
-    nice_delay_ms(200);
-    if (! blink(tenths)) return;
-    nice_delay_ms(200);
-    */
+    if (hundreds) blink_digit(hundreds);
+    if (hundreds || tens) blink_digit(tens);
+    return blink_digit(num);
 }
 #endif
 
 #ifdef USE_INDICATOR_LED
 void indicator_led(uint8_t lvl) {
     switch (lvl) {
+        #ifdef AVRXMEGA3  // ATTINY816, 817, etc
+
+        case 0:  // indicator off
+            AUXLED_PORT.DIRSET = (1 << AUXLED_PIN); // set as output
+            AUXLED_PORT.OUTCLR = (1 << AUXLED_PIN); // set output low
+            #ifdef AUXLED2_PIN  // second LED mirrors the first
+            AUXLED2_PORT.DIRSET = (1 << AUXLED2_PIN); // set as output
+            AUXLED2_PORT.OUTCLR = (1 << AUXLED2_PIN); // set output low
+            #endif
+            break;
+        case 1:  // indicator low
+            AUXLED_PORT.DIRCLR = (1 << AUXLED_PIN); // set as input
+            // this resolves to PORTx.PINxCTRL = PORT_PULLUPEN_bm;
+            *((uint8_t *)&AUXLED_PORT + 0x10 + AUXLED_PIN) = PORT_PULLUPEN_bm; // enable internal pull-up
+            #ifdef AUXLED2_PIN  // second LED mirrors the first
+            AUXLED2_PORT.DIRCLR = (1 << AUXLED2_PIN); // set as input
+            // this resolves to PORTx.PINxCTRL = PORT_PULLUPEN_bm;
+            *((uint8_t *)&AUXLED2_PORT + 0x10 + AUXLED2_PIN) = PORT_PULLUPEN_bm; // enable internal pull-up
+            #endif
+            break;
+        default:  // indicator high
+            AUXLED_PORT.DIRSET = (1 << AUXLED_PIN); // set as output
+            AUXLED_PORT.OUTSET = (1 << AUXLED_PIN); // set as high
+            #ifdef AUXLED2_PIN  // second LED mirrors the first
+            AUXLED2_PORT.DIRSET = (1 << AUXLED2_PIN); // set as output
+            AUXLED2_PORT.OUTSET = (1 << AUXLED2_PIN); // set as high
+            #endif
+            break;
+
+        #else  // MCU is old tiny style, not newer mega style
+
         case 0:  // indicator off
             DDRB &= 0xff ^ (1 << AUXLED_PIN);
             PORTB &= 0xff ^ (1 << AUXLED_PIN);
@@ -158,6 +173,8 @@ void indicator_led(uint8_t lvl) {
             PORTB |= (1 << AUXLED2_PIN);
             #endif
             break;
+
+        #endif  // MCU type
     }
 }
 
@@ -174,6 +191,25 @@ void indicator_led_auto() {
 // TODO: Refactor this and RGB LED function to merge code and save space
 void button_led_set(uint8_t lvl) {
     switch (lvl) {
+
+        #ifdef AVRXMEGA3  // ATTINY816, 817, etc
+
+        case 0:  // LED off
+            BUTTON_LED_PORT.DIRSET = (1 << BUTTON_LED_PIN); // set as output
+            BUTTON_LED_PORT.OUTCLR = (1 << BUTTON_LED_PIN); // set output low
+            break;
+        case 1:  // LED low
+            BUTTON_LED_PORT.DIRCLR = (1 << BUTTON_LED_PIN); // set as input
+            // this resolves to PORTx.PINxCTRL = PORT_PULLUPEN_bm;
+            *((uint8_t *)&BUTTON_LED_PORT + 0x10 + BUTTON_LED_PIN) = PORT_PULLUPEN_bm; // enable internal pull-up
+            break;
+        default:  // LED high
+            BUTTON_LED_PORT.DIRSET = (1 << BUTTON_LED_PIN); // set as output
+            BUTTON_LED_PORT.OUTSET = (1 << BUTTON_LED_PIN); // set as high
+            break;
+
+        #else
+
         case 0:  // LED off
             BUTTON_LED_DDR  &= 0xff ^ (1 << BUTTON_LED_PIN);
             BUTTON_LED_PUE  &= 0xff ^ (1 << BUTTON_LED_PIN);
@@ -189,6 +225,8 @@ void button_led_set(uint8_t lvl) {
             BUTTON_LED_PUE  |= (1 << BUTTON_LED_PIN);
             BUTTON_LED_PORT |= (1 << BUTTON_LED_PIN);
             break;
+
+        #endif  // MCU type
     }
 }
 #endif
@@ -201,6 +239,25 @@ void rgb_led_set(uint8_t value) {
         uint8_t lvl = (value >> (i<<1)) & 0x03;
         uint8_t pin = pins[i];
         switch (lvl) {
+
+            #ifdef AVRXMEGA3  // ATTINY816, 817, etc
+
+            case 0:  // LED off
+                AUXLED_RGB_PORT.DIRSET = (1 << pin); // set as output
+                AUXLED_RGB_PORT.OUTCLR = (1 << pin); // set output low
+                break;
+            case 1:  // LED low
+                AUXLED_RGB_PORT.DIRCLR = (1 << pin); // set as input
+                // this resolves to PORTx.PINxCTRL = PORT_PULLUPEN_bm;
+                *((uint8_t *)&AUXLED_RGB_PORT + 0x10 + pin) = PORT_PULLUPEN_bm; // enable internal pull-up
+                break;
+            default:  // LED high
+                AUXLED_RGB_PORT.DIRSET = (1 << pin); // set as output
+                AUXLED_RGB_PORT.OUTSET = (1 << pin); // set as high
+                break;
+
+            #else
+
             case 0:  // LED off
                 AUXLED_RGB_DDR  &= 0xff ^ (1 << pin);
                 AUXLED_RGB_PUE  &= 0xff ^ (1 << pin);
@@ -216,6 +273,8 @@ void rgb_led_set(uint8_t value) {
                 AUXLED_RGB_PUE  |= (1 << pin);
                 AUXLED_RGB_PORT |= (1 << pin);
                 break;
+
+            #endif  // MCU type
         }
     }
 }
@@ -241,6 +300,9 @@ void reboot() {
         // reset (WDIF + WDE), no WDIE, fastest (16ms) timing (0000)
         // (DS section 8.5.2 and table 8-4)
         WDTCSR = 0b10001000;
+    #elif defined(AVRXMEGA3)  // ATTINY816, 817, etc
+        CCP = CCP_IOREG_gc;  // temporarily disable change protection
+        WDT.CTRLA = WDT_PERIOD_8CLK_gc;  // Enable, timeout 8ms
     #endif
     sei();
     wdt_reset();
@@ -248,4 +310,3 @@ void reboot() {
 }
 #endif
 
-#endif

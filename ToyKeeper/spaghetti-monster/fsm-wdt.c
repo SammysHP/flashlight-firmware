@@ -1,27 +1,15 @@
-/*
- * fsm-wdt.c: WDT (Watch Dog Timer) functions for SpaghettiMonster.
- *
- * Copyright (C) 2017 Selene Scriven
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// fsm-wdt.c: WDT (Watch Dog Timer) functions for SpaghettiMonster.
+// Copyright (C) 2017-2023 Selene ToyKeeper
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef FSM_WDT_C
-#define FSM_WDT_C
+#pragma once
 
 #include <avr/interrupt.h>
 #include <avr/wdt.h>
+
+// *** Note for the AVRXMEGA3 (1-Series, eg 816 and 817), the WDT 
+// is not used for time-based interrupts.  A new peripheral, the 
+// Periodic Interrupt Timer ("PIT") is used for this purpose.
 
 void WDT_on()
 {
@@ -35,6 +23,10 @@ void WDT_on()
     #elif (ATTINY == 1634)
         wdt_reset();                    // Reset the WDT
         WDTCSR = (1<<WDIE);             // Enable interrupt every 16ms
+    #elif defined(AVRXMEGA3)  // ATTINY816, 817, etc
+        RTC.PITINTCTRL = RTC_PI_bm;   // enable the Periodic Interrupt
+        while (RTC.PITSTATUS > 0) {}  // make sure the register is ready to be updated
+        RTC.PITCTRLA = RTC_PERIOD_CYC512_gc | RTC_PITEN_bm; // Period = 16ms, enable the PI Timer
     #else
         #error Unrecognized MCU type
     #endif
@@ -53,6 +45,10 @@ inline void WDT_slow()
     #elif (ATTINY == 1634)
         wdt_reset();                    // Reset the WDT
         WDTCSR = (1<<WDIE) | STANDBY_TICK_SPEED;
+    #elif defined(AVRXMEGA3)  // ATTINY816, 817, etc
+        RTC.PITINTCTRL = RTC_PI_bm;   // enable the Periodic Interrupt
+        while (RTC.PITSTATUS > 0) {}  // make sure the register is ready to be updated
+        RTC.PITCTRLA = (1<<6) | (STANDBY_TICK_SPEED<<3) | RTC_PITEN_bm; // Set period, enable the PI Timer
     #else
         #error Unrecognized MCU type
     #endif
@@ -75,13 +71,21 @@ inline void WDT_off()
         CCP = 0xD8;           // enable config changes
         WDTCSR = 0;           // disable and clear all WDT settings
         sei();
+    #elif defined(AVRXMEGA3)  // ATTINY816, 817, etc
+        while (RTC.PITSTATUS > 0) {}  // make sure the register is ready to be updated
+        RTC.PITCTRLA = 0; // Disable the PI Timer
     #else
         #error Unrecognized MCU type
     #endif
 }
 
 // clock tick -- this runs every 16ms (62.5 fps)
+#ifdef AVRXMEGA3  // ATTINY816, 817, etc
+ISR(RTC_PIT_vect) {
+    RTC.PITINTFLAGS = RTC_PI_bm; // clear the PIT interrupt flag 
+#else
 ISR(WDT_vect) {
+#endif
     irq_wdt = 1;  // WDT event happened
 }
 
@@ -118,10 +122,13 @@ void WDT_inner() {
         #ifndef USE_SLEEP_LVP
         return;  // no sleep LVP needed if nothing drains power while off
         #else
-        // stop here, usually...  but proceed often enough for sleep LVP to work
-        if (0 != (ticks_since_last & 0x3f)) return;
+        // stop here, usually...  except during the first few seconds asleep, 
+        // and once in a while afterward for sleep LVP
+        if ((ticks_since_last > (8 * SLEEP_TICKS_PER_SECOND))
+            && (0 != (ticks_since_last & 0x0f))) return;
 
         adc_trigger = 0;  // make sure a measurement will happen
+        adc_active_now = 1;  // use ADC noise reduction sleep mode
         ADC_on();  // enable ADC voltage measurement functions temporarily
         #endif
     }
@@ -150,6 +157,7 @@ void WDT_inner() {
         // (first frame of a "hold" event)
         else {
             if (ticks_since_last >= HOLD_TIMEOUT) {
+                ticks_since_last_event = 0;
                 current_event |= B_HOLD;
                 emit_current_event(0);
             }
@@ -160,9 +168,8 @@ void WDT_inner() {
     else if (current_event) {
         // "hold" event just ended
         // no timeout required when releasing a long-press
-        // TODO? move this logic to PCINT() and simplify things here?
         if (current_event & B_HOLD) {
-            //emit_current_event(0);  // should have been emitted by PCINT_inner()
+            //emit_current_event(ticks_since_last);  // should have been emitted by PCINT_inner()
             empty_event_sequence();
         }
         // end and clear event after release timeout
@@ -188,4 +195,3 @@ void WDT_inner() {
     #endif
 }
 
-#endif

@@ -1,24 +1,8 @@
-/*
- * fsm-states.c: State-handling functions for SpaghettiMonster.
- *
- * Copyright (C) 2017 Selene Scriven
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
- 
-#ifndef FSM_STATES_C
-#define FSM_STATES_C
+// fsm-states.c: State-handling functions for SpaghettiMonster.
+// Copyright (C) 2017-2023 Selene ToyKeeper
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#pragma once
 
 #include "fsm-states.h"
 #include "fsm-adc.h"
@@ -39,6 +23,9 @@ void _set_state(StatePtr new_state, uint16_t arg,
     current_state = new_state;
     // call new state-enter hook (don't use stack)
     if (new_state != NULL) current_state(enter_event, arg);
+
+    // since state changed, stop any animation in progress
+    interrupt_nice_delays();
 }
 
 int8_t push_state(StatePtr new_state, uint16_t arg) {
@@ -79,6 +66,11 @@ uint8_t set_state(StatePtr new_state, uint16_t arg) {
     return push_state(new_state, arg);
 }
 
+void set_state_deferred(StatePtr new_state, uint16_t arg) {
+    deferred_state = new_state;
+    deferred_state_arg = arg;
+}
+
 #ifndef DONT_USE_DEFAULT_STATE
 // bottom state on stack
 // handles default actions for LVP, thermal regulation, etc
@@ -111,4 +103,3 @@ uint8_t default_state(Event event, uint16_t arg) {
 }
 #endif
 
-#endif

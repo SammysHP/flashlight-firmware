@@ -1,6 +1,12 @@
 // Fireflies ROT66-219 (7x7135) config options for Anduril
+// Copyright (C) 2018-2023 Selene ToyKeeper
+// SPDX-License-Identifier: GPL-3.0-or-later
+#pragma once
+
 // same as regular ROT66, but calibrated for Nichia 219B with 7x7135 chips
 #include "cfg-ff-rot66.h"
+#undef MODEL_NUMBER
+#define MODEL_NUMBER "0412"
 
 // driver is a FET+N+1,
 // where N=6 for the 219b version

@@ -1,6 +1,12 @@
 // Sofirn SP36 (small Q8) config options for Anduril
+// Copyright (C) 2018-2023 Selene ToyKeeper
+// SPDX-License-Identifier: GPL-3.0-or-later
+#pragma once
+
 // same as  the  BLF Q8, mostly
 #include "cfg-blf-q8.h"
+#undef MODEL_NUMBER
+#define MODEL_NUMBER "0612"
 
 // voltage readings were a little high with the Q8 value
 #undef VOLTAGE_FUDGE_FACTOR
@@ -19,8 +25,8 @@
 #ifdef BLINK_AT_RAMP_MIDDLE
 #undef BLINK_AT_RAMP_MIDDLE
 #endif
-#ifdef BLINK_AT_RAMP_CEILING
-#undef BLINK_AT_RAMP_CEILING
+#ifdef BLINK_AT_RAMP_CEIL
+#undef BLINK_AT_RAMP_CEIL
 #endif
 
 // stop panicking at ~60% power or ~3000 lm

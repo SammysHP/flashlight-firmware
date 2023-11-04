@@ -1,42 +1,11 @@
-/*
- * fsm-events.h: Event-handling functions for SpaghettiMonster.
- *
- * Copyright (C) 2017 Selene Scriven
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// fsm-events.h: Event-handling functions for SpaghettiMonster.
+// Copyright (C) 2017-2023 Selene ToyKeeper
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef FSM_EVENTS_H
-#define FSM_EVENTS_H
+#pragma once
 
 #include <avr/pgmspace.h>
 
-// typedefs
-typedef uint8_t Event;
-typedef struct Emission {
-    Event event;
-    uint16_t arg;
-} Emission;
-
-#define EVENT_HANDLED 0
-#define EVENT_NOT_HANDLED 1
-#define MISCHIEF_MANAGED EVENT_HANDLED
-#define MISCHIEF_NOT_MANAGED EVENT_NOT_HANDLED
-
-Event current_event;
-// at 0.016 ms per tick, 255 ticks = 4.08 s
-static volatile uint16_t ticks_since_last_event = 0;
 
 // timeout durations in ticks (each tick 1/62th s)
 #ifndef HOLD_TIMEOUT
@@ -45,6 +14,56 @@ static volatile uint16_t ticks_since_last_event = 0;
 #ifndef RELEASE_TIMEOUT
 #define RELEASE_TIMEOUT 18
 #endif
+
+// return codes for Event handlers
+// Indicates whether this handler consumed (handled) the Event, or
+// if the Event should be sent to the next handler in the stack.
+#define EVENT_HANDLED 0
+#define EVENT_NOT_HANDLED 1
+#define MISCHIEF_MANAGED EVENT_HANDLED
+#define MISCHIEF_NOT_MANAGED EVENT_NOT_HANDLED
+
+// typedefs
+typedef uint8_t Event;
+typedef struct Emission {
+    Event event;
+    uint16_t arg;
+} Emission;
+
+Event current_event;
+// at 0.016 ms per tick, 255 ticks = 4.08 s
+static volatile uint16_t ticks_since_last_event = 0;
+
+// maximum number of events which can be waiting at one time
+// (would probably be okay to reduce this to 4, but it's higher to be safe)
+#define EMISSION_QUEUE_LEN 16
+// was "volatile" before, changed to regular var since IRQ rewrites seem
+// to have removed the need for it to be volatile
+// no comment about "volatile emissions"
+Emission emissions[EMISSION_QUEUE_LEN];
+
+void append_emission(Event event, uint16_t arg);
+void delete_first_emission();
+void process_emissions();
+uint8_t emit_now(Event event, uint16_t arg);
+void emit(Event event, uint16_t arg);
+void emit_current_event(uint16_t arg);
+void empty_event_sequence();
+uint8_t push_event(uint8_t ev_type);  // only for use by PCINT_inner()
+
+
+// TODO: Maybe move these to their own file...
+// ... this probably isn't the right place for delays.
+#ifndef DELAY_FACTOR
+    // adjust the timing of delays, lower = shorter delays
+    // 90 = 90% delay, 10% for other things
+    #define DELAY_FACTOR 92
+#endif
+inline void interrupt_nice_delays();
+uint8_t nice_delay_ms(uint16_t ms);
+//uint8_t nice_delay_s();
+void delay_4ms(uint8_t ms);
+
 
 /* Event structure
  * Bit  7: 1 for a button input event, 0 for all others.
@@ -200,26 +219,3 @@ static volatile uint16_t ticks_since_last_event = 0;
 #define EV_click15_hold         (B_CLICK|B_HOLD|B_PRESS|15)
 #define EV_click15_hold_release (B_CLICK|B_HOLD|B_RELEASE|B_TIMEOUT|15)
 
-
-void empty_event_sequence();
-uint8_t push_event(uint8_t ev_type);
-
-
-#define EMISSION_QUEUE_LEN 16
-// no comment about "volatile emissions"
-volatile Emission emissions[EMISSION_QUEUE_LEN];
-
-void append_emission(Event event, uint16_t arg);
-void delete_first_emission();
-void process_emissions();
-//#define emit_now emit
-uint8_t emit_now(Event event, uint16_t arg);
-void emit(Event event, uint16_t arg);
-void emit_current_event(uint16_t arg);
-
-uint8_t nice_delay_ms(uint16_t ms);
-//uint8_t nice_delay_s();
-inline void interrupt_nice_delays();
-void delay_4ms(uint8_t ms);
-
-#endif

@@ -1,24 +1,8 @@
-/*
- * fsm-eeprom.c: EEPROM API for SpaghettiMonster.
- *
- * Copyright (C) 2017 Selene Scriven
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// fsm-eeprom.c: EEPROM API for SpaghettiMonster.
+// Copyright (C) 2017-2023 Selene ToyKeeper
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef FSM_EEPROM_C
-#define FSM_EEPROM_C
+#pragma once
 
 #include "fsm-eeprom.h"
 
@@ -30,7 +14,7 @@ uint8_t eeprom[EEPROM_BYTES];
 #endif
 
 uint8_t load_eeprom() {
-    #ifdef LED_ENABLE_PIN
+    #if defined(LED_ENABLE_PIN) || defined(LED2_ENABLE_PIN)
     delay_4ms(2);  // wait for power to stabilize
     #endif
 
@@ -48,7 +32,7 @@ uint8_t load_eeprom() {
 }
 
 void save_eeprom() {
-    #ifdef LED_ENABLE_PIN
+    #if defined(LED_ENABLE_PIN) || defined(LED2_ENABLE_PIN)
     delay_4ms(2);  // wait for power to stabilize
     #endif
 
@@ -70,7 +54,7 @@ uint8_t eeprom_wl[EEPROM_WL_BYTES];
 uint8_t * eep_wl_prev_offset;
 
 uint8_t load_eeprom_wl() {
-    #ifdef LED_ENABLE_PIN
+    #if defined(LED_ENABLE_PIN) || defined(LED2_ENABLE_PIN)
     delay_4ms(2);  // wait for power to stabilize
     #endif
 
@@ -99,7 +83,7 @@ uint8_t load_eeprom_wl() {
 }
 
 void save_eeprom_wl() {
-    #ifdef LED_ENABLE_PIN
+    #if defined(LED_ENABLE_PIN) || defined(LED2_ENABLE_PIN)
     delay_4ms(2);  // wait for power to stabilize
     #endif
 
@@ -126,5 +110,3 @@ void save_eeprom_wl() {
 }
 #endif
 
-
-#endif
